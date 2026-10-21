@@ -9,6 +9,7 @@ export type CalendarConnection = CalendarConfig & {
   id: string;
   version: number;
   lastSuccess: number | null;
+  checkedAt: number | null;
   nextSync: number;
   error: string | null;
   failures: number;

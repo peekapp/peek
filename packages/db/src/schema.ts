@@ -34,6 +34,7 @@ export const calendars = sqliteTable("calendars", {
   secret: text("secret").notNull(),
   version: integer("version").notNull(),
   lastSuccess: integer("last_success"),
+  checkedAt: integer("checked_at"),
   nextSync: integer("next_sync").notNull(),
   error: text("error"),
   failures: integer("failures").notNull(),

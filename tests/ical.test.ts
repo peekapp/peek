@@ -177,12 +177,14 @@ it("syncs into both scenarios, keeps data on failure, handles 304, and rejects s
       return { status: 304, body: "" };
     });
     assert.equal(store.listCalendars()[0].failures, 0);
+    assert.ok(store.listCalendars()[0].checkedAt);
     store.requestSync("cal-test");
     await syncCalendar(store, store.dueCalendars()[0], async () => {
       throw new Error("network-error");
     });
     assert.deepEqual(store.snapshot().cards, before);
     assert.equal(store.listCalendars()[0].failures, 1);
+    assert.ok(store.listCalendars()[0].checkedAt! >= cached.checkedAt!);
     assert.equal(
       JSON.stringify(store.listCalendars()).includes("private-secret"),
       false,
@@ -228,7 +230,12 @@ it("refuses to replace a missing encryption key for existing calendars", () => {
     const keyFile = join(dir, "secret.key");
     rmSync(keyFile);
     assert.throws(
-      () => store.saveCalendar("cal-second", config, "https://example.com/other.ics"),
+      () =>
+        store.saveCalendar(
+          "cal-second",
+          config,
+          "https://example.com/other.ics",
+        ),
       /encryption-key/,
     );
     assert.equal(existsSync(keyFile), false);

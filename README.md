@@ -116,7 +116,7 @@ A distribution license has not been selected yet.
 
 ## Scenario settings
 
-Open **Settings** from the screen footer. **General** contains language preferences; **Calendars** contains connections; **Scenarios** shows compact cards. Open a card to edit that scenario on its own page. Each tab and detail page has its own URL.
+Open **Settings** from the screen footer. **General** contains language preferences; **Connections** lists configured integration instances; **Scenarios** shows compact cards. Open a card to edit that scenario on its own page. Each tab and detail page has its own URL. A single **Create scenario** button opens the available scenario definitions in a dialog. **Add connection** similarly selects an integration definition; iCalendar is currently the only supported integration.
 
 - Create multiple Meetings or Deadlines instances and give each a name.
 - Bind an instance to a connected ICS calendar or a saved demo source. Sources are shared; each scenario receives only its bound source events.
@@ -129,13 +129,17 @@ Each execution replaces only its own cards and commits the next-run timestamp in
 
 Settings also switches the installation's screen language between English (default) and Russian. It applies to connected screens, persists across restarts, and never translates user content. Day comparisons use the display timezone, so a meeting just after midnight is tomorrow even if it is only minutes away.
 
+The build-time definitions in `packages/core/src/registry.ts` distinguish integration types, configured connections, scenario types, and scenario instances. ICS persistence is still handled by its specific storage adapter; the full extension SDK and generic settings renderer remain planned.
+
 ## Connect an ICS calendar
 
-1. Open **Settings → Calendars → Connect calendar**.
+1. Open **Settings → Connections → Add connection → iCalendar**.
 2. Paste the calendar provider's **HTTPS ICS subscription URL**. A public sharing-page URL will not work. Private subscription links containing a token are supported; HTTP Basic credentials in the URL are not.
 3. Give the connection a name, owner, profile color, and timezone. The timezone applies to floating event times and date-only events. The default refresh interval is 60 seconds.
 4. Save. The worker schedules an initial download. Open the connection to inspect its status, last successful sync, and event count, or use **Sync now**.
-5. Open **Scenarios**, add Meetings or Deadlines, and select that calendar as the source. The same connection can serve multiple scenarios without duplicate network downloads.
+5. Open **Scenarios → Create scenario**, choose Meetings or Deadlines, and select that calendar as the source. The same connection can serve multiple scenarios without duplicate network downloads.
+
+Use **Check connection** on a connection card or its editor to request a worker sync and wait for its result. This verifies both fetching and parsing; successful checks also refresh the stored events. If the worker is unavailable or busy, the UI reports that no result arrived instead of claiming success.
 
 The subscription URL is never returned by the settings API. On edit, leave the password-style URL field blank to keep it. Changing connection settings queues a fresh download and clears the previous source snapshot; changing only scenario settings does not download the source again. A calendar cannot be deleted while a scenario references it.
 

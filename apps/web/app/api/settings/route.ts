@@ -31,6 +31,9 @@ export function GET(request: Request) {
         {
           scenarios: store.listScenarios(),
           calendars: store.listCalendars(),
+          connections: store
+            .listCalendars()
+            .map((c) => ({ ...c, integrationId: "ical" })),
           locale: store.snapshot().locale,
         },
         { headers: { "Cache-Control": "no-store" } },
@@ -56,6 +59,7 @@ export async function POST(request: Request) {
   }
   if (!body || typeof body !== "object")
     return Response.json({ error: "invalid" }, { status: 400 });
+  if (body.action === "connection-check") body.action = "calendar-sync";
   try {
     const store = openStore(databasePath());
     try {
@@ -67,6 +71,7 @@ export async function POST(request: Request) {
       )
         throw new Error("invalid-calendar");
       let createdId: string | undefined;
+      let checkedAt: number | null | undefined;
       if (body.action === "calendar-save") {
         createdId = body.id ?? `cal-${crypto.randomUUID()}`;
         store.saveCalendar(createdId!, body.config, body.url);
@@ -75,9 +80,12 @@ export async function POST(request: Request) {
         typeof body.id === "string"
       )
         store.deleteCalendar(body.id);
-      else if (body.action === "calendar-sync" && typeof body.id === "string")
+      else if (body.action === "calendar-sync" && typeof body.id === "string") {
+        const connection = store.listCalendars().find((c) => c.id === body.id);
+        if (!connection) throw new Error("invalid-calendar");
+        checkedAt = connection.checkedAt;
         store.requestSync(body.id);
-      else if (body.action === "locale") store.setLocale(body.locale);
+      } else if (body.action === "locale") store.setLocale(body.locale);
       else if (body.action === "save") {
         if (
           body.id !== undefined &&
@@ -89,7 +97,7 @@ export async function POST(request: Request) {
       } else if (body.action === "delete" && typeof body.id === "string")
         store.deleteScenario(body.id);
       else throw new Error("invalid");
-      return Response.json({ ok: true, id: createdId });
+      return Response.json({ ok: true, id: createdId, checkedAt });
     } finally {
       store.close();
     }

@@ -86,7 +86,7 @@ export function openStore(path: string, readonly = false) {
               user_version: number;
             }
           ).user_version;
-          if (version > 3)
+          if (version > 4)
             throw new Error("Database schema is newer than this application");
           if (version === 0)
             sqlite.exec(`
@@ -120,6 +120,10 @@ export function openStore(path: string, readonly = false) {
             CREATE INDEX calendars_due ON calendars(next_sync);
             PRAGMA user_version = 3;
           `);
+          if (version < 4)
+            sqlite.exec(
+              `ALTER TABLE calendars ADD COLUMN checked_at INTEGER; PRAGMA user_version = 4;`,
+            );
         })
         .immediate();
     },
@@ -185,6 +189,7 @@ export function openStore(path: string, readonly = false) {
           id: c.id,
           version: c.version,
           lastSuccess: c.lastSuccess,
+          checkedAt: c.checkedAt,
           nextSync: c.nextSync,
           error: c.error,
           failures: c.failures,
@@ -325,6 +330,7 @@ export function openStore(path: string, readonly = false) {
             tx.update(calendars)
               .set({
                 error: result.error,
+                checkedAt: now,
                 failures,
                 nextSync:
                   now +
@@ -354,6 +360,7 @@ export function openStore(path: string, readonly = false) {
             tx.update(calendars)
               .set({
                 lastSuccess: now,
+                checkedAt: now,
                 nextSync: now + current.config.intervalSeconds * 1000,
                 failures: 0,
                 error: null,

@@ -705,3 +705,98 @@ select:focus-visible {
     gap: 10px;
   }
 }
+
+.definition-picker {
+  color: #e9ebf0;
+  background: #202630;
+  border: 1px solid #394354;
+  border-radius: 18px;
+  width: min(520px, calc(100vw - 36px));
+  max-height: calc(100dvh - 48px);
+  padding: 24px;
+}
+.definition-picker::backdrop {
+  background: rgb(8 11 17 / 75%);
+}
+.picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.picker-header h2 {
+  margin: 0;
+  font-size: 24px;
+}
+.picker-header button {
+  font-size: 26px;
+}
+.picker-options {
+  display: grid;
+  gap: 12px;
+}
+.picker-options a {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 20px 42px 20px 20px;
+  border: 1px solid #394354;
+  border-radius: 10px;
+  text-decoration: none;
+}
+.picker-options a:hover {
+  background: #293141;
+}
+.picker-options strong {
+  color: #e9ebf0;
+  font-size: 18px;
+}
+.picker-options span {
+  color: #adb6c6;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.picker-options .picker-arrow {
+  position: absolute;
+  right: 18px;
+  top: 24px;
+  font-size: 24px;
+}
+.connection-card h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+.connection-card h3 a:hover {
+  text-decoration: underline;
+}
+.connection-check {
+  margin-top: 16px;
+}
+.connection-check p {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.connection-check p:empty {
+  display: none;
+}
+.form-actions .connection-check {
+  margin-top: 0;
+}
+.connection-card {
+  position: relative;
+}
+.connection-card h3 a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.connection-card .connection-check {
+  position: relative;
+  z-index: 1;
+}
+.connection-card:focus-within {
+  border-color: #a4b7db;
+}

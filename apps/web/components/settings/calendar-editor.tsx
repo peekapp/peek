@@ -6,16 +6,8 @@ import { messages, type Locale } from "@peek/core/i18n";
 import type { CalendarConfig, CalendarConnection } from "@peek/core/calendars";
 import { relativeEventTime } from "@peek/core/time";
 import { mutate, errorText } from "./api";
-export function syncError(code: string, locale: Locale) {
-  const t = messages(locale);
-  return code === "blocked-address"
-    ? t.blockedAddress
-    : code === "invalid-calendar"
-      ? t.invalidFeed
-      : code === "encryption-key"
-        ? t.keyError
-        : t.syncError;
-}
+import { syncError } from "./sync-error";
+import { ConnectionCheck } from "./connection-check";
 export function CalendarEditor({
   calendar,
   locale,
@@ -43,7 +35,7 @@ export function CalendarEditor({
   };
   return (
     <>
-      <Link className="back-link" href="/settings/calendars">
+      <Link className="back-link" href="/settings/connections">
         ← {t.backToCalendars}
       </Link>
       <div className="editor-title">
@@ -68,7 +60,7 @@ export function CalendarEditor({
             setUrl("");
             setStatus("saved");
             await refresh();
-            if (!calendar) router.replace(`/settings/calendars/${result.id}`);
+            if (!calendar) router.replace(`/settings/connections/${result.id}`);
           } catch (e) {
             setStatus(e instanceof Error ? e.message : "error");
           }
@@ -90,7 +82,7 @@ export function CalendarEditor({
               {t.calendarUrl}
               <input
                 type="password"
-              aria-label={t.calendarUrl}
+                aria-label={t.calendarUrl}
                 required={!calendar}
                 autoComplete="new-password"
                 maxLength={4096}
@@ -184,6 +176,7 @@ export function CalendarEditor({
         </section>
         {calendar ? (
           <div className="execution-note">
+            <span>{t.checkSavedHint}</span>
             <span>
               {t.lastSync}:{" "}
               {calendar.lastSuccess === null
@@ -204,24 +197,15 @@ export function CalendarEditor({
           <button disabled={status === "saving"}>
             {status === "saving" ? t.saving : t.save}
           </button>
-          <Link href="/settings/calendars">{t.cancel}</Link>
+          <Link href="/settings/connections">{t.cancel}</Link>
           {calendar ? (
             <>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={async () => {
-                  try {
-                    await mutate({ action: "calendar-sync", id: calendar.id });
-                    setStatus("queued");
-                    await refresh();
-                  } catch {
-                    setStatus("error");
-                  }
-                }}
-              >
-                {t.syncNow}
-              </button>
+              <ConnectionCheck
+                key={`${calendar.id}:${calendar.version}`}
+                connection={calendar}
+                locale={locale}
+                refresh={refresh}
+              />
               <button
                 type="button"
                 className="quiet-button danger"
@@ -233,7 +217,7 @@ export function CalendarEditor({
                       id: calendar.id,
                     });
                     await refresh();
-                    router.push("/settings/calendars");
+                    router.push("/settings/connections");
                   } catch (e) {
                     setStatus(e instanceof Error ? e.message : "error");
                   }

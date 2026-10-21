@@ -1,5 +1,21 @@
 export type Locale = "en" | "ru";
 export const en = {
+  connections: "Connections",
+  connectionsDescription: "Your connected sources, shared across scenarios.",
+  addConnection: "Add connection",
+  chooseIntegration: "Choose an integration",
+  createScenario: "Create scenario",
+  chooseScenario: "Choose a scenario",
+  meetingsDescription: "Show upcoming meetings and their countdowns.",
+  deadlinesDescription: "Keep approaching deadlines in view.",
+  icalDescription: "Calendar events from an HTTPS ICS subscription.",
+  checkConnection: "Check connection",
+  checkSavedHint: "Checks the saved connection settings.",
+  checkingConnection: "Checking…",
+  checkSuccess: "Connection verified",
+  checkTimeout:
+    "No result yet. Check that the background worker is running and try again.",
+  close: "Close",
   general: "General",
   calendars: "Calendars",
   generalDescription: "Language and display preferences.",
@@ -8,7 +24,7 @@ export const en = {
   calendarsDescription:
     "Connect a calendar once and reuse it across your scenarios.",
   addCalendar: "Connect calendar",
-  calendarName: "Calendar name",
+  calendarName: "Connection name",
   calendarUrl: "ICS subscription URL",
   urlSaved: "Saved securely. Leave blank to keep the current URL.",
   urlHint: "Use an HTTPS subscription link, not a calendar sharing page.",
@@ -26,12 +42,12 @@ export const en = {
   stale: "Out of date",
   needsAttention: "Needs attention",
   active: "Active",
-  calendarEmpty: "No calendars connected",
+  calendarEmpty: "No connections yet",
   calendarEmptyHint:
     "Add an ICS subscription to bring your meetings and deadlines into Peek.",
   scenarioEmptyHint: "Create a scenario and choose a calendar to watch.",
   backToScenarios: "All scenarios",
-  backToCalendars: "All calendars",
+  backToCalendars: "All connections",
   editScenario: "Scenario settings",
   newScenario: "New scenario",
   newCalendar: "Connect a calendar",
@@ -59,7 +75,7 @@ export const en = {
   keyError:
     "The encryption key is missing or invalid. Restore the key before continuing.",
   calendarWarning:
-    "Calendar updates need attention. Open Calendars in Settings.",
+    "Calendar updates need attention. Open Connections in Settings.",
   confirmCalendarDelete: "Disconnect this calendar?",
   blue: "Blue",
   pink: "Pink",
@@ -120,6 +136,22 @@ export const en = {
   footer: "Moscow",
 };
 export const ru: Record<keyof typeof en, string> = {
+  connections: "Подключения",
+  connectionsDescription: "Ваши источники данных для разных сценариев.",
+  addConnection: "Добавить подключение",
+  chooseIntegration: "Выберите интеграцию",
+  createScenario: "Создать сценарий",
+  chooseScenario: "Выберите сценарий",
+  meetingsDescription: "Предстоящие встречи и обратный отсчёт до начала.",
+  deadlinesDescription: "Приближающиеся сроки всегда перед глазами.",
+  icalDescription: "События календаря по HTTPS-ссылке ICS-подписки.",
+  checkConnection: "Проверить подключение",
+  checkSavedHint: "Проверка использует сохранённые настройки подключения.",
+  checkingConnection: "Проверяем…",
+  checkSuccess: "Подключение проверено",
+  checkTimeout:
+    "Результат пока не получен. Проверьте, что фоновый процесс запущен, и повторите попытку.",
+  close: "Закрыть",
   general: "Общие",
   calendars: "Календари",
   generalDescription: "Язык и параметры отображения.",
@@ -128,7 +160,7 @@ export const ru: Record<keyof typeof en, string> = {
   calendarsDescription:
     "Подключите календарь один раз и используйте его в разных сценариях.",
   addCalendar: "Подключить календарь",
-  calendarName: "Название календаря",
+  calendarName: "Название подключения",
   calendarUrl: "ICS-ссылка для подписки",
   urlSaved: "Сохранена безопасно. Оставьте пустым, чтобы не менять ссылку.",
   urlHint: "Нужна HTTPS-ссылка подписки, а не ссылка на страницу календаря.",
@@ -146,12 +178,12 @@ export const ru: Record<keyof typeof en, string> = {
   stale: "Данные устарели",
   needsAttention: "Требует внимания",
   active: "Включён",
-  calendarEmpty: "Календари пока не подключены",
+  calendarEmpty: "Подключений пока нет",
   calendarEmptyHint:
     "Добавьте ICS-подписку, чтобы видеть встречи и сроки в Peek.",
   scenarioEmptyHint: "Создайте сценарий и выберите календарь для отслеживания.",
   backToScenarios: "Все сценарии",
-  backToCalendars: "Все календари",
+  backToCalendars: "Все подключения",
   editScenario: "Настройки сценария",
   newScenario: "Новый сценарий",
   newCalendar: "Подключить календарь",
@@ -179,7 +211,7 @@ export const ru: Record<keyof typeof en, string> = {
   keyError:
     "Ключ шифрования отсутствует или неверен. Восстановите ключ для продолжения.",
   calendarWarning:
-    "Ошибка обновления календаря. Откройте вкладку «Календари» в настройках.",
+    "Ошибка обновления календаря. Откройте вкладку «Подключения» в настройках.",
   confirmCalendarDelete: "Отключить этот календарь?",
   blue: "Синий",
   pink: "Розовый",

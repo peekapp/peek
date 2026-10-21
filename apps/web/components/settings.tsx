@@ -3,14 +3,16 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
 import type { Scenario } from "@peek/core/scenarios";
-import type { CalendarConnection } from "@peek/core/calendars";
 import { relativeEventTime } from "@peek/core/time";
 import { ScenarioEditor } from "./settings/scenario-editor";
 import { CalendarEditor } from "./settings/calendar-editor";
+import { DefinitionPicker } from "./settings/definition-picker";
+import { ConnectionCheck } from "./settings/connection-check";
+import { integrationDefinitions, type Connection } from "@peek/core/registry";
 import { mutate } from "./settings/api";
 type Data = {
   scenarios: Scenario[];
-  calendars: CalendarConnection[];
+  connections: Connection[];
   locale: Locale;
 };
 export function Settings({
@@ -47,14 +49,14 @@ export function Settings({
     document.documentElement.lang = locale;
   }, [locale]);
   const sourceName = (id: string) =>
-    data?.calendars.find((c) => c.id === id)?.name ??
+    data?.connections.find((c) => c.id === id)?.name ??
     (id === "demo-meetings"
       ? t.demoMeetings
       : id === "demo-deadlines"
         ? t.demoDeadlines
         : t.sourceMissing);
   const scenario = data?.scenarios.find((s) => s.id === item),
-    calendar = data?.calendars.find((c) => c.id === item);
+    calendar = data?.connections.find((c) => c.id === item);
   return (
     <main className="settings-page">
       <header className="settings-header">
@@ -68,7 +70,7 @@ export function Settings({
         <h1>{t.settings}</h1>
       </div>
       <nav className="settings-tabs" aria-label={t.settings}>
-        {(["general", "calendars", "scenarios"] as const).map((key) => (
+        {(["general", "connections", "scenarios"] as const).map((key) => (
           <Link
             key={key}
             href={`/settings/${key}`}
@@ -77,8 +79,8 @@ export function Settings({
             {t[key]}
             {key === "scenarios" && data ? (
               <span>{data.scenarios.length}</span>
-            ) : key === "calendars" && data ? (
-              <span>{data.calendars.length}</span>
+            ) : key === "connections" && data ? (
+              <span>{data.connections.length}</span>
             ) : null}
           </Link>
         ))}
@@ -129,14 +131,14 @@ export function Settings({
                 (item === "new-meetings" ? "meetings" : "deadlines")
               }
               locale={locale}
-              calendars={data.calendars}
+              calendars={data.connections}
               refresh={refresh}
             />
           ) : (
             <p>{t.notFound}</p>
           )
-        ) : tab === "calendars" && item ? (
-          calendar || item === "new" ? (
+        ) : tab === "connections" && item ? (
+          calendar || item === "new" || item === "new-ical" ? (
             <CalendarEditor
               key={item}
               calendar={calendar}
@@ -153,20 +155,7 @@ export function Settings({
                 <h2>{t.scenarios}</h2>
                 <p>{t.scenariosDescription}</p>
               </div>
-              <div className="add-actions">
-                <Link
-                  className="button secondary-button"
-                  href="/settings/scenarios/new-meetings"
-                >
-                  + {t.meetings}
-                </Link>
-                <Link
-                  className="button secondary-button"
-                  href="/settings/scenarios/new-deadlines"
-                >
-                  + {t.deadlines}
-                </Link>
-              </div>
+              <DefinitionPicker kind="scenario" locale={locale} />
             </div>
             <div className="settings-card-grid">
               {data.scenarios.map((s) => (
@@ -212,24 +201,18 @@ export function Settings({
               </div>
             ) : null}
           </>
-        ) : tab === "calendars" ? (
+        ) : tab === "connections" ? (
           <>
             <div className="section-intro">
               <div>
-                <h2>{t.calendars}</h2>
-                <p>{t.calendarsDescription}</p>
+                <h2>{t.connections}</h2>
+                <p>{t.connectionsDescription}</p>
               </div>
-              <Link className="button" href="/settings/calendars/new">
-                + {t.addCalendar}
-              </Link>
+              <DefinitionPicker kind="connection" locale={locale} />
             </div>
             <div className="settings-card-grid">
-              {data.calendars.map((c) => (
-                <Link
-                  className="settings-card"
-                  href={`/settings/calendars/${c.id}`}
-                  key={c.id}
-                >
+              {data.connections.map((c) => (
+                <article className="settings-card connection-card" key={c.id}>
                   <div className="card-top">
                     <span className="type-icon">▦</span>
                     <span
@@ -245,8 +228,17 @@ export function Settings({
                             : t.connected}
                     </span>
                   </div>
-                  <h3>{c.name}</h3>
-                  <p>{c.owner.name}</p>
+                  <h3>
+                    <Link href={`/settings/connections/${c.id}`}>{c.name}</Link>
+                  </h3>
+                  <p>
+                    {
+                      integrationDefinitions.find(
+                        (d) => d.id === c.integrationId,
+                      )?.name
+                    }{" "}
+                    · {c.owner.name}
+                  </p>
                   <div className="card-source">
                     {c.eventCount} {t.eventCount.toLowerCase()}
                   </div>
@@ -259,10 +251,16 @@ export function Settings({
                     </span>
                     <span aria-hidden="true">›</span>
                   </div>
-                </Link>
+                  <ConnectionCheck
+                    key={`${c.id}:${c.version}`}
+                    connection={c}
+                    locale={locale}
+                    refresh={refresh}
+                  />
+                </article>
               ))}
             </div>
-            {!data.calendars.length ? (
+            {!data.connections.length ? (
               <div className="settings-empty">
                 <span className="type-icon">▦</span>
                 <h3>{t.calendarEmpty}</h3>

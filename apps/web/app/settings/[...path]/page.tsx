@@ -1,6 +1,6 @@
 import { Settings } from "../../../components/settings";
 import { readState } from "../../../lib/server-state";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 export default async function SettingsSection({
   params,
@@ -8,8 +8,10 @@ export default async function SettingsSection({
   params: Promise<{ path: string[] }>;
 }) {
   const { path } = await params;
+  if (path[0] === "calendars")
+    redirect(`/settings/connections${path[1] ? `/${path[1]}` : ""}`);
   if (
-    !["general", "calendars", "scenarios"].includes(path[0]) ||
+    !["general", "connections", "scenarios"].includes(path[0]) ||
     path.length > 2 ||
     (path[0] === "general" && path.length > 1)
   )
