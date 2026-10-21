@@ -13,10 +13,12 @@ Implemented:
 - Priority-based ordering, a large primary card, live countdowns, and an empty state.
 - Distinct warnings for lost server connection, unavailable storage, and a stopped worker.
 - English and Russian interface dictionaries with a persistent language selection. Event titles and profile names support Unicode.
+- ICS calendar connections with encrypted subscription URLs, conditional requests, recurring event expansion, and failure recovery.
+- Tabbed Settings with scenario summaries and dedicated editors.
 - Editable Meetings/Deadlines scenarios with persistent configuration, source bindings, next-run times, retries, and execution status.
 - Relative event labels: time only today, Tomorrow/Завтра, nearby weekdays, then calendar dates.
 
-Calendar integrations, account setup, authentication, and Docker delivery are **not implemented yet**. This is a local development milestone, not a deployable multi-user service. Both web commands bind to loopback; keep them local until access control is implemented.
+Account setup, authentication, and Docker delivery are **not implemented yet**. This is a local development milestone, not a deployable multi-user service. Both web commands bind to loopback; keep them local until access control is implemented.
 
 ## Requirements
 
@@ -69,7 +71,7 @@ The seed command creates two default scenarios, a meeting 48 seconds in the futu
 
 By default, meetings expire five minutes after their start. Deadlines become urgent 24 hours before their target and remain visible as **Overdue** for 24 hours afterwards. The screen also filters expired cards locally if the connection is down. UTC timestamps are stored; the display timezone is currently fixed to **Europe/Moscow**, with formatting in the selected interface language.
 
-There is no external calendar synchronization yet. Russian demo titles and profile names are intentional sample content, not interface translations.
+ICS calendars are synchronized independently of scenarios. Russian demo titles and profile names are intentional sample content, not interface translations.
 
 ## Development checks
 
@@ -79,7 +81,7 @@ bun typecheck
 bun run build
 ```
 
-GitHub Actions runs all three checks. Tests cover timing boundaries, ordering, transaction rollback, migration idempotency, persistence across database reopening, repeated seeding, expiry cleanup, and worker health.
+GitHub Actions runs all three checks. Tests cover timing boundaries, ordering, transaction rollback, migration idempotency, persistence across database reopening, repeated seeding, expiry cleanup, worker health, ICS recurrence/DST/exceptions, all-day/floating times, URL restrictions, encrypted secret storage, 304 responses, and stale in-flight sync results.
 
 ## Architecture
 
@@ -87,7 +89,8 @@ GitHub Actions runs all three checks. Tests cover timing boundaries, ordering, t
 apps/web/         Next.js screen, local Settings, state/SSE endpoints
 apps/worker/      Independent Bun worker, migration and seed commands
 packages/core/    Cards, scenario definitions/handlers, i18n, time rules
-packages/db/      Drizzle schema and SQLite persistence/migration boundary
+packages/db/      Drizzle schema, encrypted secrets, SQLite persistence
+packages/ical/    HTTPS fetching, isolated ICS parsing, synchronization
 assets/brand/     Original brand assets
 docs/             Product plan and design decisions
 tests/            Core and persistence tests
@@ -99,13 +102,13 @@ Only one worker and one web process per installation are supported. The worker h
 
 ## Backup and restore
 
-Stop **both** processes before copying the database directory, including any `-wal` and `-shm` files. Restore the files together, preserving their names, then restart the worker and web process with the same database path. Do not replace a live database. This milestone stores no integration credentials; encryption and secret backup procedures will be added with integrations.
+Stop **both** processes before copying the database directory, including any `-wal` and `-shm` files. Restore the files together, preserving their names, then restart the worker and web process with the same database path. Do not replace a live database. Also back up `secret.key` next to the database (or the separately supplied `PEEK_ENCRYPTION_KEY`). Without the original key, saved subscription URLs and cached feeds cannot be decrypted. Keep the key backup separate from shared database backups.
 
 ## Repository scope and next steps
 
 `peekapp/peek` contains the application, worker, and shared packages. Future standalone extensions, the project website, or documentation hosting can live in separate repositories in the organization.
 
-Next: administrator setup and access control, followed by real source connections and the first iCalendar integration. The current registry contains two trusted local scenario handlers; a complete external extension SDK is not implemented yet.
+Next: administrator setup and access control, followed by Docker delivery and operational hardening. The current registry contains two trusted local scenario handlers; a complete external extension SDK is not implemented yet.
 
 The detailed [MVP plan](docs/mvp-plan.md), [design decisions](docs/design.md), and [future ideas](docs/future-ideas.md) are currently maintained in Russian. The application and this README default to English.
 
@@ -113,10 +116,10 @@ A distribution license has not been selected yet.
 
 ## Scenario settings
 
-Open **Settings** from the screen footer, or visit `/settings`.
+Open **Settings** from the screen footer. **General** contains language preferences; **Calendars** contains connections; **Scenarios** shows compact cards. Open a card to edit that scenario on its own page. Each tab and detail page has its own URL.
 
 - Create multiple Meetings or Deadlines instances and give each a name.
-- Bind an instance to a saved demo source. Sources are shared; each scenario receives only its bound source events.
+- Bind an instance to a connected ICS calendar or a saved demo source. Sources are shared; each scenario receives only its bound source events.
 - Configure visibility, priority, and retention in minutes. Visibility must begin before priority escalation; the horizon is 90 days and retention is at most 24 hours.
 - Optionally filter titles by case-insensitive text matching. An empty filter includes every event from the selected source.
 - Save to schedule immediate re-evaluation; disable or delete to remove that scenario's cards. The main screen updates over SSE.
@@ -125,3 +128,33 @@ Open **Settings** from the screen footer, or visit `/settings`.
 Each execution replaces only its own cards and commits the next-run timestamp in the same transaction. Stable IDs combine scenario ID and source event ID. Missed runs after a restart evaluate current state rather than replaying obsolete cards. Source replacement also schedules its consumers, including when events are cancelled or moved.
 
 Settings also switches the installation's screen language between English (default) and Russian. It applies to connected screens, persists across restarts, and never translates user content. Day comparisons use the display timezone, so a meeting just after midnight is tomorrow even if it is only minutes away.
+
+## Connect an ICS calendar
+
+1. Open **Settings → Calendars → Connect calendar**.
+2. Paste the calendar provider's **HTTPS ICS subscription URL**. A public sharing-page URL will not work. Private subscription links containing a token are supported; HTTP Basic credentials in the URL are not.
+3. Give the connection a name, owner, profile color, and timezone. The timezone applies to floating event times and date-only events. The default refresh interval is 60 seconds.
+4. Save. The worker schedules an initial download. Open the connection to inspect its status, last successful sync, and event count, or use **Sync now**.
+5. Open **Scenarios**, add Meetings or Deadlines, and select that calendar as the source. The same connection can serve multiple scenarios without duplicate network downloads.
+
+The subscription URL is never returned by the settings API. On edit, leave the password-style URL field blank to keep it. Changing connection settings queues a fresh download and clears the previous source snapshot; changing only scenario settings does not download the source again. A calendar cannot be deleted while a scenario references it.
+
+### Sync behavior
+
+- Public HTTPS only, standard port 443, up to four redirects. DNS results are checked at every hop and the TLS connection is pinned to a validated address. Private, loopback, link-local, multicast, and reserved addresses are rejected; local calendar servers are not supported yet.
+- A 15-second network deadline and a 10 MiB response limit. Uncompressed HTTP responses are requested; unsupported content encodings are rejected.
+- ETag / Last-Modified conditional requests. Cached feed content is encrypted and re-expanded even after a 304 response, so the rolling future window continues to advance.
+- `node-ical` handles RRULE, EXDATE, RECURRENCE-ID, TZID and cancellations. Parsing runs in a separate Bun process with the connection timezone and a ten-second deadline. The output is limited to 10,000 occurrences; secondly recurrence rules are rejected. Titles and locations are capped at 1,000 characters.
+- The expansion window covers two days in the past (including yesterday's all-day deadline retention) and 90 days ahead. All-day events are omitted from Meetings; their deadline is the end of their start date in the relevant timezone. Timed deadlines use the start time.
+- A failed fetch or parse retains the last successful events, marks the connection unhealthy, and backs off from one minute to a maximum of 15 minutes. The screen warns when any calendar has errors or stale data. A successful full snapshot removes cancelled or missing events.
+- Up to three connections sync concurrently, independently of the five-second worker heartbeat. Configuration versions prevent an old in-flight response from overwriting edited or deleted connections.
+
+For floating times, provide the source's actual timezone. Embedded timezone definitions are resolved by the parser; unsupported/custom timezone behavior should be checked against the calendar provider. Calendars requiring interactive login, custom request headers, or OAuth are not supported by the ICS connector.
+
+### Encryption key
+
+On the first calendar save, Peek creates a 32-byte `secret.key` beside the database with owner-only permissions. Both local processes read this file. Alternatively, set `PEEK_ENCRYPTION_KEY` to the same base64-encoded 32-byte key in both processes before saving any calendar. Changing or losing the key prevents decryption; restore the original key, do not generate a replacement for an existing database.
+
+### Network diagnostics
+
+If a public hostname resolves to a reserved address (for example, a synthetic `240.x.x.x` address supplied by a DNS proxy), Peek reports a blocked address. Configure the installation's DNS/network to return real public addresses. The app does not bypass address validation to accommodate such a proxy.

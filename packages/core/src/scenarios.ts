@@ -7,11 +7,13 @@ export type CalendarEvent = {
   startAt: number;
   endAt?: number;
   location?: string;
+  allDay?: boolean;
+  deadlineAt?: number;
 };
 export type ScenarioConfig = {
   name: string;
   definition: "meetings" | "deadlines";
-  sourceId: "demo-meetings" | "demo-deadlines";
+  sourceId: string;
   enabled: boolean;
   leadMinutes: number;
   urgentMinutes: number;
@@ -51,7 +53,8 @@ export function validateConfig(input: unknown): ScenarioConfig {
     !v.name.trim() ||
     v.name.length > 100 ||
     !["meetings", "deadlines"].includes(v.definition) ||
-    !["demo-meetings", "demo-deadlines"].includes(v.sourceId) ||
+    typeof v.sourceId !== "string" ||
+    !/^[a-zA-Z0-9-]{1,80}$/.test(v.sourceId) ||
     typeof v.enabled !== "boolean" ||
     typeof v.filterText !== "string" ||
     v.filterText.length > 200 ||
@@ -88,7 +91,11 @@ export function evaluateScenario(
       !event.title.toLowerCase().includes(scenario.filterText.toLowerCase())
     )
       continue;
-    const targetAt = event.startAt;
+    if (scenario.definition === "meetings" && event.allDay) continue;
+    const targetAt =
+      scenario.definition === "deadlines"
+        ? (event.deadlineAt ?? event.startAt)
+        : event.startAt;
     const visibleFrom = targetAt - scenario.leadMinutes * 60000;
     const urgentAt = targetAt - scenario.urgentMinutes * 60000;
     const expiresAt = Math.min(

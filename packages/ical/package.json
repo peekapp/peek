@@ -1,0 +1,1 @@
+{"name":"@peek/ical","version":"0.1.0","private":true,"exports":{".":"./src/sync.ts","./parse":"./src/parse.ts","./fetch":"./src/fetch.ts"},"dependencies":{"@peek/core":"workspace:*","@peek/db":"workspace:*","node-ical":"0.27.3","luxon":"3.7.2","ipaddr.js":"2.5.0"},"devDependencies":{"@types/luxon":"3.7.6"}}

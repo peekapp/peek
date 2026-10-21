@@ -6,6 +6,7 @@ export type ScreenState = {
   serverTime: number;
   locale?: "en" | "ru";
   scenarioErrors?: number;
+  calendarErrors?: number;
 };
 export function workerHealthy(heartbeat: number | null, now: number) {
   return heartbeat !== null && now - heartbeat <= 30_000;

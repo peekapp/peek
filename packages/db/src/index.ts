@@ -13,7 +13,13 @@ import {
 import type { Locale } from "@peek/core/i18n";
 import type { Card } from "@peek/core";
 import type { ScreenState } from "@peek/core/state";
-import { cards, state, scenarios, events } from "./schema";
+import { encryptSecret, decryptSecret } from "./secrets";
+import {
+  validateCalendar,
+  validateCalendarUrl,
+  type CalendarConnection,
+} from "@peek/core/calendars";
+import { cards, state, scenarios, events, calendars } from "./schema";
 
 export function databasePath() {
   const path = process.env.PEEK_DATABASE_PATH;
@@ -80,7 +86,7 @@ export function openStore(path: string, readonly = false) {
               user_version: number;
             }
           ).user_version;
-          if (version > 2)
+          if (version > 3)
             throw new Error("Database schema is newer than this application");
           if (version === 0)
             sqlite.exec(`
@@ -106,6 +112,14 @@ export function openStore(path: string, readonly = false) {
               .map((row) => row.payload);
             if (existing.length) installDemo(existing, Date.now());
           }
+          if (version < 3)
+            sqlite.exec(`
+            CREATE TABLE calendars (id TEXT PRIMARY KEY NOT NULL, config TEXT NOT NULL, secret TEXT NOT NULL, version INTEGER NOT NULL,
+              last_success INTEGER, next_sync INTEGER NOT NULL, error TEXT, failures INTEGER NOT NULL DEFAULT 0,
+              event_count INTEGER NOT NULL DEFAULT 0, etag TEXT, modified TEXT, cache TEXT);
+            CREATE INDEX calendars_due ON calendars(next_sync);
+            PRAGMA user_version = 3;
+          `);
         })
         .immediate();
     },
@@ -123,6 +137,16 @@ export function openStore(path: string, readonly = false) {
           heartbeat: meta.heartbeat,
           serverTime: now,
           locale: meta.locale,
+          calendarErrors: tx
+            .select()
+            .from(calendars)
+            .all()
+            .filter(
+              (c) =>
+                c.error ||
+                c.lastSuccess === null ||
+                now - c.lastSuccess > c.config.intervalSeconds * 2000 + 30000,
+            ).length,
           scenarioErrors: tx
             .select()
             .from(scenarios)
@@ -151,6 +175,208 @@ export function openStore(path: string, readonly = false) {
         { behavior: "immediate" },
       );
     },
+    listCalendars(): CalendarConnection[] {
+      return db
+        .select()
+        .from(calendars)
+        .all()
+        .map((c) => ({
+          ...c.config,
+          id: c.id,
+          version: c.version,
+          lastSuccess: c.lastSuccess,
+          nextSync: c.nextSync,
+          error: c.error,
+          failures: c.failures,
+          eventCount: c.eventCount,
+        }));
+    },
+    saveCalendar(id: string, input: unknown, url?: unknown, now = Date.now()) {
+      const config = validateCalendar(input);
+      const existing = db
+        .select()
+        .from(calendars)
+        .where(eq(calendars.id, id))
+        .get();
+      // Refuse a replacement key when existing secrets can no longer be read.
+      const firstSecret = db
+        .select({ secret: calendars.secret })
+        .from(calendars)
+        .get();
+      if (firstSecret) decryptSecret(firstSecret.secret, path);
+      const secret = url
+        ? encryptSecret(validateCalendarUrl(url), path)
+        : existing?.secret;
+      if (!secret) throw new Error("invalid-url");
+      db.transaction(
+        (tx) => {
+          tx.insert(calendars)
+            .values({
+              id,
+              config,
+              secret,
+              version: 1,
+              nextSync: now,
+              failures: 0,
+              eventCount: 0,
+            })
+            .onConflictDoUpdate({
+              target: calendars.id,
+              set: {
+                config,
+                secret,
+                version: sql`${calendars.version} + 1`,
+                nextSync: now,
+                error: null,
+                failures: 0,
+                etag: null,
+                modified: null,
+                cache: null,
+              },
+            })
+            .run();
+          // An edited URL or owner must not keep displaying a previous source's data.
+          if (existing) {
+            for (const row of tx.select().from(events).all())
+              if (row.payload.sourceId === id)
+                tx.delete(events).where(eq(events.id, row.id)).run();
+            for (const row of tx.select().from(scenarios).all())
+              if (row.config.sourceId === id) {
+                tx.delete(cards).where(eq(cards.scenarioId, row.id)).run();
+                tx.update(scenarios)
+                  .set({ nextRunAt: row.config.enabled ? now : null })
+                  .where(eq(scenarios.id, row.id))
+                  .run();
+              }
+            tx.update(calendars)
+              .set({ lastSuccess: null, eventCount: 0 })
+              .where(eq(calendars.id, id))
+              .run();
+          }
+          tx.update(state)
+            .set({ revision: sql`${state.revision} + 1` })
+            .where(eq(state.id, 1))
+            .run();
+        },
+        { behavior: "immediate" },
+      );
+    },
+    deleteCalendar(id: string) {
+      db.transaction(
+        (tx) => {
+          if (
+            tx
+              .select()
+              .from(scenarios)
+              .all()
+              .some((s) => s.config.sourceId === id)
+          )
+            throw new Error("calendar-in-use");
+          for (const row of tx.select().from(events).all())
+            if (row.payload.sourceId === id)
+              tx.delete(events).where(eq(events.id, row.id)).run();
+          tx.delete(calendars).where(eq(calendars.id, id)).run();
+          tx.update(state)
+            .set({ revision: sql`${state.revision} + 1` })
+            .where(eq(state.id, 1))
+            .run();
+        },
+        { behavior: "immediate" },
+      );
+    },
+    requestSync(id: string, now = Date.now()) {
+      db.update(calendars)
+        .set({ nextSync: now })
+        .where(eq(calendars.id, id))
+        .run();
+    },
+    dueCalendars(now = Date.now()) {
+      return db
+        .select()
+        .from(calendars)
+        .where(lte(calendars.nextSync, now))
+        .all();
+    },
+    calendarUrl(secret: string) {
+      return decryptSecret(secret, path);
+    },
+    completeSync(
+      id: string,
+      version: number,
+      result: {
+        events?: CalendarEvent[];
+        etag?: string;
+        modified?: string;
+        error?: string;
+        cache?: string;
+      },
+      now = Date.now(),
+    ) {
+      return db.transaction(
+        (tx) => {
+          const current = tx
+            .select()
+            .from(calendars)
+            .where(eq(calendars.id, id))
+            .get();
+          if (!current || current.version !== version) return false;
+          if (result.error) {
+            const failures = current.failures + 1;
+            tx.update(calendars)
+              .set({
+                error: result.error,
+                failures,
+                nextSync:
+                  now +
+                  Math.min(900, 60 * 2 ** Math.min(failures - 1, 4)) * 1000,
+              })
+              .where(eq(calendars.id, id))
+              .run();
+          } else {
+            if (result.events) {
+              for (const row of tx.select().from(events).all())
+                if (row.payload.sourceId === id)
+                  tx.delete(events).where(eq(events.id, row.id)).run();
+              for (const event of result.events) {
+                if (event.sourceId !== id)
+                  throw new Error("Source binding mismatch");
+                tx.insert(events)
+                  .values({ id: `${id}:${event.id}`, payload: event })
+                  .run();
+              }
+              for (const row of tx.select().from(scenarios).all())
+                if (row.config.sourceId === id && row.config.enabled)
+                  tx.update(scenarios)
+                    .set({ nextRunAt: now })
+                    .where(eq(scenarios.id, row.id))
+                    .run();
+            }
+            tx.update(calendars)
+              .set({
+                lastSuccess: now,
+                nextSync: now + current.config.intervalSeconds * 1000,
+                failures: 0,
+                error: null,
+                cache:
+                  result.cache === undefined
+                    ? current.cache
+                    : encryptSecret(result.cache, path),
+                eventCount: result.events?.length ?? current.eventCount,
+                etag: result.etag ?? null,
+                modified: result.modified ?? null,
+              })
+              .where(eq(calendars.id, id))
+              .run();
+          }
+          tx.update(state)
+            .set({ revision: sql`${state.revision} + 1` })
+            .where(eq(state.id, 1))
+            .run();
+          return true;
+        },
+        { behavior: "immediate" },
+      );
+    },
     listScenarios(): Scenario[] {
       return db
         .select()
@@ -166,6 +392,15 @@ export function openStore(path: string, readonly = false) {
     },
     saveScenario(id: string, input: unknown, now = Date.now()) {
       const config = validateConfig(input);
+      if (
+        !["demo-meetings", "demo-deadlines"].includes(config.sourceId) &&
+        !db
+          .select()
+          .from(calendars)
+          .where(eq(calendars.id, config.sourceId))
+          .get()
+      )
+        throw new Error("invalid");
       db.transaction(
         (tx) => {
           tx.insert(scenarios)

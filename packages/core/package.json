@@ -8,6 +8,7 @@
     "./state": "./src/state.ts",
     "./time": "./src/time.ts",
     "./i18n": "./src/i18n.ts",
-    "./scenarios": "./src/scenarios.ts"
+    "./scenarios": "./src/scenarios.ts",
+    "./calendars": "./src/calendars.ts"
   }
 }

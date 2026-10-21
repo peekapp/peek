@@ -87,9 +87,11 @@ export function Dashboard({
         ? t.storage
         : connection === "connected" && !workerHealthy(snapshot.heartbeat, now)
           ? t.worker
-          : snapshot.scenarioErrors
-            ? t.scenarioWarning
-            : null;
+          : snapshot.calendarErrors
+            ? t.calendarWarning
+            : snapshot.scenarioErrors
+              ? t.scenarioWarning
+              : null;
 
   const [primary, ...secondary] = activeCards(cards, now);
   const timer = primary ? countdown(primary, now, locale) : null;

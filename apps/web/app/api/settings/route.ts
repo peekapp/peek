@@ -28,7 +28,11 @@ export function GET(request: Request) {
     const store = openStore(databasePath(), true);
     try {
       return Response.json(
-        { scenarios: store.listScenarios(), locale: store.snapshot().locale },
+        {
+          scenarios: store.listScenarios(),
+          calendars: store.listCalendars(),
+          locale: store.snapshot().locale,
+        },
         { headers: { "Cache-Control": "no-store" } },
       );
     } finally {
@@ -55,33 +59,52 @@ export async function POST(request: Request) {
   try {
     const store = openStore(databasePath());
     try {
-      if (body.action === "locale") store.setLocale(body.locale);
+      if (
+        body.action?.startsWith("calendar-") &&
+        body.id !== undefined &&
+        (typeof body.id !== "string" ||
+          !/^cal-[a-zA-Z0-9-]{1,80}$/.test(body.id))
+      )
+        throw new Error("invalid-calendar");
+      let createdId: string | undefined;
+      if (body.action === "calendar-save") {
+        createdId = body.id ?? `cal-${crypto.randomUUID()}`;
+        store.saveCalendar(createdId!, body.config, body.url);
+      } else if (
+        body.action === "calendar-delete" &&
+        typeof body.id === "string"
+      )
+        store.deleteCalendar(body.id);
+      else if (body.action === "calendar-sync" && typeof body.id === "string")
+        store.requestSync(body.id);
+      else if (body.action === "locale") store.setLocale(body.locale);
       else if (body.action === "save") {
         if (
           body.id !== undefined &&
           (typeof body.id !== "string" || !/^[a-zA-Z0-9-]{1,80}$/.test(body.id))
         )
           throw new Error("invalid");
-        store.saveScenario(body.id ?? crypto.randomUUID(), body.config);
+        createdId = body.id ?? crypto.randomUUID();
+        store.saveScenario(createdId!, body.config);
       } else if (body.action === "delete" && typeof body.id === "string")
         store.deleteScenario(body.id);
       else throw new Error("invalid");
-      return Response.json({ ok: true });
+      return Response.json({ ok: true, id: createdId });
     } finally {
       store.close();
     }
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const known = [
+      "invalid",
+      "invalid-calendar",
+      "invalid-url",
+      "calendar-in-use",
+      "encryption-key",
+    ];
     return Response.json(
-      {
-        error:
-          error instanceof Error && error.message === "invalid"
-            ? "invalid"
-            : "unavailable",
-      },
-      {
-        status:
-          error instanceof Error && error.message === "invalid" ? 400 : 503,
-      },
+      { error: known.includes(message) ? message : "unavailable" },
+      { status: known.includes(message) ? 400 : 503 },
     );
   }
 }

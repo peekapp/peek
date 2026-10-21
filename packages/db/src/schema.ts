@@ -26,3 +26,19 @@ export const events = sqliteTable("events", {
   id: text("id").primaryKey(),
   payload: text("payload", { mode: "json" }).$type<CalendarEvent>().notNull(),
 });
+
+import type { CalendarConfig } from "@peek/core/calendars";
+export const calendars = sqliteTable("calendars", {
+  id: text("id").primaryKey(),
+  config: text("config", { mode: "json" }).$type<CalendarConfig>().notNull(),
+  secret: text("secret").notNull(),
+  version: integer("version").notNull(),
+  lastSuccess: integer("last_success"),
+  nextSync: integer("next_sync").notNull(),
+  error: text("error"),
+  failures: integer("failures").notNull(),
+  cache: text("cache"),
+  eventCount: integer("event_count").notNull(),
+  etag: text("etag"),
+  modified: text("modified"),
+});
