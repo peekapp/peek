@@ -1,5 +1,7 @@
 import type { Card } from "./cards";
 export type ScreenState = {
+  timeZone?: string;
+  screen?: import("./screens").Screen;
   cards: Card[];
   revision: number;
   heartbeat: number | null;

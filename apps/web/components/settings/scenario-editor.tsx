@@ -1,4 +1,14 @@
 "use client";
+import { Label } from "../ui/label";
+import { DeleteButton } from "./delete-button";
+import { Button } from "../ui/button";
+import { SettingsSelect } from "./select";
+import { SelectItem } from "../ui/select";
+import { Input } from "../ui/input";
+import { SettingsField } from "./form-field";
+import { FieldGroup } from "../ui/field";
+import { Checkbox } from "../ui/checkbox";
+import { useInstallationTimeZone } from "../time-zone";
 import type { Profile } from "@peek/core/profiles";
 import { ProfileSelect } from "./profile-select";
 import Link from "next/link";
@@ -29,6 +39,7 @@ export function ScenarioEditor({
   profiles: Profile[];
   refresh: () => Promise<void>;
 }) {
+  const timeZone = useInstallationTimeZone();
   const t = messages(locale),
     router = useRouter();
   const [config, setConfig] = useState<ScenarioConfig>(
@@ -81,65 +92,64 @@ export function ScenarioEditor({
         }}
       >
         <section className="form-section">
-          <div>
+          <div className="form-section-heading">
             <h2>{t.scenarioBasics}</h2>
-            <label className="toggle">
-              <input
-                type="checkbox"
+            <Label className="toggle">
+              <Checkbox
                 checked={config.enabled}
-                onChange={(e) => update({ enabled: e.target.checked })}
+                onCheckedChange={(checked) =>
+                  update({ enabled: checked === true })
+                }
               />
               {t.enabled}
-            </label>
+            </Label>
           </div>
-          <div className="form-grid">
-            <label>
-              {t.name}
-              <input
+          <FieldGroup className="form-grid">
+            <SettingsField label={t.name}>
+              <Input
                 required
                 maxLength={100}
                 value={config.name}
                 onChange={(e) => update({ name: e.target.value })}
               />
-            </label>
-            <label>
-              {t.source}
-              <select
+            </SettingsField>
+            <SettingsField label={t.source}>
+              <SettingsSelect
                 value={config.sourceId}
-                onChange={(e) => update({ sourceId: e.target.value })}
+                onValueChange={(sourceId) => update({ sourceId })}
               >
                 {calendars.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <SelectItem key={c.id} value={c.id}>
                     {c.name}
-                  </option>
+                  </SelectItem>
                 ))}
-                <option value="demo-meetings">{t.demoMeetings}</option>
-                <option value="demo-deadlines">{t.demoDeadlines}</option>
-              </select>
-            </label>
+                <SelectItem value="demo-meetings">{t.demoMeetings}</SelectItem>
+                <SelectItem value="demo-deadlines">
+                  {t.demoDeadlines}
+                </SelectItem>
+              </SettingsSelect>
+            </SettingsField>
             <ProfileSelect
               profiles={profiles}
               value={config.profileId ?? "shared"}
               locale={locale}
               onChange={(profileId) => update({ profileId })}
             />
-            <label className="span-two">
-              {t.filterText}
-              <input
+            <SettingsField className="span-two" label={t.filterText}>
+              <Input
                 maxLength={200}
                 value={config.filterText}
                 onChange={(e) => update({ filterText: e.target.value })}
               />
-            </label>
-          </div>
+            </SettingsField>
+          </FieldGroup>
         </section>
         <section className="form-section">
           <h2>{t.scenarioRules}</h2>
-          <div className="form-grid">
+          <FieldGroup className="form-grid">
             {numericFields.map((key) => (
-              <label key={key}>
-                {t[key]}
-                <input
+              <SettingsField key={key} label={t[key]}>
+                <Input
                   required
                   type="number"
                   min={0}
@@ -153,9 +163,9 @@ export function ScenarioEditor({
                     } as Partial<ScenarioConfig>)
                   }
                 />
-              </label>
+              </SettingsField>
             ))}
-          </div>
+          </FieldGroup>
         </section>
         {scenario ? (
           <div className="execution-note">
@@ -165,13 +175,23 @@ export function ScenarioEditor({
                 ? t.disabled
                 : scenario.nextRunAt === null
                   ? t.waiting
-                  : relativeEventTime(scenario.nextRunAt, Date.now(), locale)}
+                  : relativeEventTime(
+                      scenario.nextRunAt,
+                      Date.now(),
+                      locale,
+                      timeZone,
+                    )}
             </span>
             <span>
               {t.lastRun}:{" "}
               {scenario.lastRunAt === null
                 ? t.never
-                : relativeEventTime(scenario.lastRunAt, Date.now(), locale)}
+                : relativeEventTime(
+                    scenario.lastRunAt,
+                    Date.now(),
+                    locale,
+                    timeZone,
+                  )}
             </span>
             {scenario.lastError ? (
               <span className="form-error">{t.runError}</span>
@@ -179,16 +199,18 @@ export function ScenarioEditor({
           </div>
         ) : null}
         <div className="form-actions">
-          <button disabled={status === "saving"}>
+          <Button disabled={status === "saving"}>
             {status === "saving" ? t.saving : t.save}
-          </button>
-          <Link href="/settings/scenarios">{t.cancel}</Link>
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/settings/scenarios">{t.cancel}</Link>
+          </Button>
           {scenario ? (
-            <button
-              type="button"
-              className="quiet-button danger"
-              onClick={async () => {
-                if (!confirm(t.confirmDelete)) return;
+            <DeleteButton
+              locale={locale}
+              description={t.confirmDelete}
+              disabled={status === "saving"}
+              onConfirm={async () => {
                 try {
                   await mutate({ action: "delete", id: scenario.id });
                   await refresh();
@@ -197,9 +219,7 @@ export function ScenarioEditor({
                   setStatus("error");
                 }
               }}
-            >
-              {t.remove}
-            </button>
+            />
           ) : null}
         </div>
         <p role="status" className="form-feedback">

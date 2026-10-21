@@ -1,4 +1,4 @@
-import { databasePath, openStore } from "@peek/db";
+import { databasePath, openStore, installationTimeZone } from "@peek/db";
 export const dynamic = "force-dynamic";
 // Local-only administration until administrator authentication is implemented.
 function local(request: Request, mutate = false) {
@@ -29,6 +29,8 @@ export function GET(request: Request) {
     try {
       return Response.json(
         {
+          timeZone: installationTimeZone(),
+          screens: store.listScreens(),
           profiles: store.listProfiles(),
           scenarios: store.listScenarios(),
           calendars: store.listCalendars(),
@@ -78,7 +80,15 @@ export async function POST(request: Request) {
         typeof body.config?.profileId !== "string"
       )
         throw new Error("invalid-profile");
-      if (body.action === "profile-save") {
+      if (body.action === "screen-save") {
+        createdId = body.id;
+        store.saveScreen(createdId!, body.config, body.previousId ?? null);
+      } else if (
+        body.action === "screen-delete" &&
+        typeof body.id === "string"
+      ) {
+        store.deleteScreen(body.id);
+      } else if (body.action === "profile-save") {
         createdId = body.id ?? `profile-${crypto.randomUUID()}`;
         store.saveProfile(createdId!, body.config);
       } else if (
@@ -88,7 +98,11 @@ export async function POST(request: Request) {
         store.deleteProfile(body.id);
       } else if (body.action === "calendar-save") {
         createdId = body.id ?? `cal-${crypto.randomUUID()}`;
-        store.saveCalendar(createdId!, body.config, body.url);
+        store.saveCalendar(
+          createdId!,
+          { ...body.config, timeZone: installationTimeZone() },
+          body.url,
+        );
       } else if (
         body.action === "calendar-delete" &&
         typeof body.id === "string"
@@ -118,6 +132,10 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const known = [
+      "invalid-screen",
+      "invalid-screen-id",
+      "screen-id-taken",
+      "screen-not-found",
       "invalid-profile",
       "profile-in-use",
       "invalid",

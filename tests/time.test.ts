@@ -1,6 +1,16 @@
 import { it } from "node:test";
 import assert from "node:assert/strict";
-import { formatTime, relativeEventTime } from "../packages/core/src/time";
+import {
+  formatTime as format,
+  relativeEventTime as relative,
+} from "../packages/core/src/time";
+const formatTime = (timestamp: number) =>
+  format(timestamp, "en", "Europe/Moscow");
+const relativeEventTime = (
+  timestamp: number,
+  now: number,
+  locale: "en" | "ru" = "en",
+) => relative(timestamp, now, locale, "Europe/Moscow");
 it("formats English labels in Moscow across a UTC date boundary", () => {
   assert.deepEqual(formatTime(Date.UTC(2026, 9, 21, 22, 5)), {
     clock: "01:05",

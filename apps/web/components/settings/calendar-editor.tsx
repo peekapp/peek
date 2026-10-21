@@ -1,4 +1,10 @@
 "use client";
+import { DeleteButton } from "./delete-button";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { SettingsField } from "./form-field";
+import { FieldGroup } from "../ui/field";
+import { useInstallationTimeZone } from "../time-zone";
 import type { Profile } from "@peek/core/profiles";
 import { ProfileSelect } from "./profile-select";
 import Link from "next/link";
@@ -21,14 +27,14 @@ export function CalendarEditor({
   locale: Locale;
   refresh: () => Promise<void>;
 }) {
+  const timeZone = useInstallationTimeZone();
   const t = messages(locale),
     router = useRouter();
-  const [config, setConfig] = useState<CalendarConfig>(
+  const [config, setConfig] = useState<Omit<CalendarConfig, "timeZone">>(
     calendar ?? {
       name: "",
       profileId: "shared",
       owner: { name: "", color: "blue" },
-      timeZone: "Europe/Moscow",
       intervalSeconds: 60,
     },
   );
@@ -73,19 +79,17 @@ export function CalendarEditor({
       >
         <section className="form-section">
           <h2>{t.calendarBasics}</h2>
-          <div className="form-grid">
-            <label className="span-two">
-              {t.calendarName}
-              <input
+          <FieldGroup className="form-grid">
+            <SettingsField className="span-two" label={t.calendarName}>
+              <Input
                 required
                 maxLength={100}
                 value={config.name}
                 onChange={(e) => update({ name: e.target.value })}
               />
-            </label>
-            <label className="span-two">
-              {t.calendarUrl}
-              <input
+            </SettingsField>
+            <SettingsField className="span-two" label={t.calendarUrl}>
+              <Input
                 type="password"
                 aria-label={t.calendarUrl}
                 required={!calendar}
@@ -99,43 +103,20 @@ export function CalendarEditor({
                 }}
               />
               <small>{calendar ? t.urlSaved : t.urlHint}</small>
-            </label>
+            </SettingsField>
             <ProfileSelect
               profiles={profiles}
               value={config.profileId ?? "shared"}
               locale={locale}
               onChange={(profileId) => update({ profileId })}
             />
-          </div>
+          </FieldGroup>
         </section>
         <section className="form-section">
           <h2>{t.calendarSchedule}</h2>
-          <div className="form-grid">
-            <label>
-              {t.timeZone}
-              <input
-                required
-                list="timezones"
-                value={config.timeZone}
-                onChange={(e) => update({ timeZone: e.target.value })}
-              />
-              <datalist id="timezones">
-                {[
-                  "Europe/Moscow",
-                  "UTC",
-                  "Europe/London",
-                  "Europe/Berlin",
-                  "America/New_York",
-                  "America/Los_Angeles",
-                  "Asia/Tokyo",
-                ].map((zone) => (
-                  <option key={zone} value={zone} />
-                ))}
-              </datalist>
-            </label>
-            <label>
-              {t.intervalSeconds}
-              <input
+          <FieldGroup className="form-grid">
+            <SettingsField label={t.intervalSeconds}>
+              <Input
                 type="number"
                 required
                 min={60}
@@ -151,8 +132,8 @@ export function CalendarEditor({
                   })
                 }
               />
-            </label>
-          </div>
+            </SettingsField>
+          </FieldGroup>
         </section>
         {calendar ? (
           <div className="execution-note">
@@ -161,7 +142,12 @@ export function CalendarEditor({
               {t.lastSync}:{" "}
               {calendar.lastSuccess === null
                 ? t.never
-                : relativeEventTime(calendar.lastSuccess, Date.now(), locale)}
+                : relativeEventTime(
+                    calendar.lastSuccess,
+                    Date.now(),
+                    locale,
+                    timeZone,
+                  )}
             </span>
             <span>
               {t.eventCount}: {calendar.eventCount}
@@ -174,10 +160,12 @@ export function CalendarEditor({
           </div>
         ) : null}
         <div className="form-actions">
-          <button disabled={status === "saving"}>
+          <Button disabled={status === "saving"}>
             {status === "saving" ? t.saving : t.save}
-          </button>
-          <Link href="/settings/connections">{t.cancel}</Link>
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/settings/connections">{t.cancel}</Link>
+          </Button>
           {calendar ? (
             <>
               <ConnectionCheck
@@ -186,11 +174,11 @@ export function CalendarEditor({
                 locale={locale}
                 refresh={refresh}
               />
-              <button
-                type="button"
-                className="quiet-button danger"
-                onClick={async () => {
-                  if (!confirm(t.confirmCalendarDelete)) return;
+              <DeleteButton
+                locale={locale}
+                description={t.confirmCalendarDelete}
+                disabled={status === "saving"}
+                onConfirm={async () => {
                   try {
                     await mutate({
                       action: "calendar-delete",
@@ -202,9 +190,7 @@ export function CalendarEditor({
                     setStatus(e instanceof Error ? e.message : "error");
                   }
                 }}
-              >
-                {t.remove}
-              </button>
+              />
             </>
           ) : null}
         </div>

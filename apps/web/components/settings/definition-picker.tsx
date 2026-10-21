@@ -1,6 +1,16 @@
 "use client";
 import Link from "next/link";
-import { useRef } from "react";
+import { useState } from "react";
+import { XIcon } from "lucide-react";
+import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "../ui/dialog";
 import { messages, type Locale } from "@peek/core/i18n";
 import {
   integrationDefinitions,
@@ -14,7 +24,7 @@ export function DefinitionPicker({
   kind: "scenario" | "connection";
   locale: Locale;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
   const t = messages(locale);
   const choices =
     kind === "scenario"
@@ -31,36 +41,35 @@ export function DefinitionPicker({
           href: `/settings/connections/new-${d.id}`,
         }));
   return (
-    <>
-      <button onClick={() => dialog.current?.showModal()}>
-        + {kind === "scenario" ? t.createScenario : t.addConnection}
-      </button>
-      <dialog
-        ref={dialog}
-        className="definition-picker"
-        aria-labelledby={`${kind}-picker-title`}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) dialog.current?.close();
-        }}
-      >
-        <div className="picker-header">
-          <h2 id={`${kind}-picker-title`}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button">
+          + {kind === "scenario" ? t.createScenario : t.addConnection}
+        </Button>
+      </DialogTrigger>
+      <DialogContent showCloseButton={false} aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>
             {kind === "scenario" ? t.chooseScenario : t.chooseIntegration}
-          </h2>
-          <button
-            className="quiet-button"
+          </DialogTitle>
+        </DialogHeader>
+        <DialogClose asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="absolute right-4 top-4"
             aria-label={t.close}
-            onClick={() => dialog.current?.close()}
           >
-            ×
-          </button>
-        </div>
+            <XIcon />
+          </Button>
+        </DialogClose>
         <div className="picker-options">
           {choices.map((choice) => (
             <Link
               key={choice.id}
               href={choice.href}
-              onClick={() => dialog.current?.close()}
+              onClick={() => setOpen(false)}
             >
               <strong>{choice.title}</strong>
               <span>{choice.description}</span>
@@ -70,7 +79,7 @@ export function DefinitionPicker({
             </Link>
           ))}
         </div>
-      </dialog>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

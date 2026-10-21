@@ -1,4 +1,11 @@
 "use client";
+import { Label } from "../ui/label";
+import { DeleteButton } from "./delete-button";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { SettingsField } from "./form-field";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { FieldGroup, FieldSet, FieldLegend } from "../ui/field";
 import { profileColors, type ProfileColor } from "@peek/core/colors";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -53,10 +60,9 @@ export function ProfileEditor({
           }}
         >
           <section className="form-section">
-            <div className="form-grid">
-              <label>
-                {t.profileName}
-                <input
+            <FieldGroup className="form-grid">
+              <SettingsField label={t.profileName}>
+                <Input
                   required
                   maxLength={100}
                   value={name}
@@ -65,36 +71,39 @@ export function ProfileEditor({
                     setStatus("");
                   }}
                 />
-              </label>
-              <fieldset className="profile-color-field">
-                <legend>{t.ownerColor}</legend>
-                <div className="color-swatches">
+              </SettingsField>
+              <FieldSet className="profile-color-field">
+                <FieldLegend variant="label">{t.ownerColor}</FieldLegend>
+                <RadioGroup
+                  className="color-swatches"
+                  name="profile-color"
+                  aria-label={t.ownerColor}
+                  value={color}
+                  onValueChange={(value) => {
+                    setColor(value as ProfileColor);
+                    setStatus("");
+                  }}
+                >
                   {(
                     Object.entries(profileColors) as [ProfileColor, string][]
                   ).map(([value, hex]) => (
-                    <label
+                    <Label
                       className="color-swatch"
                       key={value}
                       title={t[value]}
                     >
-                      <input
-                        type="radio"
-                        name="profile-color"
+                      <RadioGroupItem
+                        className="color-swatch-control"
                         value={value}
-                        checked={color === value}
                         aria-label={t[value]}
-                        onChange={() => {
-                          setColor(value);
-                          setStatus("");
-                        }}
                       />
                       <span style={{ backgroundColor: hex }} aria-hidden="true">
                         {color === value ? "✓" : ""}
                       </span>
-                    </label>
+                    </Label>
                   ))}
-                </div>
-              </fieldset>
+                </RadioGroup>
+              </FieldSet>
               <div className="profile-preview span-two" aria-label={t.preview}>
                 <span className="preview-label">{t.preview}</span>
                 <span className="owner">
@@ -106,19 +115,21 @@ export function ProfileEditor({
                 </span>
                 <span className="preview-color-name">{t[color]}</span>
               </div>
-            </div>
+            </FieldGroup>
           </section>
           <div className="form-actions">
-            <button disabled={status === "saving"}>
+            <Button disabled={status === "saving"}>
               {status === "saving" ? t.saving : t.save}
-            </button>
-            <Link href="/settings/profiles">{t.cancel}</Link>
+            </Button>
+            <Button variant="ghost" asChild>
+              <Link href="/settings/profiles">{t.cancel}</Link>
+            </Button>
             {profile ? (
-              <button
-                type="button"
-                className="quiet-button danger"
-                onClick={async () => {
-                  if (!confirm(t.confirmProfileDelete)) return;
+              <DeleteButton
+                locale={locale}
+                description={t.confirmProfileDelete}
+                disabled={status === "saving"}
+                onConfirm={async () => {
                   try {
                     await mutate({ action: "profile-delete", id: profile.id });
                     await refresh();
@@ -127,9 +138,7 @@ export function ProfileEditor({
                     setStatus(e instanceof Error ? e.message : "error");
                   }
                 }}
-              >
-                {t.remove}
-              </button>
+              />
             ) : null}
           </div>
           <p role="status" className="form-feedback">

@@ -11,6 +11,11 @@ import {
   type CalendarEvent,
 } from "@peek/core/scenarios";
 import type { Locale } from "@peek/core/i18n";
+import {
+  validateScreen,
+  validateScreenId,
+  suggestScreenId,
+} from "@peek/core/screens";
 import { validateProfile } from "@peek/core/profiles";
 import type { Card } from "@peek/core";
 import type { ScreenState } from "@peek/core/state";
@@ -20,7 +25,30 @@ import {
   validateCalendarUrl,
   type CalendarConnection,
 } from "@peek/core/calendars";
-import { cards, state, scenarios, events, calendars, profiles } from "./schema";
+import {
+  cards,
+  state,
+  scenarios,
+  events,
+  calendars,
+  profiles,
+  screens,
+} from "./schema";
+
+export function installationTimeZone() {
+  const zone =
+    process.env.PEEK_TIMEZONE ||
+    process.env.TZ ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: zone }).format();
+  } catch {
+    throw new Error(
+      "Invalid PEEK_TIMEZONE or TZ: use an IANA timezone such as Europe/Moscow",
+    );
+  }
+  return zone;
+}
 
 export function databasePath() {
   const path = process.env.PEEK_DATABASE_PATH;
@@ -99,7 +127,7 @@ export function openStore(path: string, readonly = false) {
               user_version: number;
             }
           ).user_version;
-          if (version > 5)
+          if (version > 7)
             throw new Error("Database schema is newer than this application");
           if (version === 0)
             sqlite.exec(`
@@ -198,8 +226,110 @@ export function openStore(path: string, readonly = false) {
             }
             sqlite.exec("PRAGMA user_version = 5;");
           }
+          if (version < 6) {
+            sqlite.exec(
+              `CREATE TABLE IF NOT EXISTS screens (id TEXT PRIMARY KEY NOT NULL, config TEXT NOT NULL);`,
+            );
+            sqlite
+              .query("INSERT OR IGNORE INTO screens (id, config) VALUES (?, ?)")
+              .run(
+                "screen-home",
+                JSON.stringify({
+                  name: "Home",
+                  allProfiles: true,
+                  profileIds: [],
+                  theme: "night",
+                  scale: 1,
+                  timeZone: "Europe/Moscow",
+                }),
+              );
+            sqlite.exec("PRAGMA user_version = 6;");
+          }
+          if (version < 7) {
+            const rows = db.select().from(screens).all();
+            const used = new Set<string>(["default", "new"]);
+            for (const row of rows) {
+              const config = validateScreen(row.config);
+              let id = "default";
+              if (row.id === "screen-home") {
+                if (config.name === "Home") config.name = "Default";
+              } else {
+                const base = suggestScreenId(config.name) || "screen";
+                id = base;
+                let suffix = 2;
+                while (used.has(id)) id = `${base}-${suffix++}`;
+                used.add(id);
+              }
+              // Stage new rows after removing legacy IDs, avoiding collisions.
+              row.id = id;
+              row.config = config;
+            }
+            db.delete(screens).run();
+            for (const row of rows) db.insert(screens).values(row).run();
+            sqlite.exec("PRAGMA user_version = 7;");
+          }
         })
         .immediate();
+    },
+    listScreens() {
+      return db
+        .select()
+        .from(screens)
+        .all()
+        .map((row) => ({ id: row.id, ...row.config }))
+        .sort(
+          (a, b) =>
+            Number(b.id === "default") - Number(a.id === "default") ||
+            a.name.localeCompare(b.name),
+        );
+    },
+    saveScreen(id: string, input: unknown, previousId?: string | null) {
+      validateScreenId(id);
+      if (previousId != null) validateScreenId(previousId);
+      const config = validateScreen(input);
+      db.transaction(
+        (tx) => {
+          const existing = tx
+            .select()
+            .from(screens)
+            .where(eq(screens.id, id))
+            .get();
+          if (existing && previousId !== undefined && previousId !== id)
+            throw new Error("screen-id-taken");
+          if (previousId != null) {
+            if (
+              !tx.select().from(screens).where(eq(screens.id, previousId)).get()
+            )
+              throw new Error("screen-not-found");
+            if (previousId !== id)
+              tx.delete(screens).where(eq(screens.id, previousId)).run();
+          }
+          for (const profileId of config.profileIds) ownerFor(profileId);
+          tx.insert(screens)
+            .values({ id, config })
+            .onConflictDoUpdate({ target: screens.id, set: { config } })
+            .run();
+          tx.update(state)
+            .set({ revision: sql`${state.revision} + 1` })
+            .where(eq(state.id, 1))
+            .run();
+        },
+        { behavior: "immediate" },
+      );
+    },
+    deleteScreen(id: string) {
+      db.transaction(
+        (tx) => {
+          if (!tx.select().from(screens).where(eq(screens.id, id)).get())
+            throw new Error("screen-not-found");
+          tx.delete(screens).where(eq(screens.id, id)).run();
+          tx.update(state)
+            .set({ revision: sql`${state.revision} + 1` })
+            .where(eq(state.id, 1))
+            .run();
+        },
+        { behavior: "immediate" },
+      );
     },
     listProfiles() {
       return db
@@ -248,7 +378,12 @@ export function openStore(path: string, readonly = false) {
               .select()
               .from(scenarios)
               .all()
-              .some((s) => s.config.profileId === id)
+              .some((s) => s.config.profileId === id) ||
+            tx
+              .select()
+              .from(screens)
+              .all()
+              .some((s) => s.config.profileIds.includes(id))
           )
             throw new Error("profile-in-use");
           tx.delete(profiles).where(eq(profiles.id, id)).run();
@@ -260,11 +395,30 @@ export function openStore(path: string, readonly = false) {
         { behavior: "immediate" },
       );
     },
-    snapshot(now = Date.now()): ScreenState {
+    snapshot(now = Date.now(), screenId?: string): ScreenState {
       return db.transaction((tx) => {
         const meta = tx.select().from(state).where(eq(state.id, 1)).get();
         if (!meta) throw new Error("Database has not been initialized");
+        const screenRow = screenId
+          ? tx.select().from(screens).where(eq(screens.id, screenId)).get()
+          : undefined;
+        if (screenId && !screenRow) throw new Error("screen-not-found");
+        const screen = screenRow
+          ? { id: screenRow.id, ...screenRow.config }
+          : undefined;
+        const includesProfile = (id: string) =>
+          !screen || screen.allProfiles || screen.profileIds.includes(id);
+        const selectedScenarios = tx
+          .select()
+          .from(scenarios)
+          .all()
+          .filter((s) => includesProfile(s.config.profileId ?? "shared"));
+        const sourceIds = new Set(
+          selectedScenarios.map((s) => s.config.sourceId),
+        );
         return {
+          screen,
+          timeZone: installationTimeZone(),
           cards: tx
             .select()
             .from(cards)
@@ -280,7 +434,10 @@ export function openStore(path: string, readonly = false) {
               return scenario?.config.profileId
                 ? { ...row.payload, owner: ownerFor(scenario.config.profileId) }
                 : row.payload;
-            }),
+            })
+            .filter((card) =>
+              includesProfile(card.owner.profileId ?? "shared"),
+            ),
           revision: meta.revision,
           heartbeat: meta.heartbeat,
           serverTime: now,
@@ -291,15 +448,21 @@ export function openStore(path: string, readonly = false) {
             .all()
             .filter(
               (c) =>
-                c.error ||
-                c.lastSuccess === null ||
-                now - c.lastSuccess > c.config.intervalSeconds * 2000 + 30000,
+                (!screen || sourceIds.has(c.id)) &&
+                (c.error ||
+                  c.lastSuccess === null ||
+                  now - c.lastSuccess >
+                    c.config.intervalSeconds * 2000 + 30000),
             ).length,
           scenarioErrors: tx
             .select()
             .from(scenarios)
             .all()
-            .filter((row) => row.lastError).length,
+            .filter(
+              (row) =>
+                row.lastError &&
+                includesProfile(row.config.profileId ?? "shared"),
+            ).length,
         };
       });
     },
@@ -454,6 +617,7 @@ export function openStore(path: string, readonly = false) {
           ...row,
           config: {
             ...row.config,
+            timeZone: installationTimeZone(),
             owner: ownerFor(row.config.profileId ?? "shared"),
           },
         }));

@@ -1,3 +1,5 @@
+import { installationTimeZone } from "@peek/db";
+import { TimeZoneProvider } from "../components/time-zone";
 import type { Metadata } from "next";
 import "./globals.css";
 import { readState } from "../lib/server-state";
@@ -16,8 +18,12 @@ export default function RootLayout({
     locale = readState().locale ?? "en";
   } catch {}
   return (
-    <html lang={locale}>
-      <body>{children}</body>
+    <html lang={locale} className="dark">
+      <body>
+        <TimeZoneProvider value={installationTimeZone()}>
+          {children}
+        </TimeZoneProvider>
+      </body>
     </html>
   );
 }

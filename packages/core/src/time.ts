@@ -1,13 +1,22 @@
 import { messages, type Locale } from "./i18n";
-const formatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/Moscow",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
+const formatters = new Map<string, Intl.DateTimeFormat>();
+function formatterFor(timeZone: string) {
+  let formatter = formatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
+    if (formatters.size >= 32) formatters.clear();
+    formatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
 const months = {
   en: [
     "January",
@@ -58,9 +67,11 @@ const weekdays = {
     "Суббота",
   ],
 };
-function parts(timestamp: number) {
+function parts(timestamp: number, timeZone: string) {
   const p = Object.fromEntries(
-    formatter.formatToParts(timestamp).map((p) => [p.type, p.value]),
+    formatterFor(timeZone)
+      .formatToParts(timestamp)
+      .map((p) => [p.type, p.value]),
   );
   const day = Number(p.day),
     month = Number(p.month),
@@ -75,8 +86,12 @@ function parts(timestamp: number) {
     clock: `${p.hour}:${p.minute}`,
   };
 }
-export function formatTime(timestamp: number, locale: Locale = "en") {
-  const p = parts(timestamp);
+export function formatTime(
+  timestamp: number,
+  locale: Locale = "en",
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+) {
+  const p = parts(timestamp, timeZone);
   return {
     clock: p.clock,
     date: `${weekdays[locale][p.weekday]}, ${p.day} ${months[locale][p.month - 1]}`,
@@ -87,9 +102,10 @@ export function relativeEventTime(
   timestamp: number,
   now: number,
   locale: Locale = "en",
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
 ) {
-  const p = parts(timestamp),
-    current = parts(now),
+  const p = parts(timestamp, timeZone),
+    current = parts(now, timeZone),
     t = messages(locale);
   const days = (p.date - current.date) / 86400000;
   if (days === 0) return p.clock;

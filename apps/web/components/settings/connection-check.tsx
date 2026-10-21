@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "../ui/button";
 import { useEffect, useRef, useState } from "react";
 import type { CalendarConnection } from "@peek/core/calendars";
 import { messages, type Locale } from "@peek/core/i18n";
@@ -70,14 +71,14 @@ export function ConnectionCheck({
   }
   return (
     <div className="connection-check">
-      <button
+      <Button
         type="button"
-        className="secondary-button"
+        variant="outline"
         disabled={status === "checking"}
         onClick={check}
       >
         {status === "checking" ? t.checkingConnection : t.checkConnection}
-      </button>
+      </Button>
       <p
         role="status"
         className={

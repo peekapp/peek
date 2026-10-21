@@ -4,6 +4,8 @@ x-runtime: &runtime
   build: .
   environment:
     PEEK_DATABASE_PATH: /data/peek.sqlite
+    PEEK_TIMEZONE: ${PEEK_TIMEZONE:-}
+    TZ: ${TZ:-}
   volumes:
     - peek-data:/data
   init: true

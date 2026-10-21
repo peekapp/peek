@@ -51,3 +51,9 @@ export const profiles = sqliteTable("profiles", {
   color: text("color").$type<ProfileColor>().notNull(),
   system: integer("system", { mode: "boolean" }).notNull(),
 });
+
+import type { ScreenConfig } from "@peek/core/screens";
+export const screens = sqliteTable("screens", {
+  id: text("id").primaryKey(),
+  config: text("config", { mode: "json" }).$type<ScreenConfig>().notNull(),
+});

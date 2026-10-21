@@ -12,6 +12,7 @@
     "./calendars": "./src/calendars.ts",
     "./registry": "./src/registry.ts",
     "./profiles": "./src/profiles.ts",
+    "./screens": "./src/screens.ts",
     "./colors": "./src/colors.ts"
   }
 }

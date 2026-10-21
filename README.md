@@ -111,7 +111,7 @@ export PEEK_DATABASE_PATH=/absolute/path/to/peek.sqlite
 
 The seed command creates two default scenarios, a meeting 48 seconds in the future and three deadlines. Schema migration v2 converts existing card fixtures into scenario source events without resetting their times. It is explicitly opt-in and idempotent: reloading the browser, restarting either process, or running the command again does not reset event times or recreate expired events. The seed marker persists even after all cards expire. To try a fresh demo without deleting existing data, point both processes at a new database path and run the setup commands there.
 
-By default, meetings expire five minutes after their start. Deadlines become urgent 24 hours before their target and remain visible as **Overdue** for 24 hours afterwards. The screen also filters expired cards locally if the connection is down. UTC timestamps are stored; the display timezone is currently fixed to **Europe/Moscow**, with formatting in the selected interface language.
+By default, meetings expire five minutes after their start. Deadlines become urgent 24 hours before their target and remain visible as **Overdue** for 24 hours afterwards. The screen also filters expired cards locally if the connection is down. UTC timestamps are stored; the server uses its system timezone unless overridden by `PEEK_TIMEZONE` or `TZ`, with formatting in the selected interface language.
 
 ICS calendars are synchronized independently of scenarios. Russian demo titles and profile names are intentional sample content, not interface translations.
 
@@ -150,7 +150,7 @@ Stop **both** processes before copying the database directory, including any `-w
 
 `peekapp/peek` contains the application, worker, and shared packages. Future standalone extensions, the project website, or documentation hosting can live in separate repositories in the organization.
 
-Next: administrator setup and access control, followed by Docker delivery and operational hardening. The current registry contains two trusted local scenario handlers; a complete external extension SDK is not implemented yet.
+Next: administrator setup and access control, screen pairing, and the extension SDK. The current registry contains two trusted local scenario handlers; a complete external extension SDK is not implemented yet.
 
 The detailed [MVP plan](docs/mvp-plan.md), [design decisions](docs/design.md), and [future ideas](docs/future-ideas.md) are currently maintained in Russian. The application and this README default to English.
 
@@ -158,7 +158,7 @@ A distribution license has not been selected yet.
 
 ## Scenario settings
 
-Open **Settings** from the screen footer. **Scenarios** is the first and default tab, followed by **Connections**, **Profiles**, and **General** (language preferences). Open a card to edit that scenario on its own page. Each tab and detail page has its own URL. A single **Create scenario** button opens the available scenario definitions in a dialog. **Add connection** similarly selects an integration definition; iCalendar is currently the only supported integration.
+Open **Settings** from the screen footer. **Scenarios** is the first and default tab, followed by **Connections**, **Profiles**, **Screens**, and **General** (language preferences). Open a card to edit that scenario on its own page. Each tab and detail page has its own URL. A single **Create scenario** button opens the available scenario definitions in a dialog. **Add connection** similarly selects an integration definition; iCalendar is currently the only supported integration.
 
 - Create multiple Meetings or Deadlines instances and give each a name.
 - Bind an instance to a connected ICS calendar or a saved demo source. Sources are shared; each scenario receives only its bound source events.
@@ -177,7 +177,7 @@ The build-time definitions in `packages/core/src/registry.ts` distinguish integr
 
 Create people in **Settings → Profiles**, with a name and one of twelve colors. The form shows selectable color swatches and a live name preview. The built-in **Shared** profile is localized and cannot be renamed or deleted. Profiles organize ownership, not accounts or access permissions.
 
-Select a profile in each connection and scenario. A scenario can explicitly use a connection owned by another profile; its output cards display the scenario owner. Renaming or recoloring a profile updates connected screens immediately without fetching the calendar again. Referenced profiles cannot be deleted; reassign or remove their connections and scenarios first.
+Select a profile in each connection and scenario. A scenario can explicitly use a connection owned by another profile; its output cards display the scenario owner. Renaming or recoloring a profile updates connected screens immediately without fetching the calendar again. Referenced profiles cannot be deleted; reassign or remove their connections, scenarios, and screen selections first.
 
 Migration preserves schedules and encrypted URLs, deduplicates legacy owners by name and color, and assigns calendar scenarios their connection owner. Demo scenarios with one owner retain it; mixed-owner demo scenarios use Shared. Legacy Shared/Общее owners map to the system profile. New demo scenarios use Shared.
 
@@ -185,7 +185,7 @@ Migration preserves schedules and encrypted URLs, deduplicates legacy owners by 
 
 1. Open **Settings → Connections → Add connection → iCalendar**.
 2. Paste the calendar provider's **HTTPS ICS subscription URL**. A public sharing-page URL will not work. Private subscription links containing a token are supported; HTTP Basic credentials in the URL are not.
-3. Give the connection a name, select an owner profile, and set its timezone. The timezone applies to floating event times and date-only events. The default refresh interval is 60 seconds.
+3. Give the connection a name, select an owner profile. The installation timezone applies to floating event times and date-only events. The default refresh interval is 60 seconds.
 4. Save. The worker schedules an initial download. Open the connection to inspect its status, last successful sync, and event count, or use **Sync now**.
 5. Open **Scenarios → Create scenario**, choose Meetings or Deadlines, and select that calendar as the source. The same connection can serve multiple scenarios without duplicate network downloads.
 
@@ -198,12 +198,12 @@ The subscription URL is never returned by the settings API. On edit, leave the p
 - Public HTTPS only, standard port 443, up to four redirects. DNS results are checked at every hop and the TLS connection is pinned to a validated address. Private, loopback, link-local, multicast, and reserved addresses are rejected; local calendar servers are not supported yet.
 - A 15-second network deadline and a 10 MiB response limit. Uncompressed HTTP responses are requested; unsupported content encodings are rejected.
 - ETag / Last-Modified conditional requests. Cached feed content is encrypted and re-expanded even after a 304 response, so the rolling future window continues to advance.
-- `node-ical` handles RRULE, EXDATE, RECURRENCE-ID, TZID and cancellations. Parsing runs in a separate Bun process with the connection timezone and a ten-second deadline. The output is limited to 10,000 occurrences; secondly recurrence rules are rejected. Titles and locations are capped at 1,000 characters.
+- `node-ical` handles RRULE, EXDATE, RECURRENCE-ID, TZID and cancellations. Parsing runs in a separate Bun process with the installation timezone and a ten-second deadline. The output is limited to 10,000 occurrences; secondly recurrence rules are rejected. Titles and locations are capped at 1,000 characters.
 - The expansion window covers two days in the past (including yesterday's all-day deadline retention) and 90 days ahead. All-day events are omitted from Meetings; their deadline is the end of their start date in the relevant timezone. Timed deadlines use the start time.
 - A failed fetch or parse retains the last successful events, marks the connection unhealthy, and backs off from one minute to a maximum of 15 minutes. The screen warns when any calendar has errors or stale data. A successful full snapshot removes cancelled or missing events.
 - Up to three connections sync concurrently, independently of the five-second worker heartbeat. Configuration versions prevent an old in-flight response from overwriting edited or deleted connections.
 
-For floating times, provide the source's actual timezone. Embedded timezone definitions are resolved by the parser; unsupported/custom timezone behavior should be checked against the calendar provider. Calendars requiring interactive login, custom request headers, or OAuth are not supported by the ICS connector.
+For floating times, configure the installation's timezone through the environment. Embedded timezone definitions are resolved by the parser; unsupported/custom timezone behavior should be checked against the calendar provider. Calendars requiring interactive login, custom request headers, or OAuth are not supported by the ICS connector.
 
 ### Encryption key
 
@@ -212,3 +212,51 @@ On the first calendar save, Peek creates a 32-byte `secret.key` beside the datab
 ### Network diagnostics
 
 If a public hostname resolves to a reserved address (for example, a synthetic `240.x.x.x` address supplied by a DNS proxy), Peek reports a blocked address. Configure the installation's DNS/network to return real public addresses. The app does not bypass address validation to accommodate such a proxy.
+
+## Screens
+
+Open **Settings → Screens** to create a display for a TV, a room, or another device.
+Each screen has a unique, editable ID such as `family-tv`, used in `/screens/family-tv`,
+and a separate display name in any language. IDs accept 1–64 lowercase Latin
+letters, digits, and single hyphens; `new` is reserved. Duplicates are rejected.
+Changing an ID changes its link. The standard screen is **Default**, at
+`/screens/default`. Existing screen names and appearance are preserved during
+migration, while generated IDs are replaced with readable unique IDs.
+
+Choose Night/Day appearance and 80–140% scale. Copy the link or open it from the editor.
+
+Choose **All profiles** for a family display; this includes profiles created later.
+For a personal display, turn that off and select specific profiles. **Shared** is
+an explicit selection. Selecting no profiles produces an empty screen. Cards are
+filtered on the server by the scenario owner's profile, regardless of who owns
+the calendar connection. Source warnings cover the selected scenarios' sources.
+
+Saved changes reach open screens over SSE without a reload. Deleting a screen
+invalidates its link and clears its open displays; profiles, scenarios, and source
+data remain. Migration creates a Default screen matching the previous display.
+The root URL opens Default when present, otherwise the first saved screen, or Screens settings when none remain.
+
+Screen selection organizes what is displayed; it is not an access-control boundary.
+Authentication and device pairing are still planned, and the existing loopback-only
+deployment restriction remains in effect.
+
+### Installation timezone
+
+Timezone is an installation setting, with no timezone controls or labels in the UI.
+Peek uses `PEEK_TIMEZONE`, then `TZ`, then the server operating system's timezone.
+Web and worker must receive the same environment. This controls screen clocks,
+relative dates, and calendar floating/all-day times; explicit calendar TZID values
+remain authoritative. Old per-screen and per-calendar choices no longer override
+this installation setting.
+
+Compose forwards both variables to all services. For example:
+
+```sh
+PEEK_TIMEZONE=Europe/Moscow docker compose up --build --wait
+```
+
+Alternatively, put `PEEK_TIMEZONE=Europe/Moscow` in Compose's `.env` file. A container
+uses its own system timezone (usually UTC), not automatically the host's timezone;
+set the variable when you want a specific timezone. Invalid timezone values fail
+with a configuration error. Restart web and worker after changing the environment;
+calendar data is reinterpreted at the next synchronization.

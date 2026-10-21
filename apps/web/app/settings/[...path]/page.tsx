@@ -11,7 +11,9 @@ export default async function SettingsSection({
   if (path[0] === "calendars")
     redirect(`/settings/connections${path[1] ? `/${path[1]}` : ""}`);
   if (
-    !["general", "connections", "scenarios", "profiles"].includes(path[0]) ||
+    !["general", "connections", "scenarios", "profiles", "screens"].includes(
+      path[0],
+    ) ||
     path.length > 2 ||
     (path[0] === "general" && path.length > 1)
   )

@@ -1,5 +1,41 @@
 export type Locale = "en" | "ru";
 export const en = {
+  screenId: "Screen ID",
+  screenIdHint:
+    "Used in the link. Lowercase Latin letters, numbers and hyphens.",
+  screenIdChanged: "Changing the ID changes the screen link.",
+  invalidScreenId:
+    "Use 1–64 lowercase Latin letters, numbers or hyphens. The ID “new” is reserved.",
+  screenIdTaken: "This ID is already used by another screen.",
+  screenIdentity: "Name and link",
+  editScreen: "Configure",
+  screens: "Screens",
+  screensDescription:
+    "A screen for the whole family, or just for you. Each has its own link and appearance.",
+  addScreen: "Create screen",
+  screenName: "Screen name",
+  backToScreens: "All screens",
+  allProfiles: "All profiles",
+  selectedProfiles: "Selected profiles",
+  screenProfilesHint:
+    "Cards belong to the profile selected in their scenario. Shared cards are included only when Shared is selected.",
+  allProfilesHint: "Includes profiles you create later.",
+  noScreenProfiles: "No profiles selected. This screen will show no cards.",
+  appearance: "Appearance",
+  screenTheme: "Theme",
+  night: "Night",
+  day: "Day",
+  screenScale: "Scale",
+  screenLink: "Screen link",
+  openScreen: "Open screen",
+  copyLink: "Copy link",
+  copied: "Copied",
+  copyFailed: "Could not copy. Select and copy the link below.",
+  confirmScreenDelete:
+    "Delete this screen? Its link will stop working. Profiles and scenarios will remain.",
+  screenRemoved: "This screen has been deleted",
+  emptyScreens: "Create your first screen",
+  invalidScreen: "Enter a name and choose an appearance.",
   connections: "Connections",
   connectionsDescription: "Your connected sources, shared across scenarios.",
   addConnection: "Add connection",
@@ -25,7 +61,7 @@ export const en = {
   sharedProfile: "Shared",
   systemProfile: "System profile",
   profileInUse:
-    "This profile owns connections or scenarios. Reassign them before deleting it.",
+    "This profile is used by connections, scenarios or screens. Remove those references before deleting it.",
   invalidProfile:
     "Choose an existing profile, or enter a profile name and color.",
   confirmProfileDelete: "Delete this profile?",
@@ -45,7 +81,6 @@ export const en = {
   urlHint: "Use an HTTPS subscription link, not a calendar sharing page.",
   ownerName: "Owner name",
   ownerColor: "Profile color",
-  timeZone: "Calendar timezone",
   intervalSeconds: "Refresh interval (seconds)",
   syncNow: "Sync now",
   syncQueued: "Sync queued",
@@ -80,7 +115,7 @@ export const en = {
   calendarInUse:
     "This calendar is used by a scenario. Change its source or delete the scenario first.",
   invalidCalendar:
-    "Enter a name, owner, valid timezone and a refresh interval of at least 60 seconds.",
+    "Enter a name, owner and a refresh interval of at least 60 seconds.",
   invalidUrl:
     "Enter an HTTPS calendar subscription URL (port 443, no username or password).",
   syncError:
@@ -158,9 +193,44 @@ export const en = {
   currentEvents: "Current events",
   waitingUpdates: "Waiting for updates",
   allClear: "All clear",
-  footer: "Moscow",
 };
 export const ru: Record<keyof typeof en, string> = {
+  screenId: "ID экрана",
+  screenIdHint:
+    "Используется в ссылке. Строчные латинские буквы, цифры и дефисы.",
+  screenIdChanged: "При изменении ID ссылка на экран изменится.",
+  invalidScreenId:
+    "Используйте 1–64 строчные латинские буквы, цифры или дефисы. ID «new» зарезервирован.",
+  screenIdTaken: "Этот ID уже занят другим экраном.",
+  screenIdentity: "Название и ссылка",
+  editScreen: "Настроить",
+  screens: "Экраны",
+  screensDescription:
+    "Экран для всей семьи или только для вас. У каждого своя ссылка и оформление.",
+  addScreen: "Создать экран",
+  screenName: "Название экрана",
+  backToScreens: "Все экраны",
+  allProfiles: "Все профили",
+  selectedProfiles: "Выбранные профили",
+  screenProfilesHint:
+    "Владелец карточки задаётся в сценарии. Общие карточки видны, если выбран профиль «Общее».",
+  allProfilesHint: "Включая профили, которые вы создадите позже.",
+  noScreenProfiles: "Профили не выбраны. На этом экране не будет карточек.",
+  appearance: "Оформление",
+  screenTheme: "Тема",
+  night: "Ночь",
+  day: "День",
+  screenScale: "Масштаб",
+  screenLink: "Ссылка на экран",
+  openScreen: "Открыть экран",
+  copyLink: "Копировать ссылку",
+  copied: "Скопировано",
+  copyFailed: "Не удалось скопировать. Выделите и скопируйте ссылку ниже.",
+  confirmScreenDelete:
+    "Удалить экран? Его ссылка перестанет работать. Профили и сценарии сохранятся.",
+  screenRemoved: "Этот экран удалён",
+  emptyScreens: "Создайте первый экран",
+  invalidScreen: "Введите название и выберите оформление.",
   connections: "Подключения",
   connectionsDescription: "Ваши источники данных для разных сценариев.",
   addConnection: "Добавить подключение",
@@ -186,7 +256,7 @@ export const ru: Record<keyof typeof en, string> = {
   sharedProfile: "Общее",
   systemProfile: "Системный профиль",
   profileInUse:
-    "У профиля есть подключения или сценарии. Перед удалением назначьте им другого владельца.",
+    "Профиль используется в подключениях, сценариях или экранах. Уберите эти связи перед удалением.",
   invalidProfile:
     "Выберите существующий профиль или укажите имя и цвет профиля.",
   confirmProfileDelete: "Удалить этот профиль?",
@@ -206,7 +276,6 @@ export const ru: Record<keyof typeof en, string> = {
   urlHint: "Нужна HTTPS-ссылка подписки, а не ссылка на страницу календаря.",
   ownerName: "Имя владельца",
   ownerColor: "Цвет профиля",
-  timeZone: "Часовой пояс календаря",
   intervalSeconds: "Интервал обновления (секунды)",
   syncNow: "Обновить сейчас",
   syncQueued: "Обновление запланировано",
@@ -240,8 +309,7 @@ export const ru: Record<keyof typeof en, string> = {
   sourceMissing: "Источник недоступен",
   calendarInUse:
     "Календарь используется сценарием. Сначала измените источник или удалите сценарий.",
-  invalidCalendar:
-    "Укажите название, владельца, корректный часовой пояс и интервал не менее 60 секунд.",
+  invalidCalendar: "Укажите название, владельца и интервал не менее 60 секунд.",
   invalidUrl:
     "Введите HTTPS-ссылку на календарь (порт 443, без логина и пароля).",
   syncError:
@@ -319,6 +387,5 @@ export const ru: Record<keyof typeof en, string> = {
   currentEvents: "Актуальные события",
   waitingUpdates: "Ожидание обновлений",
   allClear: "Всё спокойно",
-  footer: "Москва",
 };
 export const messages = (locale: Locale) => (locale === "ru" ? ru : en);

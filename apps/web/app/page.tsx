@@ -1,9 +1,16 @@
+import { redirect } from "next/navigation";
+import { databasePath, openStore } from "@peek/db";
 import { Dashboard } from "../components/dashboard";
-import { readState } from "../lib/server-state";
 export const dynamic = "force-dynamic";
 export default function Home() {
+  let id: string | undefined;
   try {
-    return <Dashboard initialState={readState()} />;
+    const store = openStore(databasePath(), true);
+    try {
+      id = store.listScreens()[0]?.id;
+    } finally {
+      store.close();
+    }
   } catch {
     return (
       <Dashboard
@@ -17,4 +24,5 @@ export default function Home() {
       />
     );
   }
+  redirect(id ? `/screens/${id}` : "/settings/screens");
 }

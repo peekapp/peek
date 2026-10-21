@@ -1,4 +1,14 @@
 "use client";
+import { Badge } from "./ui/badge";
+import { Alert, AlertDescription } from "./ui/alert";
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "./ui/empty";
+import { Button } from "./ui/button";
+import { SettingsSelect } from "./settings/select";
+import { SelectItem } from "./ui/select";
+import { Brand } from "./brand";
+import { useInstallationTimeZone } from "./time-zone";
+import type { Screen } from "@peek/core/screens";
+import { ScreenEditor, ScreenList } from "./settings/screen-editor";
 import { profileName, type Profile } from "@peek/core/profiles";
 import { ProfileEditor } from "./settings/profile-editor";
 import { profileColors } from "@peek/core/colors";
@@ -14,6 +24,7 @@ import { ConnectionCheck } from "./settings/connection-check";
 import { integrationDefinitions, type Connection } from "@peek/core/registry";
 import { mutate } from "./settings/api";
 type Data = {
+  screens: Screen[];
   profiles: Profile[];
   scenarios: Scenario[];
   connections: Connection[];
@@ -29,8 +40,9 @@ export function Settings({
   const [locale, setLocale] = useState<Locale>(initialLocale),
     [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(false);
+  const timeZone = useInstallationTimeZone();
   const t = messages(locale),
-    tab = path[0] ?? "scenarios",
+    tab = path[0] ?? "screens",
     item = path[1];
   async function refresh() {
     try {
@@ -70,8 +82,7 @@ export function Settings({
     <main className="settings-page">
       <header className="settings-header">
         <Link className="settings-brand" href="/">
-          <img src="/peek-mark.svg" alt="" width={24} height={28} />
-          <strong>peek</strong>
+          <Brand />
         </Link>
         <Link href="/">← {t.screen}</Link>
       </header>
@@ -79,22 +90,33 @@ export function Settings({
         <h1>{t.settings}</h1>
       </div>
       <nav className="settings-tabs" aria-label={t.settings}>
-        {(["scenarios", "connections", "profiles", "general"] as const).map(
-          (key) => (
-            <Link
-              key={key}
-              href={`/settings/${key}`}
-              aria-current={tab === key ? "page" : undefined}
-            >
-              {t[key]}
-            </Link>
-          ),
-        )}
+        {(
+          [
+            "screens",
+            "scenarios",
+            "connections",
+            "profiles",
+            "general",
+          ] as const
+        ).map((key) => (
+          <Link
+            key={key}
+            href={`/settings/${key}`}
+            aria-current={tab === key ? "page" : undefined}
+          >
+            {t[key]}
+          </Link>
+        ))}
       </nav>
       {error ? (
-        <div role="alert" className="system-warning">
-          {t.loadError} <button onClick={refresh}>{t.retry}</button>
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>
+            <span>{t.loadError}</span>
+            <Button variant="outline" onClick={refresh}>
+              {t.retry}
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : null}
       <div className="settings-content">
         {tab === "general" ? (
@@ -108,25 +130,46 @@ export function Settings({
                 <h3>{t.language}</h3>
                 <p>{t.languageHint}</p>
               </div>
-              <select
+              <SettingsSelect
+                className="w-[170px] shrink-0"
                 aria-label={t.language}
                 value={locale}
-                onChange={async (e) => {
+                onValueChange={async (value) => {
                   try {
-                    await mutate({ action: "locale", locale: e.target.value });
-                    setLocale(e.target.value as Locale);
+                    await mutate({ action: "locale", locale: value });
+                    setLocale(value as Locale);
                   } catch {
                     setError(true);
                   }
                 }}
               >
-                <option value="en">English</option>
-                <option value="ru">Русский</option>
-              </select>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="ru">Русский</SelectItem>
+              </SettingsSelect>
             </div>
           </>
         ) : !data ? (
           <p>{t.loading}</p>
+        ) : tab === "screens" ? (
+          item ? (
+            item === "new" || data.screens.some((s) => s.id === item) ? (
+              <ScreenEditor
+                key={item}
+                screen={data.screens.find((s) => s.id === item)}
+                profiles={data.profiles}
+                locale={locale}
+                refresh={refresh}
+              />
+            ) : (
+              <p>{t.notFound}</p>
+            )
+          ) : (
+            <ScreenList
+              screens={data.screens}
+              profiles={data.profiles}
+              locale={locale}
+            />
+          )
         ) : tab === "profiles" ? (
           item ? (
             profile || item === "new" ? (
@@ -146,9 +189,9 @@ export function Settings({
                   <h2>{t.profiles}</h2>
                   <p>{t.profilesDescription}</p>
                 </div>
-                <Link className="button" href="/settings/profiles/new">
-                  + {t.addProfile}
-                </Link>
+                <Button asChild>
+                  <Link href="/settings/profiles/new">+ {t.addProfile}</Link>
+                </Button>
               </div>
               <div className="settings-card-grid">
                 {data.profiles.map((p) => (
@@ -160,7 +203,9 @@ export function Settings({
                     <div className={`owner owner--${p.color}`}>
                       <i
                         aria-hidden="true"
-                        style={{ backgroundColor: profileColors[p.color] }}
+                        style={{
+                          backgroundColor: profileColors[p.color],
+                        }}
                       />
                       {p.system ? t.systemProfile : t.profiles}
                     </div>
@@ -231,15 +276,21 @@ export function Settings({
                     <span className="type-icon">
                       {s.definition === "meetings" ? "◷" : "▤"}
                     </span>
-                    <span
-                      className={`status-badge ${s.lastError ? "status-error" : s.enabled ? "status-active" : ""}`}
+                    <Badge
+                      variant={
+                        s.lastError
+                          ? "destructive"
+                          : s.enabled
+                            ? "secondary"
+                            : "outline"
+                      }
                     >
                       {s.lastError
                         ? t.needsAttention
                         : s.enabled
                           ? t.active
                           : t.disabled}
-                    </span>
+                    </Badge>
                   </div>
                   <h3>{s.name}</h3>
                   <p>
@@ -249,7 +300,7 @@ export function Settings({
                   <div className="card-bottom">
                     <span>
                       {s.enabled && s.nextRunAt !== null
-                        ? `${t.nextRun}: ${relativeEventTime(s.nextRunAt, Date.now(), locale)}`
+                        ? `${t.nextRun}: ${relativeEventTime(s.nextRunAt, Date.now(), locale, timeZone)}`
                         : s.enabled
                           ? t.waiting
                           : t.disabled}
@@ -260,10 +311,12 @@ export function Settings({
               ))}
             </div>
             {!data.scenarios.length ? (
-              <div className="settings-empty">
-                <h3>{t.emptyScenarios}</h3>
-                <p>{t.scenarioEmptyHint}</p>
-              </div>
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>{t.emptyScenarios}</EmptyTitle>
+                  <EmptyDescription>{t.scenarioEmptyHint}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : null}
           </>
         ) : tab === "connections" ? (
@@ -280,8 +333,14 @@ export function Settings({
                 <article className="settings-card connection-card" key={c.id}>
                   <div className="card-top">
                     <span className="type-icon">▦</span>
-                    <span
-                      className={`status-badge ${c.error ? "status-error" : c.lastSuccess ? "status-active" : ""}`}
+                    <Badge
+                      variant={
+                        c.error
+                          ? "destructive"
+                          : c.lastSuccess
+                            ? "secondary"
+                            : "outline"
+                      }
                     >
                       {c.error
                         ? t.needsAttention
@@ -291,7 +350,7 @@ export function Settings({
                               c.intervalSeconds * 2000 + 30000
                             ? t.stale
                             : t.connected}
-                    </span>
+                    </Badge>
                   </div>
                   <h3>
                     <Link href={`/settings/connections/${c.id}`}>{c.name}</Link>
@@ -312,7 +371,12 @@ export function Settings({
                       {t.lastSync}:{" "}
                       {c.lastSuccess === null
                         ? t.never
-                        : relativeEventTime(c.lastSuccess, Date.now(), locale)}
+                        : relativeEventTime(
+                            c.lastSuccess,
+                            Date.now(),
+                            locale,
+                            timeZone,
+                          )}
                     </span>
                     <span aria-hidden="true">›</span>
                   </div>
@@ -326,11 +390,12 @@ export function Settings({
               ))}
             </div>
             {!data.connections.length ? (
-              <div className="settings-empty">
-                <span className="type-icon">▦</span>
-                <h3>{t.calendarEmpty}</h3>
-                <p>{t.calendarEmptyHint}</p>
-              </div>
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>{t.calendarEmpty}</EmptyTitle>
+                  <EmptyDescription>{t.calendarEmptyHint}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : null}
           </>
         ) : null}

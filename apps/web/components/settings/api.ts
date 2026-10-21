@@ -13,6 +13,10 @@ export async function mutate(
 }
 export function errorText(code: string, locale: Locale) {
   const t = messages(locale);
+  if (code === "screen-id-taken") return t.screenIdTaken;
+  if (code === "invalid-screen-id") return t.invalidScreenId;
+  if (code === "invalid-screen") return t.invalidScreen;
+  if (code === "screen-not-found") return t.screenRemoved;
   if (code === "profile-in-use") return t.profileInUse;
   if (code === "invalid-profile") return t.invalidProfile;
   return code === "invalid"

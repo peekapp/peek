@@ -1,4 +1,5 @@
 "use client";
+import { Brand } from "./brand";
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -35,9 +36,11 @@ function Owner({
 
 export function Dashboard({
   initialState,
+  screenId,
   storageUnavailable = false,
 }: {
   initialState: ScreenState;
+  screenId?: string;
   storageUnavailable?: boolean;
 }) {
   const [snapshot, setSnapshot] = useState(initialState);
@@ -46,8 +49,13 @@ export function Dashboard({
   >(storageUnavailable ? "storage" : "connecting");
   const [now, setNow] = useState(initialState.serverTime);
   const offset = useRef(0);
+  const [removed, setRemoved] = useState(false);
   useEffect(() => {
-    const stream = new EventSource("/api/screen/events");
+    const stream = new EventSource(
+      screenId
+        ? `/api/screens/${encodeURIComponent(screenId)}/events`
+        : "/api/screen/events",
+    );
     let lastMessage = Date.now();
     stream.onmessage = (event) => {
       const incoming = JSON.parse(event.data) as ScreenState;
@@ -63,6 +71,11 @@ export function Dashboard({
       setConnection("storage");
     };
     stream.addEventListener("unavailable", unavailable);
+    stream.addEventListener("removed", () => {
+      setRemoved(true);
+      setSnapshot((current) => ({ ...current, cards: [] }));
+      stream.close();
+    });
     stream.onerror = () => setConnection("offline");
     const update = () => {
       setNow(Date.now() + offset.current);
@@ -83,15 +96,19 @@ export function Dashboard({
       window.removeEventListener("offline", update);
       window.removeEventListener("online", update);
     };
-  }, []);
+  }, [screenId]);
   const locale = snapshot.locale ?? "en";
   const t = messages(locale);
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
   const cards = snapshot.cards;
-  const warning =
-    connection === "offline"
+  const screen = snapshot.screen;
+  const timeZone =
+    snapshot.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const warning = removed
+    ? null
+    : connection === "offline"
       ? t.offline
       : connection === "storage"
         ? t.storage
@@ -107,15 +124,25 @@ export function Dashboard({
   const timer = primary ? countdown(primary, now, locale) : null;
 
   return (
-    <main className="dashboard">
+    <main
+      className={`dashboard screen-theme-${screen?.theme ?? "night"}`}
+      style={{
+        zoom: screen?.scale ?? 1,
+        minHeight: `${100 / (screen?.scale ?? 1)}svh`,
+      }}
+    >
       <header className="screen-header">
-        <div className="brand">
-          <img src="/peek-mark.svg" alt="" width={28} height={33} />
-          <span>peek</span>
+        <div className="screen-identity">
+          <Brand />
+          {screen ? (
+            <small className="screen-name" title={screen.name}>
+              {screen.name}
+            </small>
+          ) : null}
         </div>
         <div className="clock">
-          <span>{formatTime(now, locale).date}</span>
-          <strong>{formatTime(now, locale).clock}</strong>
+          <span>{formatTime(now, locale, timeZone).date}</span>
+          <strong>{formatTime(now, locale, timeZone).clock}</strong>
         </div>
       </header>
       {warning ? (
@@ -135,7 +162,7 @@ export function Dashboard({
                 className="meeting-time"
                 dateTime={new Date(primary.targetAt).toISOString()}
               >
-                {relativeEventTime(primary.targetAt, now, locale)}
+                {relativeEventTime(primary.targetAt, now, locale, timeZone)}
               </time>
             </div>
             <div
@@ -164,7 +191,7 @@ export function Dashboard({
                       className="due"
                       dateTime={new Date(card.targetAt).toISOString()}
                     >
-                      {relativeEventTime(card.targetAt, now, locale)}
+                      {relativeEventTime(card.targetAt, now, locale, timeZone)}
                     </time>
                   </div>
                   <h2>{card.title}</h2>
@@ -179,15 +206,16 @@ export function Dashboard({
       ) : (
         <section className="empty-state">
           <h1>
-            {connection === "storage" || connection === "offline"
-              ? t.waitingUpdates
-              : t.allClear}
+            {removed
+              ? t.screenRemoved
+              : connection === "storage" || connection === "offline"
+                ? t.waitingUpdates
+                : t.allClear}
           </h1>
         </section>
       )}
       <footer className="screen-footer">
         <Link href="/settings">{t.settings}</Link>
-        <span>{t.footer}</span>
       </footer>
     </main>
   );
