@@ -5,7 +5,11 @@ export function GET() {
     return Response.json(readState(), {
       headers: { "Cache-Control": "no-store" },
     });
-  } catch {
+  } catch (error) {
+    console.error(
+      "Screen snapshot failed:",
+      error instanceof Error ? error.message : "unknown",
+    );
     return Response.json({ error: "Storage unavailable" }, { status: 503 });
   }
 }

@@ -1,0 +1,66 @@
+name: npm release
+run-name: npm ${{ inputs.package }} ${{ inputs.version }} (dry run = ${{ inputs.dry_run }})
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        type: choice
+        options: [sdk, cli]
+        required: true
+      version:
+        description: Must match the selected package.json version
+        required: true
+      dry_run:
+        description: Validate and pack without publishing
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: npm-release-${{ inputs.package }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+      - name: Check selected package and version
+        env:
+          RELEASE_PACKAGE: ${{ inputs.package }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs';
+          const name = process.env.RELEASE_PACKAGE;
+          if (!['sdk', 'cli'].includes(name)) throw new Error('Invalid package');
+          const p = JSON.parse(readFileSync(`packages/${name}/package.json`, 'utf8'));
+          if (p.name !== `@peekapp/${name}` || p.version !== process.env.RELEASE_VERSION) {
+            throw new Error('Requested package/version does not match package.json');
+          }
+          JS
+      - run: bun install --frozen-lockfile
+      - run: bun run extensions:build
+      - run: bun run test && bun typecheck
+      - run: bun run extensions:npm-smoke
+      - name: Preview package
+        working-directory: packages/${{ inputs.package }}
+        run: npm pack --dry-run --ignore-scripts
+      - name: Publish using npm trusted publishing
+        if: ${{ !inputs.dry_run }}
+        working-directory: packages/${{ inputs.package }}
+        run: npm publish --provenance --access public --ignore-scripts

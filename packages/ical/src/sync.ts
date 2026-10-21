@@ -1,5 +1,7 @@
 import type { openStore } from "@peek/db";
 import type { CalendarEvent } from "@peek/core/scenarios";
+import { createCalendarIntegration } from "./integration";
+import type { Json } from "@peekapp/sdk";
 import { fetchCalendar } from "./fetch";
 import { fileURLToPath } from "node:url";
 type Store = ReturnType<typeof openStore>;
@@ -9,62 +11,62 @@ export async function syncCalendar(
   download = fetchCalendar,
 ) {
   try {
-    const url = store.calendarUrl(row.secret);
-    const response = await download(
-      url,
-      row.cache
-        ? {
-            ...(row.etag ? { "If-None-Match": row.etag } : {}),
-            ...(row.modified ? { "If-Modified-Since": row.modified } : {}),
-          }
-        : {},
-    );
-    const body =
-      response.status === 304 && row.cache
-        ? store.calendarUrl(row.cache)
-        : response.body;
-    const subprocess = Bun.spawn(
-      [
-        process.execPath,
-        fileURLToPath(new URL("./parse-cli.ts", import.meta.url)),
-      ],
-      {
-        env: { ...process.env, TZ: row.config.timeZone },
-        stdin: "pipe",
-        stdout: "pipe",
-        stderr: "ignore",
+    const handler = createCalendarIntegration(
+      download,
+      async (body, id, config, now) => {
+        const subprocess = Bun.spawn(
+          [
+            process.execPath,
+            fileURLToPath(new URL("./parse-cli.ts", import.meta.url)),
+          ],
+          {
+            env: { ...process.env, TZ: config.timeZone },
+            stdin: "pipe",
+            stdout: "pipe",
+            stderr: "ignore",
+          },
+        );
+        const timeout = setTimeout(() => subprocess.kill(), 10000);
+        let events: CalendarEvent[];
+        try {
+          subprocess.stdin.write(
+            JSON.stringify({
+              body,
+              id,
+              config,
+              now,
+            }),
+          );
+          subprocess.stdin.end();
+          const [output, exit] = await Promise.all([
+            new Response(subprocess.stdout).text(),
+            subprocess.exited,
+          ]);
+          if (exit !== 0) throw new Error("invalid-calendar");
+          events = JSON.parse(output);
+        } finally {
+          clearTimeout(timeout);
+        }
+        return events;
       },
     );
-    const timeout = setTimeout(() => subprocess.kill(), 10000);
-    let events: CalendarEvent[];
-    try {
-      subprocess.stdin.write(
-        JSON.stringify({
-          body,
-          id: row.id,
-          config: row.config,
-          now: Date.now(),
-        }),
-      );
-      subprocess.stdin.end();
-      const [output, exit] = await Promise.all([
-        new Response(subprocess.stdout).text(),
-        subprocess.exited,
-      ]);
-      if (exit !== 0) throw new Error("invalid-calendar");
-      events = JSON.parse(output);
-    } finally {
-      clearTimeout(timeout);
-    }
+    const result = await handler.run({
+      settings: { ...row.config, sourceId: row.id } as unknown as Json,
+      secrets: { url: store.calendarUrl(row.secret) },
+      state: {
+        body: row.cache ? store.calendarUrl(row.cache) : null,
+        etag: row.etag,
+        modified: row.modified,
+      },
+      now: Date.now(),
+      signal: new AbortController().signal,
+      publish: async () => {},
+    });
     store.completeSync(row.id, row.version, {
-      events,
-      cache: body,
-      etag:
-        response.etag ??
-        (response.status === 304 ? row.etag ?? undefined : undefined),
-      modified:
-        response.modified ??
-        (response.status === 304 ? row.modified ?? undefined : undefined),
+      events: result.datasets.events as unknown as CalendarEvent[],
+      cache: result.state.body,
+      etag: result.state.etag ?? undefined,
+      modified: result.state.modified ?? undefined,
     });
   } catch (error) {
     const known = [

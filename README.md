@@ -156,7 +156,7 @@ Stop **both** processes before copying the database directory, including any `-w
 
 `peekapp/peek` contains the application, worker, and shared packages. Future standalone extensions, the project website, or documentation hosting can live in separate repositories in the organization.
 
-Implemented: multiple calendar connections per scenario, integration-owned image icons, and trusted home LAN access without accounts or screen pairing. Final acceptance and the day-long soak test remain; the full extension SDK is deferred. The current registry contains two trusted local scenario handlers; a complete external extension SDK is not implemented yet.
+Implemented: multiple calendar connections per scenario, integration-owned image icons, and trusted home LAN access without accounts or screen pairing. Final acceptance and the day-long soak test remain; external extensions are available through the SDK and optional isolated runner. The current registry contains two trusted local scenario handlers; external packages use the public SDK and separate container execution.
 
 The detailed [MVP plan](docs/mvp-plan.md), [design decisions](docs/design.md), and [future ideas](docs/future-ideas.md) are currently maintained in Russian. The application and this README default to English.
 
@@ -177,7 +177,7 @@ Each execution replaces only its own cards and commits the next-run timestamp in
 
 Settings also switches the installation's screen language between English (default) and Russian. It applies to connected screens, persists across restarts, and never translates user content. Day comparisons use the display timezone, so a meeting just after midnight is tomorrow even if it is only minutes away.
 
-The build-time definitions in `packages/core/src/registry.ts` distinguish integration types, configured connections, scenario types, and scenario instances. Each integration definition owns a local image asset (`icon.src`), so future integrations can use full-color service logos instead of a fixed icon library. iCalendar has its own SVG, displayed in connection selection, cards, and source checkboxes. ICS persistence is still handled by its specific storage adapter; the full extension SDK and generic settings renderer remain planned.
+The build-time definitions in `packages/core/src/registry.ts` distinguish integration types, configured connections, scenario types, and scenario instances. Each integration definition owns a local image asset (`icon.src`), so future integrations can use full-color service logos instead of a fixed icon library. iCalendar has its own SVG, displayed in connection selection, cards, and source checkboxes. ICS persistence retains its compatible storage adapter. External extensions use versioned SDK manifests and generated settings forms; see [Extensions](docs/extensions.md).
 
 ## Profiles and ownership
 
@@ -266,3 +266,15 @@ uses its own system timezone (usually UTC), not automatically the host's timezon
 set the variable when you want a specific timezone. Invalid timezone values fail
 with a configuration error. Restart web and worker after changing the environment;
 calendar data is reinterpreted at the next synchronization.
+
+## Extension SDK
+
+Use **Settings → Extensions** to install `.peek` packages or HTTPS release URLs,
+review dependencies and permissions, and configure custom connections/scenarios.
+External code requires the optional Docker extension runner. Existing calendar
+connections and built-in scenarios continue to work without it.
+
+SDK/CLI development, deployment, security boundaries, examples, update/rollback
+behavior and npm release setup are documented in [Extensions](docs/extensions.md).
+The npm packages are prepared locally; publishing requires ownership of the npm
+scope and trusted publishing setup. Public marketplace/moderation is a later phase.

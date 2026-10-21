@@ -121,6 +121,7 @@ export function Settings({
               "connections",
               "profiles",
               "general",
+              "extensions",
             ] as const
           ).map((key) => (
             <NavigationMenuItem key={key}>

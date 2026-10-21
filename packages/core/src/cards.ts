@@ -11,7 +11,8 @@ export type Owner = {
 export type Card = {
   id: string;
   sourceId?: string;
-  kind: "meeting" | "deadline";
+  kind: "meeting" | "deadline" | "info";
+  body?: string;
   title: string;
   owner: Owner;
   targetAt: number;
@@ -43,6 +44,7 @@ export function countdown(
   now: number,
   locale: Locale = "en",
 ): { label: string; value: string } {
+  if (card.kind === "info") return { label: "", value: "" };
   const t = messages(locale);
   const remaining = card.targetAt - now;
   if (remaining <= 0) {

@@ -1,3 +1,5 @@
+import { defineScenario, type ScenarioContext } from "@peekapp/sdk/scenario";
+import type { Json } from "@peekapp/sdk";
 import type { Card, Owner } from "./cards";
 export type CalendarEvent = {
   id: string;
@@ -86,7 +88,7 @@ export function validateConfig(input: unknown): ScenarioConfig {
   };
 }
 // Trusted local handler: receives only explicitly bound events and settings.
-export function evaluateScenario(
+function evaluateCalendarScenario(
   scenario: Scenario,
   events: readonly CalendarEvent[],
   now: number,
@@ -131,4 +133,60 @@ export function evaluateScenario(
   }
   const next = boundaries.filter((t) => t > now);
   return { cards: result, nextRunAt: next.length ? Math.min(...next) : null };
+}
+
+/** Public SDK handlers shared by built-in adapters and packaged extensions. */
+export function calendarScenario(definition: "meetings" | "deadlines") {
+  return defineScenario({
+    evaluate(context: ScenarioContext) {
+      const settings = context.settings as unknown as Omit<
+        ScenarioConfig,
+        "sourceIds"
+      > & { scenarioId?: string };
+      const snapshots = context.inputs.events ?? [];
+      const events = snapshots.flatMap((s) =>
+        (s.data as unknown as CalendarEvent[]).map((e) => ({
+          ...e,
+          sourceId: s.connectionId,
+        })),
+      );
+      const scenario = {
+        ...settings,
+        definition,
+        sourceIds: snapshots.map((s) => s.connectionId),
+        id: settings.scenarioId ?? definition,
+        nextRunAt: null,
+        lastRunAt: null,
+        lastError: null,
+      } as Scenario;
+      return evaluateCalendarScenario(scenario, events, context.now);
+    },
+  });
+}
+export const meetingScenario = calendarScenario("meetings");
+export const deadlineScenario = calendarScenario("deadlines");
+export function evaluateScenario(
+  scenario: Scenario,
+  events: readonly CalendarEvent[],
+  now: number,
+) {
+  if (!definitions[scenario.definition]) throw new Error("unknown-definition");
+  const handler =
+    scenario.definition === "meetings" ? meetingScenario : deadlineScenario;
+  return handler.evaluate({
+    settings: { ...scenario, scenarioId: scenario.id } as unknown as Json,
+    state: null,
+    now,
+    inputs: {
+      events: scenario.sourceIds.map((connectionId) => ({
+        connectionId,
+        contract: "peek/calendar-events",
+        version: "1.0.0",
+        updatedAt: now,
+        data: events.filter(
+          (e) => e.sourceId === connectionId,
+        ) as unknown as Json,
+      })),
+    },
+  });
 }

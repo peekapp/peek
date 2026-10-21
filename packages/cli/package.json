@@ -1,0 +1,38 @@
+{
+  "name": "@peekapp/cli",
+  "version": "0.1.1",
+  "type": "module",
+  "description": "Create, validate and package Peek extensions",
+  "bin": {
+    "peek": "dist/cli.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun build src/cli.ts --target=node --outfile=dist/cli.mjs --external=esbuild",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "esbuild": "0.25.12"
+  },
+  "devDependencies": {
+    "@peek/extensions": "workspace:*"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peekapp/peek.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/peekapp/peek/blob/main/docs/extensions.md",
+  "bugs": {
+    "url": "https://github.com/peekapp/peek/issues"
+  }
+}

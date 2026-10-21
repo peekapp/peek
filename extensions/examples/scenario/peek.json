@@ -1,0 +1,35 @@
+{
+  "format": 1,
+  "sdk": "^0.1.0",
+  "id": "example/scenario",
+  "version": "0.1.0",
+  "kind": "scenario",
+  "name": "Sample cards",
+  "description": "Demonstrates a custom data contract without changes to Peek.",
+  "author": "Peek examples",
+  "entry": "index.mjs",
+  "settings": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string",
+        "default": "Hello from an extension"
+      }
+    },
+    "additionalProperties": false
+  },
+  "permissions": {},
+  "inputs": {
+    "messages": {
+      "contract": "example/messages",
+      "version": "^1.0.0",
+      "multiple": true
+    }
+  },
+  "dependencies": [
+    {
+      "id": "example/integration",
+      "version": "^0.1.0"
+    }
+  ]
+}

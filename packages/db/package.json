@@ -5,6 +5,7 @@
   "exports": "./src/index.ts",
   "dependencies": {
     "@peek/core": "workspace:*",
-    "drizzle-orm": "0.45.4"
+    "drizzle-orm": "0.45.4",
+    "@peek/extensions": "workspace:*"
   }
 }

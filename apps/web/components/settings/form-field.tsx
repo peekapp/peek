@@ -26,7 +26,9 @@ export function SettingsField({
   const control = items.find(
     (child) =>
       isValidElement(child) &&
-      (child.type === Input || child.type === SettingsSelect),
+      (child.type === Input ||
+        child.type === SettingsSelect ||
+        ["input", "select", "textarea"].includes(child.type as string)),
   );
   const hints = items.filter((child) => child !== control);
   const controlProps = isValidElement(control)

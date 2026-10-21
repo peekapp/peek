@@ -26,6 +26,7 @@ jobs:
       - run: bun run test
       - run: bun typecheck
       - run: bun run build
+      - run: bun run extensions:npm-smoke
 
   containers:
     runs-on: ubuntu-latest
@@ -57,3 +58,24 @@ jobs:
         run: |
           docker compose down --volumes
           docker compose -p peek-ci-restored down --volumes
+
+  extensions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - run: bun run sdk:build
+      - run: bun run extensions:images
+      - run: PEEK_TEST_DOCKER=1 bun test tests/extensions-docker.test.ts
+      - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci --profile extensions up --build --wait --wait-timeout 180
+      - run: bun scripts/extensions-smoke.ts
+      - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci --profile extensions restart
+      - run: bun scripts/extensions-smoke.ts verify
+      - if: failure()
+        run: docker compose -p peek-extensions-ci --profile extensions logs --no-color
+      - if: always()
+        run: docker compose -p peek-extensions-ci --profile extensions down --volumes

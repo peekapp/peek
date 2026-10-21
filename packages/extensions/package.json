@@ -1,0 +1,25 @@
+{
+  "name": "@peek/extensions",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./archive": "./src/archive.ts",
+    "./validation": "./src/validation.ts",
+    "./store": "./src/store.ts",
+    "./schema": "./src/schema.ts",
+    "./secrets": "./src/secrets.ts",
+    "./download": "./src/download.ts"
+  },
+  "dependencies": {
+    "@peekapp/sdk": "workspace:*",
+    "@peek/core": "workspace:*",
+    "ajv": "8.17.1",
+    "semver": "7.7.2",
+    "ipaddr.js": "2.2.0"
+  },
+  "devDependencies": {
+    "@types/semver": "7.7.0"
+  }
+}

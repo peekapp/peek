@@ -10,6 +10,7 @@
   "dependencies": {
     "@peek/core": "workspace:*",
     "@peek/db": "workspace:*",
-    "@peek/ical": "workspace:*"
+    "@peek/ical": "workspace:*",
+    "@peek/extensions": "workspace:*"
   }
 }

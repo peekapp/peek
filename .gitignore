@@ -15,3 +15,7 @@ data/
 secret.key
 
 peek-backup*.tar.gz
+
+packages/*/dist/
+*.peek
+*.tgz

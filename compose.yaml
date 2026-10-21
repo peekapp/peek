@@ -1,11 +1,13 @@
 name: peek
 x-runtime: &runtime
   image: peek:local
-  build: .
+  build:
+    context: .
+    target: runtime
   environment:
     PEEK_DATABASE_PATH: /data/peek.sqlite
     PEEK_TIMEZONE: ${PEEK_TIMEZONE:-}
-    TZ: ${TZ:-}
+    TZ: ${TZ:-UTC}
     PEEK_ALLOWED_HOSTS: ${PEEK_ALLOWED_HOSTS:-}
   volumes:
     - peek-data:/data
@@ -46,6 +48,24 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 3
+
+  extension-runner:
+    profiles: [extensions]
+    build:
+      context: .
+      target: extension-runner
+    environment:
+      PEEK_DATABASE_PATH: /data/peek.sqlite
+      PEEK_RUNNER_NAMESPACE: ${COMPOSE_PROJECT_NAME:-peek}
+    volumes:
+      - peek-data:/data
+      - ${PEEK_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 45s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   peek-data:

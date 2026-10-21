@@ -15,5 +15,8 @@
     "./screens": "./src/screens.ts",
     "./colors": "./src/colors.ts",
     "./themes": "./src/themes.ts"
+  },
+  "dependencies": {
+    "@peekapp/sdk": "workspace:*"
   }
 }

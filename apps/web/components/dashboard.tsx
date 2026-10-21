@@ -169,14 +169,17 @@ export function Dashboard({
                 {relativeEventTime(primary.targetAt, now, locale, timeZone)}
               </time>
             </div>
-            <div
-              className={`timer${primary.kind === "deadline" || now >= primary.targetAt ? " timer--text" : ""}`}
-            >
-              <span>{timer.label}</span>
-              <strong>{timer.value}</strong>
-            </div>
+            {primary.kind !== "info" ? (
+              <div
+                className={`timer${primary.kind === "deadline" || now >= primary.targetAt ? " timer--text" : ""}`}
+              >
+                <span>{timer.label}</span>
+                <strong>{timer.value}</strong>
+              </div>
+            ) : null}
             <div className="hero-title">
               <h1>{primary.title}</h1>
+              {primary.body ? <p>{primary.body}</p> : null}
               {primary.location ? (
                 <span className="source">{primary.location}</span>
               ) : null}
@@ -199,6 +202,7 @@ export function Dashboard({
                     </time>
                   </div>
                   <h2>{card.title}</h2>
+                  {card.body ? <p>{card.body}</p> : null}
                   <span className="remaining">
                     {countdown(card, now, locale).value}
                   </span>

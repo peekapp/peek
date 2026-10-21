@@ -1,0 +1,43 @@
+{
+  "name": "@peekapp/sdk",
+  "version": "0.1.1",
+  "type": "module",
+  "description": "Contracts for Peek scenarios and integrations",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./scenario": {
+      "types": "./dist/scenario.d.ts",
+      "default": "./dist/scenario.js"
+    },
+    "./integration": {
+      "types": "./dist/integration.d.ts",
+      "default": "./dist/integration.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peekapp/peek.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://github.com/peekapp/peek/blob/main/docs/extensions.md",
+  "bugs": {
+    "url": "https://github.com/peekapp/peek/issues"
+  }
+}

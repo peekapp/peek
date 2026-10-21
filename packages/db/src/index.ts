@@ -1,3 +1,4 @@
+import { migrateExtensions } from "@peek/extensions/schema";
 import { isTheme } from "@peek/core/themes";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
@@ -128,8 +129,9 @@ export function openStore(path: string, readonly = false) {
               user_version: number;
             }
           ).user_version;
-          if (version > 9)
+          if (version > 10)
             throw new Error("Database schema is newer than this application");
+          migrateExtensions(sqlite);
           if (version === 0)
             sqlite.exec(`
           CREATE TABLE cards (id TEXT PRIMARY KEY NOT NULL, payload TEXT NOT NULL, expires_at INTEGER NOT NULL);
@@ -301,6 +303,7 @@ export function openStore(path: string, readonly = false) {
             }
             sqlite.exec("PRAGMA user_version = 9;");
           }
+          sqlite.exec("PRAGMA user_version = 10;");
         })
         .immediate();
     },
@@ -402,6 +405,11 @@ export function openStore(path: string, readonly = false) {
             .get();
           if (!profile || profile.system) throw new Error("invalid-profile");
           if (
+            sqlite
+              .query(
+                "SELECT id FROM extension_instances WHERE profile_id = ? LIMIT 1",
+              )
+              .get(id) ||
             tx
               .select()
               .from(calendars)
@@ -465,6 +473,18 @@ export function openStore(path: string, readonly = false) {
                     .where(eq(scenarios.id, row.scenarioId))
                     .get()
                 : undefined;
+              const extension = row.scenarioId
+                ? (sqlite
+                    .query(
+                      "SELECT profile_id FROM extension_instances WHERE id=?",
+                    )
+                    .get(row.scenarioId) as { profile_id: string } | null)
+                : null;
+              if (extension)
+                return {
+                  ...row.payload,
+                  owner: ownerFor(extension.profile_id),
+                };
               return scenario?.config.profileId
                 ? { ...row.payload, owner: ownerFor(scenario.config.profileId) }
                 : row.payload;
@@ -620,6 +640,22 @@ export function openStore(path: string, readonly = false) {
       );
     },
     deleteCalendar(id: string) {
+      const references = sqlite
+        .query("SELECT bindings FROM extension_instances WHERE kind='scenario'")
+        .all() as { bindings: string }[];
+      if (
+        references.some((r) =>
+          Object.values(
+            JSON.parse(r.bindings) as Record<
+              string,
+              { connectionId: string }[]
+            >,
+          )
+            .flat()
+            .some((b) => b.connectionId === id),
+        )
+      )
+        throw new Error("calendar-in-use");
       db.transaction(
         (tx) => {
           if (
@@ -740,6 +776,10 @@ export function openStore(path: string, readonly = false) {
             .set({ revision: sql`${state.revision} + 1` })
             .where(eq(state.id, 1))
             .run();
+          sqlite.run(
+            "UPDATE extension_instances SET next_run_at=?,generation=generation+1 WHERE kind='scenario' AND enabled=1",
+            [Date.now()],
+          );
           return true;
         },
         { behavior: "immediate" },
@@ -860,44 +900,39 @@ export function openStore(path: string, readonly = false) {
       );
     },
     runDue(now = Date.now()) {
-      // One worker, synchronous handlers; an immediate transaction also prevents
-      // settings edits from racing a handler and being overwritten by its result.
       const due = db
-        .select({ id: scenarios.id })
+        .select()
         .from(scenarios)
         .where(lte(scenarios.nextRunAt, now))
         .all();
-      for (const { id } of due) {
+      for (const row of due) {
+        if (!row.config.enabled || row.nextRunAt === null) continue;
         try {
+          const scenario = {
+            ...row.config,
+            id: row.id,
+            nextRunAt: row.nextRunAt,
+            lastRunAt: row.lastRunAt,
+            lastError: row.lastError,
+          };
+          const input = db
+            .select()
+            .from(events)
+            .all()
+            .map((e) => e.payload)
+            .filter((e) => scenario.sourceIds.includes(e.sourceId));
+          // SDK evaluation does not hold a SQLite write lock.
+          const result = evaluateScenario(scenario, input, now);
           db.transaction(
             (tx) => {
-              const row = tx
+              const current = tx
                 .select()
                 .from(scenarios)
-                .where(eq(scenarios.id, id))
+                .where(eq(scenarios.id, row.id))
                 .get();
-              if (
-                !row ||
-                !row.config.enabled ||
-                row.nextRunAt === null ||
-                row.nextRunAt > now
-              )
+              if (!current || JSON.stringify(current) !== JSON.stringify(row))
                 return;
-              const scenario = {
-                ...row.config,
-                id,
-                nextRunAt: row.nextRunAt,
-                lastRunAt: row.lastRunAt,
-                lastError: row.lastError,
-              };
-              const input = tx
-                .select()
-                .from(events)
-                .all()
-                .map((e) => e.payload)
-                .filter((e) => scenario.sourceIds.includes(e.sourceId));
-              const result = evaluateScenario(scenario, input, now);
-              tx.delete(cards).where(eq(cards.scenarioId, id)).run();
+              tx.delete(cards).where(eq(cards.scenarioId, row.id)).run();
               for (const card of result.cards)
                 tx.insert(cards)
                   .values({
@@ -907,7 +942,7 @@ export function openStore(path: string, readonly = false) {
                       owner: ownerFor(row.config.profileId ?? "shared"),
                     },
                     expiresAt: card.expiresAt,
-                    scenarioId: id,
+                    scenarioId: row.id,
                   })
                   .run();
               tx.update(scenarios)
@@ -916,7 +951,7 @@ export function openStore(path: string, readonly = false) {
                   lastRunAt: now,
                   lastError: null,
                 })
-                .where(eq(scenarios.id, id))
+                .where(eq(scenarios.id, row.id))
                 .run();
               tx.update(state)
                 .set({ revision: sql`${state.revision} + 1` })
@@ -933,7 +968,7 @@ export function openStore(path: string, readonly = false) {
                 lastRunAt: now,
                 lastError: "execution-failed",
               })
-              .where(eq(scenarios.id, id))
+              .where(eq(scenarios.id, row.id))
               .run();
             tx.update(state)
               .set({ revision: sql`${state.revision} + 1` })

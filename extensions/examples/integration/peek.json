@@ -1,0 +1,35 @@
+{
+  "format": 1,
+  "sdk": "^0.1.0",
+  "id": "example/integration",
+  "version": "0.1.0",
+  "kind": "integration",
+  "name": "Sample source",
+  "description": "Demonstrates a custom data contract without changes to Peek.",
+  "author": "Peek examples",
+  "entry": "index.mjs",
+  "settings": {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string",
+        "default": "Hello from an extension"
+      }
+    },
+    "additionalProperties": false
+  },
+  "permissions": {},
+  "provides": {
+    "messages": {
+      "id": "example/messages",
+      "version": "1.0.0",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 100
+      }
+    }
+  }
+}

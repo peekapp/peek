@@ -1,0 +1,13 @@
+{
+  "name": "@peek/extension-runner",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun src/index.ts"
+  },
+  "dependencies": {
+    "@peek/db": "workspace:*",
+    "@peek/extensions": "workspace:*",
+    "@peekapp/sdk": "workspace:*"
+  }
+}
