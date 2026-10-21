@@ -1,33 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   activeCards,
   countdown,
   priorityAt,
-  type Card,
   type Owner as CardOwner,
-} from "../lib/cards";
+} from "@peek/core";
 
-const timeZone = "Europe/Moscow";
-const clockFormat = new Intl.DateTimeFormat("ru-RU", {
-  timeZone,
-  hour: "2-digit",
-  minute: "2-digit",
-});
-const dateFormat = new Intl.DateTimeFormat("ru-RU", {
-  timeZone,
-  weekday: "short",
-  day: "numeric",
-  month: "long",
-});
-const eventFormat = new Intl.DateTimeFormat("ru-RU", {
-  timeZone,
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+import { workerHealthy, type ScreenState } from "@peek/core/state";
+
+import { formatTime } from "@peek/core/time";
 
 function Owner({ owner }: { owner: CardOwner }) {
   return (
@@ -39,26 +22,65 @@ function Owner({ owner }: { owner: CardOwner }) {
 }
 
 export function Dashboard({
-  cards,
-  initialNow,
+  initialState,
+  storageUnavailable = false,
 }: {
-  cards: Card[];
-  initialNow: number;
+  initialState: ScreenState;
+  storageUnavailable?: boolean;
 }) {
-  const [now, setNow] = useState(initialNow);
+  const [snapshot, setSnapshot] = useState(initialState);
+  const [connection, setConnection] = useState<
+    "connecting" | "connected" | "offline" | "storage"
+  >(storageUnavailable ? "storage" : "connecting");
+  const [now, setNow] = useState(initialState.serverTime);
+  const offset = useRef(0);
   useEffect(() => {
-    // Read the clock rather than subtracting ticks: background tabs can pause timers.
-    const update = () => setNow(Date.now());
+    const stream = new EventSource("/api/screen/events");
+    let lastMessage = Date.now();
+    stream.onmessage = (event) => {
+      const incoming = JSON.parse(event.data) as ScreenState;
+      lastMessage = Date.now();
+      offset.current = incoming.serverTime - Date.now();
+      setSnapshot((current) =>
+        incoming.revision >= current.revision ? incoming : current,
+      );
+      setConnection(navigator.onLine ? "connected" : "offline");
+    };
+    const unavailable = () => {
+      lastMessage = Date.now();
+      setConnection("storage");
+    };
+    stream.addEventListener("unavailable", unavailable);
+    stream.onerror = () => setConnection("offline");
+    const update = () => {
+      setNow(Date.now() + offset.current);
+      if (!navigator.onLine || Date.now() - lastMessage > 10_000)
+        setConnection("offline");
+    };
     update();
     const interval = window.setInterval(update, 1000);
     document.addEventListener("visibilitychange", update);
     window.addEventListener("pageshow", update);
+    window.addEventListener("offline", update);
+    window.addEventListener("online", update);
     return () => {
+      stream.close();
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", update);
       window.removeEventListener("pageshow", update);
+      window.removeEventListener("offline", update);
+      window.removeEventListener("online", update);
     };
   }, []);
+  const cards = snapshot.cards;
+  const warning =
+    connection === "offline"
+      ? "Connection lost. Reconnecting…"
+      : connection === "storage"
+        ? "Storage unavailable. Start the worker to initialize the database."
+        : connection === "connected" && !workerHealthy(snapshot.heartbeat, now)
+          ? "Background worker is not running. Updates are paused."
+          : null;
 
   const [primary, ...secondary] = activeCards(cards, now);
   const timer = primary ? countdown(primary, now) : null;
@@ -71,14 +93,19 @@ export function Dashboard({
           <span>peek</span>
         </div>
         <div className="clock">
-          <span>{dateFormat.format(now).toLowerCase()}</span>
-          <strong>{clockFormat.format(now)}</strong>
+          <span>{formatTime(now).date}</span>
+          <strong>{formatTime(now).clock}</strong>
         </div>
       </header>
+      {warning ? (
+        <div className="system-warning" role="status">
+          {warning}
+        </div>
+      ) : null}
       {primary && timer ? (
         <section
           className={`feed${secondary.length === 0 ? " feed--single" : ""}`}
-          aria-label="Актуальные события"
+          aria-label="Current events"
         >
           <article className="hero" key={primary.id}>
             <div className="hero-meta">
@@ -87,7 +114,7 @@ export function Dashboard({
                 className="meeting-time"
                 dateTime={new Date(primary.targetAt).toISOString()}
               >
-                {eventFormat.format(primary.targetAt)}
+                {formatTime(primary.targetAt).event}
               </time>
             </div>
             <div
@@ -116,7 +143,7 @@ export function Dashboard({
                       className="due"
                       dateTime={new Date(card.targetAt).toISOString()}
                     >
-                      {eventFormat.format(card.targetAt)}
+                      {formatTime(card.targetAt).event}
                     </time>
                   </div>
                   <h2>{card.title}</h2>
@@ -130,10 +157,14 @@ export function Dashboard({
         </section>
       ) : (
         <section className="empty-state">
-          <h1>Всё спокойно</h1>
+          <h1>
+            {connection === "storage" || connection === "offline"
+              ? "Waiting for updates"
+              : "All clear"}
+          </h1>
         </section>
       )}
-      <footer className="screen-footer">Демо-события · Москва</footer>
+      <footer className="screen-footer">Demo events · Moscow</footer>
     </main>
   );
 }

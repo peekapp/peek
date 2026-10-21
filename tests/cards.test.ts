@@ -5,8 +5,8 @@ import {
   countdown,
   priorityAt,
   type Card,
-} from "../apps/web/lib/cards";
-import { createDemoCards } from "../apps/web/lib/demo-screen";
+} from "../packages/core/src/cards";
+import { createDemoCards } from "../packages/core/src/demo";
 
 const now = Date.UTC(2026, 9, 21, 12);
 const cards = createDemoCards(now);
@@ -25,8 +25,8 @@ describe("card lifecycle", () => {
   });
   it("does not show zero before a meeting starts or negative time afterwards", () => {
     assert.equal(countdown(meeting, meeting.targetAt - 1).value, "00:01");
-    assert.equal(countdown(meeting, meeting.targetAt).value, "Началась");
-    assert.equal(countdown(meeting, meeting.targetAt + 1).value, "Началась");
+    assert.equal(countdown(meeting, meeting.targetAt).value, "Started");
+    assert.equal(countdown(meeting, meeting.targetAt + 1).value, "Started");
   });
   it("promotes a deadline when the meeting disappears", () => {
     assert.equal(activeCards(cards, now)[0].id, meeting.id);
@@ -36,8 +36,8 @@ describe("card lifecycle", () => {
     const deadline = cards[1];
     assert.equal(priorityAt(deadline, deadline.urgentAt - 1), 1);
     assert.equal(priorityAt(deadline, deadline.urgentAt), 2);
-    assert.equal(countdown(deadline, deadline.targetAt - 1).value, "1 мин");
-    assert.equal(countdown(deadline, deadline.targetAt).value, "Срок прошёл");
+    assert.equal(countdown(deadline, deadline.targetAt - 1).value, "1m");
+    assert.equal(countdown(deadline, deadline.targetAt).value, "Overdue");
     assert.equal(
       activeCards([deadline], deadline.targetAt + 86400000 - 1).length,
       1,

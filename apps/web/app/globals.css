@@ -296,3 +296,12 @@ body {
   font-weight: 400;
   letter-spacing: -0.04em;
 }
+
+.system-warning {
+  background: #4c3a29;
+  color: #f0d3ae;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  font-size: 13px;
+}

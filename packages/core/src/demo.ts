@@ -4,7 +4,7 @@ const minute = 60_000;
 const hour = 60 * minute;
 const day = 24 * hour;
 
-/** One demo session per page load. Renders never reset event times. */
+/** Fixture for explicit, one-time database seeding. Times are persisted unchanged. */
 export function createDemoCards(now: number): Card[] {
   const meeting = now + 48_000;
   return [

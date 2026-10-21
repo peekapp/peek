@@ -1,0 +1,14 @@
+{
+  "name": "@peek/worker",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "migrate": "bun src/migrate.ts",
+    "seed": "bun src/seed.ts"
+  },
+  "dependencies": {
+    "@peek/core": "workspace:*",
+    "@peek/db": "workspace:*"
+  }
+}

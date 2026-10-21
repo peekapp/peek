@@ -8,3 +8,7 @@ next-env.d.ts
 !.env.example
 .DS_Store
 *.log
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

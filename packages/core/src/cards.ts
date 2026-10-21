@@ -37,14 +37,14 @@ export function countdown(
   const remaining = card.targetAt - now;
   if (remaining <= 0) {
     return card.kind === "meeting"
-      ? { label: "Встреча", value: "Началась" }
-      : { label: "Дедлайн", value: "Срок прошёл" };
+      ? { label: "Meeting", value: "Started" }
+      : { label: "Deadline", value: "Overdue" };
   }
   if (card.kind === "meeting") {
     const seconds = Math.ceil(remaining / 1000);
     const minutes = Math.floor(seconds / 60);
     return {
-      label: "До встречи",
+      label: "Starts in",
       value: `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`,
     };
   }
@@ -53,12 +53,12 @@ export function countdown(
   const hours = Math.floor((minutes % 1440) / 60);
   const rest = minutes % 60;
   return {
-    label: "До срока",
+    label: "Due in",
     value:
       days > 0
-        ? `${days} д ${hours} ч`
+        ? `${days}d ${hours}h`
         : hours > 0
-          ? `${hours} ч ${rest} мин`
-          : `${rest} мин`,
+          ? `${hours}h ${rest}m`
+          : `${rest}m`,
   };
 }

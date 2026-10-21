@@ -1,0 +1,10 @@
+{
+  "name": "@peek/db",
+  "version": "0.1.0",
+  "private": true,
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@peek/core": "workspace:*",
+    "drizzle-orm": "0.45.4"
+  }
+}

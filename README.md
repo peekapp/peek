@@ -1,61 +1,110 @@
 # Peek
 
-Self-hosted экран, который помогает с первого взгляда заметить важную встречу или приближающийся срок. Для второго монитора, планшета или телевизора.
+A self-hosted, glanceable screen for meetings and deadlines. Designed for a second monitor, tablet, or TV: configure it once, then let relevant events appear and disappear automatically.
 
-## Сейчас
+## Current stage
 
-Первый шаг реализации: Next.js App Router + React + TypeScript в Bun workspace. Главный экран использует выбранный дизайн **«Ночь»**: крупная карточка главного события и спокойная лента остальных событий. Панелей сравнения и альтернативных прототипов больше нет.
+The **Night** interface runs on Next.js, React, and TypeScript. A separate Bun worker maintains a local SQLite database through Drizzle ORM. The web process reads consistent snapshots and streams updates to the screen over Server-Sent Events (SSE).
 
-На экране демонстрационные события, но часы и обратный отсчёт уже живые (Москва). Карточки сортируются по приоритету и сроку, появляются и исчезают по времени. Синхронизация, авторизация и хранение пока не реализованы. Это каркас приложения, ещё не готовый self-hosted сервис.
+Implemented:
 
-## Запуск
+- Persistent cards, versioned schema migration, WAL mode, and transactional updates.
+- A worker heartbeat every five seconds and automatic removal of expired cards.
+- Priority-based ordering, a large primary card, live countdowns, and an empty state.
+- Distinct warnings for lost server connection, unavailable storage, and a stopped worker.
+- English interface labels and date formatting. Event titles and profile names support Unicode, including Russian.
 
-Нужен Bun **1.4.2**. Для инструментов разработки и CI используется Node.js 24.
+Calendar integrations, scenario execution, account setup, authentication, and Docker delivery are **not implemented yet**. This is a local development milestone, not a deployable multi-user service. Both web commands bind to loopback; keep them local until access control is implemented.
+
+## Requirements
+
+- Bun **1.4.2** (required at runtime, including for Next.js, because storage uses `bun:sqlite`).
+- Node.js **24** for development tooling and CI.
+- A local filesystem for SQLite; network-mounted database files are not supported.
+
+## Quick start
+
+From the repository root:
 
 ```sh
 bun install --frozen-lockfile
+bun run db:migrate
+bun run db:seed          # Optional: insert demo events once
+```
+
+Start the worker in one terminal:
+
+```sh
+bun worker
+```
+
+Start the web app in another:
+
+```sh
 bun dev
 ```
 
-Открыть http://localhost:3000. Сервер по умолчанию слушает только локальный интерфейс.
+Open [localhost:3000](http://localhost:3000). For a production build of this local milestone:
+
+```sh
+bun run build
+bun start
+```
+
+Keep the worker running in either mode. It applies pending migrations at startup, writes a heartbeat, then checks for expired cards every five seconds. SIGINT/SIGTERM marks it stopped before closing the database. An abrupt exit is detected after 30 seconds without a heartbeat. Restart it with `bun worker`; it resumes from stored data.
+
+## Persistent data and demo events
+
+The default database is `data/peek.sqlite` at the repository root. It and its WAL/SHM companions are ignored by Git. Run the commands above from the repository root so both processes resolve the same location.
+
+To use another location, set an **absolute** path in both terminals, before running migrations, seed, worker, or web commands:
+
+```sh
+export PEEK_DATABASE_PATH=/absolute/path/to/peek.sqlite
+```
+
+The seed command creates a meeting 48 seconds in the future and three deadlines. It is explicitly opt-in and idempotent: reloading the browser, restarting either process, or running the command again does not reset event times or recreate expired events. The seed marker persists even after all cards expire. To try a fresh demo without deleting existing data, point both processes at a new database path and run the setup commands there.
+
+Meetings expire five minutes after their start. Deadlines become urgent 24 hours before their target and remain visible as **Overdue** for 24 hours afterwards. The screen also filters expired cards locally if the connection is down. UTC timestamps are stored; the display timezone is currently fixed to **Europe/Moscow**, with English formatting.
+
+There is no external calendar synchronization yet. Russian demo titles and profile names are intentional sample content, not interface translations.
+
+## Development checks
 
 ```sh
 bun run test
 bun typecheck
 bun run build
-bun start
 ```
 
-Тесты модели карточек, проверка типов и производственная сборка также запускаются в GitHub Actions.
+GitHub Actions runs all three checks. Tests cover timing boundaries, ordering, transaction rollback, migration idempotency, persistence across database reopening, repeated seeding, expiry cleanup, and worker health.
 
-## Структура
+## Architecture
 
 ```text
-apps/web/             Next.js: экран, компоненты, демонстрационные данные
-  app/                маршруты и стили
-  components/         компоненты экрана
-  lib/                данные для визуальной разработки
-  public/             используемые веб-ресурсы и иконки
-assets/brand/         исходные фирменные материалы
-docs/                план MVP, дальнейшие идеи, решения по дизайну
+apps/web/         Next.js screen and read-only state/SSE endpoints
+apps/worker/      Independent Bun worker, migration and seed commands
+packages/core/    Card model, time rules, shared snapshot contract, demo fixture
+packages/db/      Drizzle schema and SQLite persistence/migration boundary
+assets/brand/     Original brand assets
+docs/            Product plan and design decisions
+tests/           Core and persistence tests
 ```
 
-`peekapp/peek` — основной репозиторий приложения. Web, будущий worker и общие пакеты остаются здесь, как описано в плане MVP. Организация может содержать отдельные репозитории для сайта и самостоятельных расширений; они пока не создаются.
+The worker is the only long-running writer. The web process opens read-only connections; it never seeds, migrates, or performs background work inside a request. `/api/screen` returns a full snapshot. `/api/screen/events` shares one polling loop per web process across connected screens, delivering full snapshots and server time every second. Revisions prevent older snapshots from replacing newer state. Subscriptions and timers are released on disconnect.
 
-## Дальше
+Only one worker and one web process per installation are supported. The worker currently handles card expiry and health only; durable scenario scheduling and integration execution are the next milestone. There are no public mutation endpoints.
 
-Разрабатываем небольшими проверяемыми шагами:
+## Backup and restore
 
-1. Готово: модель карточки, правила приоритетов и жизненного цикла, реальные часы и тесты временных границ.
-2. Подготовить SQLite, worker, SDK и минимальное исполнение сценариев.
-3. Реализовать первоначальную настройку и доступ администратора.
-4. Подключить iCalendar и первый сценарий встреч.
-5. Добавить дедлайны, обновления экрана и диагностику, затем Docker Compose.
+Stop **both** processes before copying the database directory, including any `-wal` and `-shm` files. Restore the files together, preserving their names, then restart the worker and web process with the same database path. Do not replace a live database. This milestone stores no integration credentials; encryption and secret backup procedures will be added with integrations.
 
-Полные требования: [план MVP](docs/mvp-plan.md). Визуальные ограничения: [дизайн](docs/design.md). Отложенные идеи: [после MVP](docs/future-ideas.md).
+## Repository scope and next steps
 
-Лицензия на распространение пока не выбрана.
+`peekapp/peek` contains the application, worker, and shared packages. Future standalone extensions, the project website, or documentation hosting can live in separate repositories in the organization.
 
-## Демонстрационный источник
+Next: persist scenario configuration and schedules, implement the local extension contract, then add administrator setup and the first iCalendar integration.
 
-Каждая полная загрузка страницы создаёт новую сессию: встреча через 48 секунд и три срока относительно текущего времени. Встреча исчезает через 5 минут после начала, после чего её место занимает ближайший приоритетный срок. Дедлайн остаётся ещё 24 часа с пометкой «Срок прошёл». По истечении всех карточек экран показывает «Всё спокойно». Обновление страницы начинает демо заново; сохранения или подключения календаря пока нет.
+The detailed [MVP plan](docs/mvp-plan.md), [design decisions](docs/design.md), and [future ideas](docs/future-ideas.md) are currently maintained in Russian. The application and this README default to English.
+
+A distribution license has not been selected yet.

@@ -1,10 +1,20 @@
 import { Dashboard } from "../components/dashboard";
-import { createDemoCards } from "../lib/demo-screen";
-
-// Each request starts a demo session; do not bake timestamps into the build.
+import { readState } from "../lib/server-state";
 export const dynamic = "force-dynamic";
-
 export default function Home() {
-  const now = Date.now();
-  return <Dashboard cards={createDemoCards(now)} initialNow={now} />;
+  try {
+    return <Dashboard initialState={readState()} />;
+  } catch {
+    return (
+      <Dashboard
+        initialState={{
+          cards: [],
+          revision: -1,
+          heartbeat: null,
+          serverTime: Date.now(),
+        }}
+        storageUnavailable
+      />
+    );
+  }
 }

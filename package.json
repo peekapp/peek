@@ -3,13 +3,21 @@
   "private": true,
   "packageManager": "bun@1.4.2",
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
     "start": "bun run --cwd apps/web start",
-    "typecheck": "bun run --cwd apps/web typecheck",
-    "test": "bun test ./tests"
+    "typecheck": "tsc --noEmit -p tsconfig.json && bun run --cwd apps/web typecheck",
+    "test": "bun test ./tests",
+    "worker": "bun run --cwd apps/worker start",
+    "db:migrate": "bun run --cwd apps/worker migrate",
+    "db:seed": "bun run --cwd apps/worker seed"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "typescript": "7.0.2"
   }
 }

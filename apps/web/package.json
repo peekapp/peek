@@ -11,7 +11,9 @@
   "dependencies": {
     "next": "16.4.2",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "@peek/core": "workspace:*",
+    "@peek/db": "workspace:*"
   },
   "devDependencies": {
     "typescript": "7.0.2",

@@ -1,0 +1,11 @@
+{
+  "name": "@peek/core",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/cards.ts",
+    "./demo": "./src/demo.ts",
+    "./state": "./src/state.ts",
+    "./time": "./src/time.ts"
+  }
+}

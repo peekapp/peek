@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Peek",
-  description: "Встречи и сроки, которые требуют внимания.",
+  description: "Meetings and deadlines that need your attention.",
   robots: { index: false, follow: false },
 };
 
@@ -11,7 +11,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ru">
+    <html lang="en">
       <body>{children}</body>
     </html>
   );
