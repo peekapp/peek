@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun --bun next dev --hostname 127.0.0.1",
     "build": "bun --bun next build",
-    "start": "bun --bun next start --hostname 127.0.0.1",
+    "start": "bun --bun next start --hostname 0.0.0.0",
     "typecheck": "next typegen && tsc --noEmit",
     "start:container": "bun --bun next start --hostname 0.0.0.0"
   },

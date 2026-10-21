@@ -10,6 +10,7 @@ export type Owner = {
 /** UTC milliseconds. Visibility is [visibleFrom, expiresAt). */
 export type Card = {
   id: string;
+  sourceId?: string;
   kind: "meeting" | "deadline";
   title: string;
   owner: Owner;

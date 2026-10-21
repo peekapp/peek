@@ -61,7 +61,7 @@ it("interprets floating times in the connection timezone and all-day deadlines a
   const base = {
     id: "s",
     name: "Test",
-    sourceId: "cal-test",
+    sourceIds: ["cal-test"],
     enabled: true,
     leadMinutes: 10080,
     urgentMinutes: 1440,
@@ -239,6 +239,110 @@ it("refuses to replace a missing encryption key for existing calendars", () => {
       /encryption-key/,
     );
     assert.equal(existsSync(keyFile), false);
+    assert.equal(store.listCalendars().length, 1);
+  } finally {
+    store.close();
+    rmSync(dir, { recursive: true });
+  }
+});
+
+it("runs multi-calendar scenarios through independent sync failures and source edits", () => {
+  const dir = mkdtempSync(join(tmpdir(), "peek-multi-ics-"));
+  const store = openStore(join(dir, "db.sqlite"));
+  const time = Date.now();
+  try {
+    store.migrate();
+    store.saveProfile("profile-other", { name: "Other", color: "pink" });
+    for (const id of ["cal-first", "cal-second"]) {
+      store.saveCalendar(
+        id,
+        {
+          ...config,
+          profileId: id === "cal-first" ? "shared" : "profile-other",
+        },
+        `https://example.com/${id}.ics`,
+        time,
+      );
+      store.completeSync(
+        id,
+        1,
+        {
+          events: [
+            {
+              id: "same-uid",
+              sourceId: id,
+              title: id,
+              owner: config.owner,
+              startAt: time + 30000,
+            },
+          ],
+        },
+        time,
+      );
+    }
+    for (const definition of ["meetings", "deadlines"] as const)
+      store.saveScenario(
+        definition,
+        {
+          name: definition,
+          definition,
+          sourceIds: ["cal-first", "cal-second"],
+          enabled: true,
+          leadMinutes: 10,
+          urgentMinutes: 1,
+          retainMinutes: 5,
+          filterText: "",
+        },
+        time,
+      );
+    store.runDue(time);
+    assert.equal(store.snapshot(time).cards.length, 4);
+    assert.equal(store.dueCalendars(time).length, 0);
+    assert.throws(() => store.deleteCalendar("cal-second"), /calendar-in-use/);
+    store.completeSync("cal-first", 1, { error: "network-error" }, time + 1);
+    store.completeSync(
+      "cal-second",
+      1,
+      {
+        events: [
+          {
+            id: "same-uid",
+            sourceId: "cal-second",
+            title: "Changed",
+            owner: config.owner,
+            startAt: time + 30000,
+          },
+        ],
+      },
+      time + 1,
+    );
+    store.runDue(time + 1);
+    assert.equal(store.snapshot(time + 1, "default").calendarErrors, 1);
+    assert.equal(
+      store.snapshot().cards.filter((c) => c.title === "Changed").length,
+      2,
+    );
+    assert.equal(
+      store.snapshot().cards.filter((c) => c.sourceId === "cal-first").length,
+      2,
+    );
+    store.saveCalendar(
+      "cal-first",
+      config,
+      "https://example.com/replacement.ics",
+      time + 2,
+    );
+    assert.equal(store.snapshot().cards.length, 2);
+    assert.ok(store.snapshot().cards.every((c) => c.sourceId === "cal-second"));
+    store.runDue(time + 2);
+    assert.equal(store.snapshot().cards.length, 2);
+    for (const scenario of store.listScenarios())
+      store.saveScenario(
+        scenario.id,
+        { ...scenario, sourceIds: ["cal-second"] },
+        time + 3,
+      );
+    store.deleteCalendar("cal-first");
     assert.equal(store.listCalendars().length, 1);
   } finally {
     store.close();

@@ -6,6 +6,7 @@ x-runtime: &runtime
     PEEK_DATABASE_PATH: /data/peek.sqlite
     PEEK_TIMEZONE: ${PEEK_TIMEZONE:-}
     TZ: ${TZ:-}
+    PEEK_ALLOWED_HOSTS: ${PEEK_ALLOWED_HOSTS:-}
   volumes:
     - peek-data:/data
   init: true
@@ -33,7 +34,7 @@ services:
     <<: *runtime
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${PEEK_PORT:-3000}:3000"
+      - "${PEEK_BIND_ADDRESS:-0.0.0.0}:${PEEK_PORT:-3000}:3000"
     depends_on:
       migrate:
         condition: service_completed_successfully

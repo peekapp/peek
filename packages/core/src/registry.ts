@@ -5,6 +5,7 @@ export const integrationDefinitions = [
   {
     id: "ical",
     name: "iCalendar",
+    icon: { src: "/integrations/ical.svg" },
     descriptionKey: "icalDescription",
     capabilities: ["calendar.events"],
   },

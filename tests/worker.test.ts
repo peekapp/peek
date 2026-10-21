@@ -14,7 +14,8 @@ it("runs as a separate process and preserves cards across worker restart", async
   const expected = input.map((card) => ({
     ...card,
     owner: { name: "Shared", color: "blue", profileId: "shared", system: true },
-    id: `${card.kind === "meeting" ? "demo-meetings" : "demo-deadlines"}:${card.id}`,
+    sourceId: card.kind === "meeting" ? "demo-meetings" : "demo-deadlines",
+    id: `${card.kind === "meeting" ? "demo-meetings:demo-meetings" : "demo-deadlines:demo-deadlines"}:${card.id}`,
   }));
   store.migrate();
   store.seedDemo(input);

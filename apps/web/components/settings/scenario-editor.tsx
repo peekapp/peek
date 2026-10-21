@@ -2,11 +2,17 @@
 import { Label } from "../ui/label";
 import { DeleteButton } from "./delete-button";
 import { Button } from "../ui/button";
-import { SettingsSelect } from "./select";
-import { SelectItem } from "../ui/select";
 import { Input } from "../ui/input";
 import { SettingsField } from "./form-field";
-import { FieldGroup } from "../ui/field";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+  FieldLegend,
+  FieldDescription,
+} from "../ui/field";
+import { IntegrationIcon } from "./integration-icon";
 import { Checkbox } from "../ui/checkbox";
 import { useInstallationTimeZone } from "../time-zone";
 import type { Profile } from "@peek/core/profiles";
@@ -48,7 +54,7 @@ export function ScenarioEditor({
       profileId: "shared",
       definition,
       enabled: true,
-      sourceId: calendars[0]?.id ?? `demo-${definition}`,
+      sourceIds: [calendars[0]?.id ?? `demo-${definition}`],
       filterText: "",
       ...definitions[definition].defaults,
     },
@@ -113,22 +119,6 @@ export function ScenarioEditor({
                 onChange={(e) => update({ name: e.target.value })}
               />
             </SettingsField>
-            <SettingsField label={t.source}>
-              <SettingsSelect
-                value={config.sourceId}
-                onValueChange={(sourceId) => update({ sourceId })}
-              >
-                {calendars.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-                <SelectItem value="demo-meetings">{t.demoMeetings}</SelectItem>
-                <SelectItem value="demo-deadlines">
-                  {t.demoDeadlines}
-                </SelectItem>
-              </SettingsSelect>
-            </SettingsField>
             <ProfileSelect
               profiles={profiles}
               value={config.profileId ?? "shared"}
@@ -143,6 +133,69 @@ export function ScenarioEditor({
               />
             </SettingsField>
           </FieldGroup>
+          <FieldSet className="mt-6" disabled={status === "saving"}>
+            <FieldLegend variant="label">{t.sources}</FieldLegend>
+            <FieldDescription>{t.sourcesHint}</FieldDescription>
+            <FieldGroup className="gap-3">
+              {[
+                ...calendars.map((c) => ({
+                  id: c.id,
+                  name: c.name,
+                  profileId: c.profileId,
+                  integrationId: "ical",
+                })),
+                {
+                  id: "demo-meetings",
+                  name: t.demoMeetings,
+                  profileId: undefined,
+                  integrationId: undefined,
+                },
+                {
+                  id: "demo-deadlines",
+                  name: t.demoDeadlines,
+                  profileId: undefined,
+                  integrationId: undefined,
+                },
+              ].map((source) => {
+                const profile = profiles.find((p) => p.id === source.profileId);
+                return (
+                  <Field key={source.id} orientation="horizontal">
+                    <Checkbox
+                      id={`source-${source.id}`}
+                      checked={config.sourceIds.includes(source.id)}
+                      onCheckedChange={(checked) =>
+                        update({
+                          sourceIds:
+                            checked === true
+                              ? [...config.sourceIds, source.id]
+                              : config.sourceIds.filter(
+                                  (id) => id !== source.id,
+                                ),
+                        })
+                      }
+                    />
+                    <FieldLabel
+                      htmlFor={`source-${source.id}`}
+                      className="min-w-0"
+                    >
+                      <IntegrationIcon integrationId={source.integrationId} />
+                      <span className="min-w-0 break-words">
+                        {source.name}
+                        {profile
+                          ? ` · ${profile.system ? t.sharedProfile : profile.name}`
+                          : ""}
+                      </span>
+                    </FieldLabel>
+                  </Field>
+                );
+              })}
+            </FieldGroup>
+            {!config.sourceIds.length ? (
+              <FieldDescription role="status">
+                {t.selectSource}
+              </FieldDescription>
+            ) : null}
+          </FieldSet>
         </section>
         <section className="form-section">
           <h2>{t.scenarioRules}</h2>
@@ -199,7 +252,7 @@ export function ScenarioEditor({
           </div>
         ) : null}
         <div className="form-actions">
-          <Button disabled={status === "saving"}>
+          <Button disabled={status === "saving" || !config.sourceIds.length}>
             {status === "saving" ? t.saving : t.save}
           </Button>
           <Button variant="ghost" asChild>

@@ -14,7 +14,7 @@ import { createDemoCards } from "../packages/core/src/demo";
 const config: ScenarioConfig = {
   name: "Встречи",
   definition: "meetings",
-  sourceId: "demo-meetings",
+  sourceIds: ["demo-meetings"],
   enabled: true,
   leadMinutes: 10,
   urgentMinutes: 1,
@@ -47,7 +47,7 @@ it("validates all settings and isolates selected sources and title filters", () 
     event.startAt,
   );
   assert.equal(output.cards.length, 1);
-  assert.equal(output.cards[0].id, "a:one");
+  assert.equal(output.cards[0].id, "a:demo-meetings:one");
   const earlyEnd = evaluateScenario(
     scenario,
     [{ ...event, endAt: event.startAt + 1000 }],
@@ -169,6 +169,115 @@ it("isolates handler failures and persists a retry while other scenarios run", (
     store.saveScenario("a", config, event.startAt + 1);
     store.runDue(event.startAt + 1);
     assert.equal(store.snapshot().scenarioErrors, 0);
+  } finally {
+    store.close();
+    rmSync(dir, { recursive: true });
+  }
+});
+
+it("validates plural bindings and normalizes legacy clients", () => {
+  for (const sourceIds of [
+    [],
+    null,
+    "demo-meetings",
+    ["bad/source"],
+    [1],
+    Array(101).fill("demo-meetings"),
+  ])
+    assert.throws(() => validateConfig({ ...config, sourceIds }));
+  assert.deepEqual(
+    validateConfig({ ...config, sourceIds: ["demo-meetings", "demo-meetings"] })
+      .sourceIds,
+    ["demo-meetings"],
+  );
+  const { sourceIds, ...legacy } = config;
+  assert.deepEqual(
+    validateConfig({ ...legacy, sourceId: "demo-meetings" }),
+    validateConfig(config),
+  );
+});
+
+it("keeps identical event IDs distinct across sources and removes only detached cards", () => {
+  const store = openStore(":memory:");
+  try {
+    store.migrate();
+    const second = {
+      ...event,
+      sourceId: "demo-deadlines",
+      title: "Second calendar",
+    };
+    store.replaceSource(event.sourceId, [event], event.startAt);
+    store.replaceSource(second.sourceId, [second], event.startAt);
+    for (const definition of ["meetings", "deadlines"] as const)
+      store.saveScenario(
+        definition,
+        { ...config, definition, sourceIds: [event.sourceId, second.sourceId] },
+        event.startAt,
+      );
+    store.runDue(event.startAt);
+    store.runDue(event.startAt);
+    assert.equal(store.snapshot().cards.length, 4);
+    assert.equal(new Set(store.snapshot().cards.map((c) => c.id)).size, 4);
+    store.saveScenario("meetings", config, event.startAt + 1);
+    assert.equal(store.snapshot().cards.length, 3);
+    store.runDue(event.startAt + 1);
+    assert.equal(store.snapshot().cards.length, 3);
+    store.replaceSource(second.sourceId, [], event.startAt + 2);
+    store.runDue(event.startAt + 2);
+    assert.equal(store.snapshot().cards.length, 2);
+    assert.ok(
+      store.snapshot().cards.every((c) => c.sourceId === event.sourceId),
+    );
+    assert.throws(() =>
+      store.saveScenario("meetings", {
+        ...config,
+        sourceIds: [event.sourceId, "cal-missing"],
+      }),
+    );
+    assert.deepEqual(
+      store.listScenarios().find((s) => s.id === "meetings")!.sourceIds,
+      config.sourceIds,
+    );
+  } finally {
+    store.close();
+  }
+});
+
+it("migrates v8 source bindings once while preserving schedules, status, and cards", () => {
+  const dir = mkdtempSync(join(tmpdir(), "peek-bindings-"));
+  const path = join(dir, "db.sqlite");
+  let store = openStore(path);
+  try {
+    store.migrate();
+    store.saveScenario("a", config, event.startAt);
+    store.replaceSource(event.sourceId, [event], event.startAt);
+    store.runDue(event.startAt);
+    const before = store.listScenarios()[0];
+    const cardsBefore = store.snapshot().cards;
+    store.close();
+    const raw = new Database(path);
+    const { sourceIds, ...oldConfig } = config;
+    raw
+      .query("UPDATE scenarios SET config = ? WHERE id = 'a'")
+      .run(
+        JSON.stringify({
+          ...oldConfig,
+          profileId: "shared",
+          sourceId: sourceIds[0],
+        }),
+      );
+    raw.exec("PRAGMA user_version = 8");
+    raw.close();
+    store = openStore(path);
+    store.migrate();
+    store.migrate();
+    assert.deepEqual(store.listScenarios()[0], before);
+    assert.deepEqual(store.snapshot().cards, cardsBefore);
+    store.close();
+    store = openStore(path);
+    assert.deepEqual(store.listScenarios()[0].sourceIds, [event.sourceId]);
+    store.runDue(event.startAt + 300000);
+    assert.equal(store.snapshot().cards.length, 0);
   } finally {
     store.close();
     rmSync(dir, { recursive: true });

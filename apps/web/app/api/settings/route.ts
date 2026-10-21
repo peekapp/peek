@@ -1,29 +1,9 @@
 import { databasePath, openStore, installationTimeZone } from "@peek/db";
 export const dynamic = "force-dynamic";
-// Local-only administration until administrator authentication is implemented.
-function local(request: Request, mutate = false) {
-  const host = request.headers.get("host");
-  if (!host) return false;
-  try {
-    const address = new URL(`http://${host}`);
-    if (
-      address.host !== host ||
-      !["127.0.0.1", "localhost", "[::1]"].includes(address.hostname)
-    )
-      return false;
-    // Next.js may normalize request.url to the listening address. Validate the
-    // actual Host header and browser Origin instead of that internal URL.
-    return (
-      !mutate ||
-      request.headers.get("origin") ===
-        `${new URL(request.url).protocol}//${host}`
-    );
-  } catch {
-    return false;
-  }
-}
+import { settingsRequestAllowed } from "../../../lib/request-access";
 export function GET(request: Request) {
-  if (!local(request)) return new Response(null, { status: 403 });
+  if (!settingsRequestAllowed(request))
+    return new Response(null, { status: 403 });
   try {
     const store = openStore(databasePath(), true);
     try {
@@ -50,7 +30,8 @@ export function GET(request: Request) {
   }
 }
 export async function POST(request: Request) {
-  if (!local(request, true)) return new Response(null, { status: 403 });
+  if (!settingsRequestAllowed(request, true))
+    return new Response(null, { status: 403 });
   if (!request.headers.get("content-type")?.startsWith("application/json"))
     return new Response(null, { status: 415 });
   let body;

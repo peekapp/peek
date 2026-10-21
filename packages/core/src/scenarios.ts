@@ -14,7 +14,7 @@ export type ScenarioConfig = {
   profileId?: string;
   name: string;
   definition: "meetings" | "deadlines";
-  sourceId: string;
+  sourceIds: string[];
   enabled: boolean;
   leadMinutes: number;
   urgentMinutes: number;
@@ -48,14 +48,21 @@ export const numericFields = [
 ] as const;
 export function validateConfig(input: unknown): ScenarioConfig {
   if (!input || typeof input !== "object") throw new Error("invalid");
-  const v = input as ScenarioConfig;
+  const v = input as ScenarioConfig & { sourceId?: unknown };
+  // Accept older clients during the transition; only persist the plural form.
+  const sourceIds =
+    v.sourceIds ?? (typeof v.sourceId === "string" ? [v.sourceId] : []);
   if (
     typeof v.name !== "string" ||
     !v.name.trim() ||
     v.name.length > 100 ||
     !["meetings", "deadlines"].includes(v.definition) ||
-    typeof v.sourceId !== "string" ||
-    !/^[a-zA-Z0-9-]{1,80}$/.test(v.sourceId) ||
+    !Array.isArray(sourceIds) ||
+    sourceIds.length === 0 ||
+    sourceIds.length > 100 ||
+    sourceIds.some(
+      (id) => typeof id !== "string" || !/^[a-zA-Z0-9-]{1,80}$/.test(id),
+    ) ||
     typeof v.enabled !== "boolean" ||
     typeof v.filterText !== "string" ||
     v.filterText.length > 200 ||
@@ -70,7 +77,7 @@ export function validateConfig(input: unknown): ScenarioConfig {
     profileId: v.profileId,
     name: v.name.trim(),
     definition: v.definition,
-    sourceId: v.sourceId,
+    sourceIds: [...new Set(sourceIds)],
     enabled: v.enabled,
     leadMinutes: v.leadMinutes,
     urgentMinutes: v.urgentMinutes,
@@ -87,9 +94,10 @@ export function evaluateScenario(
   if (!definitions[scenario.definition]) throw new Error("unknown-definition");
   const result: Card[] = [];
   const boundaries: number[] = [];
+  const sources = new Set(scenario.sourceIds);
   for (const event of events) {
     if (
-      event.sourceId !== scenario.sourceId ||
+      !sources.has(event.sourceId) ||
       !event.title.toLowerCase().includes(scenario.filterText.toLowerCase())
     )
       continue;
@@ -107,7 +115,8 @@ export function evaluateScenario(
     boundaries.push(visibleFrom, urgentAt, targetAt, expiresAt);
     if (visibleFrom <= now && now < expiresAt)
       result.push({
-        id: `${scenario.id}:${event.id}`,
+        id: `${scenario.id}:${event.sourceId}:${event.id}`,
+        sourceId: event.sourceId,
         kind: scenario.definition === "meetings" ? "meeting" : "deadline",
         title: event.title,
         owner: event.owner,

@@ -1,4 +1,5 @@
 "use client";
+import { IntegrationIcon } from "./integration-icon";
 import { Card, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import Link from "next/link";
 import { useState } from "react";
@@ -79,7 +80,10 @@ export function DefinitionPicker({
                 <Link href={choice.href} onClick={() => setOpen(false)}>
                   <CardHeader>
                     <CardTitle asChild>
-                      <strong>{choice.title}</strong>
+                      <strong className="flex items-center gap-3">
+                        <IntegrationIcon integrationId={choice.id} />
+                        {choice.title}
+                      </strong>
                     </CardTitle>
                     <CardDescription asChild>
                       <span>{choice.description}</span>

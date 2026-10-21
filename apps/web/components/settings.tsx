@@ -1,4 +1,5 @@
 "use client";
+import { IntegrationIcon } from "./settings/integration-icon";
 import {
   Card,
   CardHeader,
@@ -369,7 +370,7 @@ export function Settings({
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="card-source">
-                      {sourceName(s.sourceId)}
+                      {s.sourceIds.map(sourceName).join(" · ")}
                     </CardContent>
                     <CardFooter className="card-bottom">
                       <span>
@@ -408,7 +409,9 @@ export function Settings({
                 <Card variant="settings" className="connection-card" key={c.id}>
                   <CardHeader>
                     <div className="card-top">
-                      <span className="type-icon">▦</span>
+                      <span className="type-icon">
+                        <IntegrationIcon integrationId={c.integrationId} />
+                      </span>
                       <Badge
                         variant={
                           c.error

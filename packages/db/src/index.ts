@@ -83,7 +83,7 @@ export function openStore(path: string, readonly = false) {
       const config = {
         name: definition === "meetings" ? "Meetings" : "Deadlines",
         definition,
-        sourceId: id,
+        sourceIds: [id],
         profileId: "shared",
         enabled: true,
         filterText: "",
@@ -128,7 +128,7 @@ export function openStore(path: string, readonly = false) {
               user_version: number;
             }
           ).user_version;
-          if (version > 8)
+          if (version > 9)
             throw new Error("Database schema is newer than this application");
           if (version === 0)
             sqlite.exec(`
@@ -198,10 +198,14 @@ export function openStore(path: string, readonly = false) {
             for (const row of db.select().from(cards).all())
               importOwner(row.payload.owner);
             for (const row of db.select().from(scenarios).all()) {
+              const legacy = row.config as typeof row.config & {
+                sourceId?: string;
+              };
+              const sourceId = legacy.sourceId ?? legacy.sourceIds[0];
               const source = db
                 .select()
                 .from(calendars)
-                .where(eq(calendars.id, row.config.sourceId))
+                .where(eq(calendars.id, sourceId))
                 .get();
               const owners = [
                 ...new Set(
@@ -209,7 +213,7 @@ export function openStore(path: string, readonly = false) {
                     .select()
                     .from(events)
                     .all()
-                    .filter((e) => e.payload.sourceId === row.config.sourceId)
+                    .filter((e) => e.payload.sourceId === sourceId)
                     .map((e) => importOwner(e.payload.owner)),
                 ),
               ];
@@ -280,6 +284,22 @@ export function openStore(path: string, readonly = false) {
                   .where(eq(screens.id, row.id))
                   .run();
             }
+          }
+          if (version < 9) {
+            for (const row of db.select().from(scenarios).all()) {
+              const { sourceId, ...rest } = row.config as typeof row.config & {
+                sourceId?: string;
+              };
+              const config = {
+                ...rest,
+                sourceIds: rest.sourceIds ?? (sourceId ? [sourceId] : []),
+              };
+              db.update(scenarios)
+                .set({ config })
+                .where(eq(scenarios.id, row.id))
+                .run();
+            }
+            sqlite.exec("PRAGMA user_version = 9;");
           }
         })
         .immediate();
@@ -427,7 +447,7 @@ export function openStore(path: string, readonly = false) {
           .all()
           .filter((s) => includesProfile(s.config.profileId ?? "shared"));
         const sourceIds = new Set(
-          selectedScenarios.map((s) => s.config.sourceId),
+          selectedScenarios.flatMap((s) => s.config.sourceIds),
         );
         return {
           screen,
@@ -572,8 +592,15 @@ export function openStore(path: string, readonly = false) {
               if (row.payload.sourceId === id)
                 tx.delete(events).where(eq(events.id, row.id)).run();
             for (const row of tx.select().from(scenarios).all())
-              if (row.config.sourceId === id) {
-                tx.delete(cards).where(eq(cards.scenarioId, row.id)).run();
+              if (row.config.sourceIds.includes(id)) {
+                for (const card of tx
+                  .select()
+                  .from(cards)
+                  .where(eq(cards.scenarioId, row.id))
+                  .all()) {
+                  if (!card.payload.sourceId || card.payload.sourceId === id)
+                    tx.delete(cards).where(eq(cards.id, card.id)).run();
+                }
                 tx.update(scenarios)
                   .set({ nextRunAt: row.config.enabled ? now : null })
                   .where(eq(scenarios.id, row.id))
@@ -600,7 +627,7 @@ export function openStore(path: string, readonly = false) {
               .select()
               .from(scenarios)
               .all()
-              .some((s) => s.config.sourceId === id)
+              .some((s) => s.config.sourceIds.includes(id))
           )
             throw new Error("calendar-in-use");
           for (const row of tx.select().from(events).all())
@@ -685,7 +712,7 @@ export function openStore(path: string, readonly = false) {
                   .run();
               }
               for (const row of tx.select().from(scenarios).all())
-                if (row.config.sourceId === id && row.config.enabled)
+                if (row.config.sourceIds.includes(id) && row.config.enabled)
                   tx.update(scenarios)
                     .set({ nextRunAt: now })
                     .where(eq(scenarios.id, row.id))
@@ -735,18 +762,32 @@ export function openStore(path: string, readonly = false) {
       const config = validateConfig(input);
       config.profileId ??= "shared";
       ownerFor(config.profileId);
-      if (
-        !["demo-meetings", "demo-deadlines"].includes(config.sourceId) &&
-        !db
-          .select()
-          .from(calendars)
-          .where(eq(calendars.id, config.sourceId))
-          .get()
-      )
-        throw new Error("invalid");
       db.transaction(
         (tx) => {
           ownerFor(config.profileId);
+          for (const sourceId of config.sourceIds) {
+            if (
+              !["demo-meetings", "demo-deadlines"].includes(sourceId) &&
+              !tx
+                .select()
+                .from(calendars)
+                .where(eq(calendars.id, sourceId))
+                .get()
+            )
+              throw new Error("invalid");
+          }
+          // Remove detached sources immediately, even if the worker is offline.
+          for (const card of tx
+            .select()
+            .from(cards)
+            .where(eq(cards.scenarioId, id))
+            .all()) {
+            if (
+              !card.payload.sourceId ||
+              !config.sourceIds.includes(card.payload.sourceId)
+            )
+              tx.delete(cards).where(eq(cards.id, card.id)).run();
+          }
           tx.insert(scenarios)
             .values({ id, config, nextRunAt: config.enabled ? now : null })
             .onConflictDoUpdate({
@@ -809,7 +850,7 @@ export function openStore(path: string, readonly = false) {
               .run();
           }
           for (const row of tx.select().from(scenarios).all())
-            if (row.config.sourceId === sourceId && row.config.enabled)
+            if (row.config.sourceIds.includes(sourceId) && row.config.enabled)
               tx.update(scenarios)
                 .set({ nextRunAt: now })
                 .where(eq(scenarios.id, row.id))
@@ -854,7 +895,7 @@ export function openStore(path: string, readonly = false) {
                 .from(events)
                 .all()
                 .map((e) => e.payload)
-                .filter((e) => e.sourceId === scenario.sourceId);
+                .filter((e) => scenario.sourceIds.includes(e.sourceId));
               const result = evaluateScenario(scenario, input, now);
               tx.delete(cards).where(eq(cards.scenarioId, id)).run();
               for (const card of result.cards)

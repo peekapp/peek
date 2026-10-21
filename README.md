@@ -20,7 +20,7 @@ Implemented:
 - Editable Meetings/Deadlines scenarios with persistent configuration, source bindings, next-run times, retries, and execution status.
 - Relative event labels: time only today, Tomorrow/Завтра, nearby weekdays, then calendar dates.
 
-Account setup and authentication are **not implemented yet**. Docker Compose and local web commands expose the app only on the host loopback interface. Keep that binding until access control is implemented.
+Peek runs in a **trusted home network without accounts or pairing**. Anyone who can reach it can view screens and change settings. Docker Compose and `bun start` listen on all interfaces; `bun dev` remains loopback-only. Public deployment is outside this MVP’s scope.
 
 ## Docker Compose
 
@@ -32,7 +32,7 @@ docker compose up --build --wait
 
 Open [localhost:3000](http://localhost:3000). If a local development instance already uses port 3000, run `PEEK_PORT=3100 docker compose up --build --wait` and open port 3100 instead. Compose creates a separate named volume; it does not import your local `data/` directory or add demo events.
 
-The same image runs web, worker, and the one-off migration service. Web starts after migration completion and a healthy worker heartbeat. Both long-lived services restart automatically and run as the unprivileged `bun` user. Images use the pinned Bun 1.4.2 runtime. The database and its encryption key share the persistent `peek-data` volume. The Next.js server listens on all interfaces inside its container, while the host port is bound to `127.0.0.1`.
+The same image runs web, worker, and the one-off migration service. Web starts after migration completion and a healthy worker heartbeat. Both long-lived services restart automatically and run as the unprivileged `bun` user. Images use the pinned Bun 1.4.2 runtime. The database and its encryption key share the persistent `peek-data` volume. The Next.js server listens on all interfaces inside its container, and the host port defaults to `0.0.0.0`. Set `PEEK_BIND_ADDRESS=127.0.0.1` for host-only access or set it to a specific LAN interface address.
 
 ```sh
 docker compose ps
@@ -61,6 +61,12 @@ docker compose -p peek-restored up --wait
 ```
 
 Continue using `-p peek-restored` for that installation. Its volume is separate from the original. GitHub CI checks a clean container startup, persistence across recreation, and restoration into a new volume, including the ability to decrypt a saved connection.
+
+### Open from another device
+
+On the same home network, open `http://<server-lan-ip>:3000`, or a saved screen URL such as `http://<server-lan-ip>:3000/screens/default`. No account or pairing code is required. Use `PEEK_PORT` if you choose a different Compose port.
+
+Settings accepts loopback, private IPv4 addresses, IPv6 ULA addresses, and the server’s own interface addresses/hostname. For a custom DNS name, set `PEEK_ALLOWED_HOSTS=peek.home,peek.local` in Compose’s `.env` (hostnames only, no scheme or port). Names are matched exactly, without wildcards. Changing requests must include a matching browser Origin; forwarded Host headers do not override this check. These checks do not authenticate users or replace the trusted-network assumption.
 
 ## Requirements
 
@@ -140,7 +146,7 @@ tests/            Core and persistence tests
 
 The worker executes scenarios. Screen requests use read-only connections; Settings writes configuration in short transactions and queues execution for the worker. Web requests never seed, migrate, or run scenarios. `/api/screen` returns a full snapshot. `/api/screen/events` shares one polling loop per web process across connected screens, delivering full snapshots and server time every second. Revisions prevent older snapshots from replacing newer state. Subscriptions and timers are released on disconnect.
 
-Only one worker and one web process per installation are supported. The worker handles due scenarios, card expiry, and health. The local `/api/settings` endpoint accepts scenario and language changes only with a loopback Host and same-origin browser requests. This is not a replacement for authentication; remote access remains unsupported.
+Only one worker and one web process per installation are supported. The worker handles due scenarios, card expiry, and health. The `/api/settings` endpoint accepts trusted-LAN or configured Host names and requires same-origin browser requests for changes. Settings are shared by everyone who can reach the installation.
 
 ## Backup and restore
 
@@ -150,7 +156,7 @@ Stop **both** processes before copying the database directory, including any `-w
 
 `peekapp/peek` contains the application, worker, and shared packages. Future standalone extensions, the project website, or documentation hosting can live in separate repositories in the organization.
 
-Next: administrator setup and access control, screen pairing, and the extension SDK. The current registry contains two trusted local scenario handlers; a complete external extension SDK is not implemented yet.
+Implemented: multiple calendar connections per scenario, integration-owned image icons, and trusted home LAN access without accounts or screen pairing. Final acceptance and the day-long soak test remain; the full extension SDK is deferred. The current registry contains two trusted local scenario handlers; a complete external extension SDK is not implemented yet.
 
 The detailed [MVP plan](docs/mvp-plan.md), [design decisions](docs/design.md), and [future ideas](docs/future-ideas.md) are currently maintained in Russian. The application and this README default to English.
 
@@ -161,17 +167,17 @@ A distribution license has not been selected yet.
 Open **Settings** from the screen footer. **Scenarios** is the first and default tab, followed by **Connections**, **Profiles**, **Screens**, and **General** (language preferences). Open a card to edit that scenario on its own page. Each tab and detail page has its own URL. A single **Create scenario** button opens the available scenario definitions in a dialog. **Add connection** similarly selects an integration definition; iCalendar is currently the only supported integration.
 
 - Create multiple Meetings or Deadlines instances and give each a name.
-- Bind an instance to a connected ICS calendar or a saved demo source. Sources are shared; each scenario receives only its bound source events.
+- Select one or more ICS calendars or saved demo sources using the Sources checkboxes. Owners are shown beside calendars. Sources are shared; each scenario receives only events from its selected sources. At least one source is required.
 - Configure visibility, priority, and retention in minutes. Visibility must begin before priority escalation; the horizon is 90 days and retention is at most 24 hours.
 - Optionally filter titles by case-insensitive text matching. An empty filter includes every event from the selected source.
 - Save to schedule immediate re-evaluation; disable or delete to remove that scenario's cards. The main screen updates over SSE.
 - Inspect last and next execution times. A scenario with no future boundaries waits for a settings or source change. A failed handler retains its last cards until they expire, records an error, and retries after 60 seconds without stopping other scenarios.
 
-Each execution replaces only its own cards and commits the next-run timestamp in the same transaction. Stable IDs combine scenario ID and source event ID. Missed runs after a restart evaluate current state rather than replaying obsolete cards. Source replacement also schedules its consumers, including when events are cancelled or moved.
+Each execution replaces only its own cards and commits the next-run timestamp in the same transaction. Stable IDs combine scenario ID, source ID, and source event ID, so equal event IDs in different calendars remain distinct. Migration v9 converts single-source settings to a one-element list without resetting schedules. Removing a binding immediately removes its cards; other sources continue independently. Missed runs after a restart evaluate current state rather than replaying obsolete cards. Source replacement also schedules its consumers, including when events are cancelled or moved.
 
 Settings also switches the installation's screen language between English (default) and Russian. It applies to connected screens, persists across restarts, and never translates user content. Day comparisons use the display timezone, so a meeting just after midnight is tomorrow even if it is only minutes away.
 
-The build-time definitions in `packages/core/src/registry.ts` distinguish integration types, configured connections, scenario types, and scenario instances. ICS persistence is still handled by its specific storage adapter; the full extension SDK and generic settings renderer remain planned.
+The build-time definitions in `packages/core/src/registry.ts` distinguish integration types, configured connections, scenario types, and scenario instances. Each integration definition owns a local image asset (`icon.src`), so future integrations can use full-color service logos instead of a fixed icon library. iCalendar has its own SVG, displayed in connection selection, cards, and source checkboxes. ICS persistence is still handled by its specific storage adapter; the full extension SDK and generic settings renderer remain planned.
 
 ## Profiles and ownership
 
@@ -187,7 +193,7 @@ Migration preserves schedules and encrypted URLs, deduplicates legacy owners by 
 2. Paste the calendar provider's **HTTPS ICS subscription URL**. A public sharing-page URL will not work. Private subscription links containing a token are supported; HTTP Basic credentials in the URL are not.
 3. Give the connection a name, select an owner profile. The installation timezone applies to floating event times and date-only events. The default refresh interval is 60 seconds.
 4. Save. The worker schedules an initial download. Open the connection to inspect its status, last successful sync, and event count, or use **Sync now**.
-5. Open **Scenarios → Create scenario**, choose Meetings or Deadlines, and select that calendar as the source. The same connection can serve multiple scenarios without duplicate network downloads.
+5. Open **Scenarios → Create scenario**, choose Meetings or Deadlines, and select that calendar and any other desired calendars under Sources. The same connection can serve multiple scenarios without duplicate network downloads.
 
 Use **Check connection** on a connection card or its editor to request a worker sync and wait for its result. This verifies both fetching and parsing; successful checks also refresh the stored events. If the worker is unavailable or busy, the UI reports that no result arrived instead of claiming success.
 
@@ -237,8 +243,8 @@ data remain. Migration creates a Default screen matching the previous display.
 The root URL opens Default when present, otherwise the first saved screen, or Screens settings when none remain.
 
 Screen selection organizes what is displayed; it is not an access-control boundary.
-Authentication and device pairing are still planned, and the existing loopback-only
-deployment restriction remains in effect.
+The MVP supports a trusted home LAN without authentication or device pairing.
+Open the screen’s URL directly from a device on that network.
 
 ### Installation timezone
 

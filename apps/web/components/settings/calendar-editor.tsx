@@ -1,4 +1,5 @@
 "use client";
+import { IntegrationIcon } from "./integration-icon";
 import { DeleteButton } from "./delete-button";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -49,7 +50,9 @@ export function CalendarEditor({
         ← {t.backToCalendars}
       </Link>
       <div className="editor-title">
-        <span className="type-icon">▦</span>
+        <span className="type-icon">
+          <IntegrationIcon integrationId="ical" />
+        </span>
         <div>
           <h1>{calendar?.name || t.newCalendar}</h1>
           <p>iCalendar</p>
