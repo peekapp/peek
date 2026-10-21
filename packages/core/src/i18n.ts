@@ -42,6 +42,28 @@ export const en = {
   chooseIntegration: "Choose an integration",
   createScenario: "Create scenario",
   chooseScenario: "Choose a scenario",
+  scenarioLibrary: "Scenario library",
+  scenarioLibraryHint: "Choose what you want to see on your screen.",
+  builtinScenarios: "Built-in",
+  downloadedScenarios: "My scenarios",
+  communityScenarios: "Community",
+  favoriteScenarios: "Favorites",
+  favoriteScenariosHint: "Star a scenario to keep it close at hand.",
+  starterScenarios: "Start here",
+  starterScenariosHint: "Everyday essentials for your screen.",
+  scenarioCategories: "All categories",
+  scenarioCategoryCalendar: "Calendar and planning",
+  addScenarioFavorite: "Add to favorites",
+  removeScenarioFavorite: "Remove from favorites",
+  noDownloadedScenarios: "Your collection starts here",
+  downloadedScenariosHint:
+    "Scenarios you download from the community will appear here. You will be able to use or remove them.",
+  communityScenariosTitle: "More ideas for your screen",
+  communityScenariosHint:
+    "Discover scenarios made by the community and add them to your collection. The store is coming soon.",
+  comingSoon: "Coming soon",
+  browseBuiltinScenarios: "Explore built-in scenarios",
+  favoritesSaveError: "Favorites could not be saved in this browser.",
   meetingsDescription: "Show upcoming meetings and their countdowns.",
   deadlinesDescription: "Keep approaching deadlines in view.",
   icalDescription: "Calendar events from an HTTPS ICS subscription.",
@@ -120,7 +142,8 @@ export const en = {
     "Enter an HTTPS calendar subscription URL (port 443, no username or password).",
   syncError:
     "Could not sync. Check the subscription URL; saved events are kept.",
-  blockedAddress: "The calendar server resolves to a blocked IP address. Check DNS and VPN/proxy settings on the machine running Peek.",
+  blockedAddress:
+    "The calendar server resolves to a blocked IP address. Check DNS and VPN/proxy settings on the machine running Peek.",
   invalidFeed: "The response is not a supported ICS calendar.",
   keyError:
     "The encryption key is missing or invalid. Restore the key before continuing.",
@@ -237,6 +260,29 @@ export const ru: Record<keyof typeof en, string> = {
   chooseIntegration: "Выберите интеграцию",
   createScenario: "Создать сценарий",
   chooseScenario: "Выберите сценарий",
+  scenarioLibrary: "Библиотека сценариев",
+  scenarioLibraryHint: "Выберите, что будет появляться на вашем экране.",
+  builtinScenarios: "Встроенные",
+  downloadedScenarios: "Мои сценарии",
+  communityScenarios: "Сообщество",
+  favoriteScenarios: "Избранное",
+  favoriteScenariosHint:
+    "Отметьте сценарий звёздочкой, чтобы он всегда был под рукой.",
+  starterScenarios: "С чего начать",
+  starterScenariosHint: "Полезные сценарии на каждый день.",
+  scenarioCategories: "Все категории",
+  scenarioCategoryCalendar: "Календарь и планирование",
+  addScenarioFavorite: "Добавить в избранное",
+  removeScenarioFavorite: "Убрать из избранного",
+  noDownloadedScenarios: "Здесь будет ваша коллекция",
+  downloadedScenariosHint:
+    "Здесь появятся сценарии, скачанные из сообщества. Их можно будет использовать или удалить из коллекции.",
+  communityScenariosTitle: "Больше идей для вашего экрана",
+  communityScenariosHint:
+    "Здесь можно будет находить сценарии от сообщества и добавлять их в свою коллекцию. Магазин пока в разработке.",
+  comingSoon: "Скоро",
+  browseBuiltinScenarios: "Посмотреть встроенные",
+  favoritesSaveError: "Не удалось сохранить избранное в этом браузере.",
   meetingsDescription: "Предстоящие встречи и обратный отсчёт до начала.",
   deadlinesDescription: "Приближающиеся сроки всегда перед глазами.",
   icalDescription: "События календаря по HTTPS-ссылке ICS-подписки.",
@@ -314,7 +360,8 @@ export const ru: Record<keyof typeof en, string> = {
     "Введите HTTPS-ссылку на календарь (порт 443, без логина и пароля).",
   syncError:
     "Не удалось обновить. Проверьте ссылку подписки; сохранённые события не удалены.",
-  blockedAddress: "Адрес сервера календаря определяется через DNS как запрещённый IP-адрес. Проверьте DNS и настройки VPN/прокси на устройстве, где запущен Peek.",
+  blockedAddress:
+    "Адрес сервера календаря определяется через DNS как запрещённый IP-адрес. Проверьте DNS и настройки VPN/прокси на устройстве, где запущен Peek.",
   invalidFeed: "Ответ не является поддерживаемым ICS-календарём.",
   keyError:
     "Ключ шифрования отсутствует или неверен. Восстановите ключ для продолжения.",

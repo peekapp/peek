@@ -2,6 +2,7 @@
 import { Card, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import Link from "next/link";
 import { useState } from "react";
+import { ScenarioLibrary } from "./scenario-library";
 import { XIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -48,10 +49,14 @@ export function DefinitionPicker({
           + {kind === "scenario" ? t.createScenario : t.addConnection}
         </Button>
       </DialogTrigger>
-      <DialogContent showCloseButton={false} aria-describedby={undefined}>
+      <DialogContent
+        className={kind === "scenario" ? "scenario-library-dialog" : undefined}
+        showCloseButton={false}
+        aria-describedby={undefined}
+      >
         <DialogHeader>
           <DialogTitle>
-            {kind === "scenario" ? t.chooseScenario : t.chooseIntegration}
+            {kind === "scenario" ? t.scenarioLibrary : t.chooseIntegration}
           </DialogTitle>
         </DialogHeader>
         <DialogClose asChild>
@@ -65,25 +70,29 @@ export function DefinitionPicker({
             <XIcon />
           </Button>
         </DialogClose>
-        <div className="picker-options">
-          {choices.map((choice) => (
-            <Card variant="choice" asChild key={choice.id}>
-              <Link href={choice.href} onClick={() => setOpen(false)}>
-                <CardHeader>
-                  <CardTitle asChild>
-                    <strong>{choice.title}</strong>
-                  </CardTitle>
-                  <CardDescription asChild>
-                    <span>{choice.description}</span>
-                  </CardDescription>
-                </CardHeader>
-                <span className="picker-arrow" aria-hidden="true">
-                  ›
-                </span>
-              </Link>
-            </Card>
-          ))}
-        </div>
+        {kind === "scenario" ? (
+          <ScenarioLibrary locale={locale} onSelect={() => setOpen(false)} />
+        ) : (
+          <div className="picker-options">
+            {choices.map((choice) => (
+              <Card variant="choice" asChild key={choice.id}>
+                <Link href={choice.href} onClick={() => setOpen(false)}>
+                  <CardHeader>
+                    <CardTitle asChild>
+                      <strong>{choice.title}</strong>
+                    </CardTitle>
+                    <CardDescription asChild>
+                      <span>{choice.description}</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <span className="picker-arrow" aria-hidden="true">
+                    ›
+                  </span>
+                </Link>
+              </Card>
+            ))}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
