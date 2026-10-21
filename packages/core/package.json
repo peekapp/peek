@@ -6,6 +6,8 @@
     ".": "./src/cards.ts",
     "./demo": "./src/demo.ts",
     "./state": "./src/state.ts",
-    "./time": "./src/time.ts"
+    "./time": "./src/time.ts",
+    "./i18n": "./src/i18n.ts",
+    "./scenarios": "./src/scenarios.ts"
   }
 }

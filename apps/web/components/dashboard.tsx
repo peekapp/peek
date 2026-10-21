@@ -10,7 +10,9 @@ import {
 
 import { workerHealthy, type ScreenState } from "@peek/core/state";
 
-import { formatTime } from "@peek/core/time";
+import Link from "next/link";
+import { messages } from "@peek/core/i18n";
+import { relativeEventTime, formatTime } from "@peek/core/time";
 
 function Owner({ owner }: { owner: CardOwner }) {
   return (
@@ -72,18 +74,25 @@ export function Dashboard({
       window.removeEventListener("online", update);
     };
   }, []);
+  const locale = snapshot.locale ?? "en";
+  const t = messages(locale);
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
   const cards = snapshot.cards;
   const warning =
     connection === "offline"
-      ? "Connection lost. Reconnecting…"
+      ? t.offline
       : connection === "storage"
-        ? "Storage unavailable. Start the worker to initialize the database."
+        ? t.storage
         : connection === "connected" && !workerHealthy(snapshot.heartbeat, now)
-          ? "Background worker is not running. Updates are paused."
-          : null;
+          ? t.worker
+          : snapshot.scenarioErrors
+            ? t.scenarioWarning
+            : null;
 
   const [primary, ...secondary] = activeCards(cards, now);
-  const timer = primary ? countdown(primary, now) : null;
+  const timer = primary ? countdown(primary, now, locale) : null;
 
   return (
     <main className="dashboard">
@@ -93,8 +102,8 @@ export function Dashboard({
           <span>peek</span>
         </div>
         <div className="clock">
-          <span>{formatTime(now).date}</span>
-          <strong>{formatTime(now).clock}</strong>
+          <span>{formatTime(now, locale).date}</span>
+          <strong>{formatTime(now, locale).clock}</strong>
         </div>
       </header>
       {warning ? (
@@ -105,7 +114,7 @@ export function Dashboard({
       {primary && timer ? (
         <section
           className={`feed${secondary.length === 0 ? " feed--single" : ""}`}
-          aria-label="Current events"
+          aria-label={t.currentEvents}
         >
           <article className="hero" key={primary.id}>
             <div className="hero-meta">
@@ -114,7 +123,7 @@ export function Dashboard({
                 className="meeting-time"
                 dateTime={new Date(primary.targetAt).toISOString()}
               >
-                {formatTime(primary.targetAt).event}
+                {relativeEventTime(primary.targetAt, now, locale)}
               </time>
             </div>
             <div
@@ -143,12 +152,12 @@ export function Dashboard({
                       className="due"
                       dateTime={new Date(card.targetAt).toISOString()}
                     >
-                      {formatTime(card.targetAt).event}
+                      {relativeEventTime(card.targetAt, now, locale)}
                     </time>
                   </div>
                   <h2>{card.title}</h2>
                   <span className="remaining">
-                    {countdown(card, now).value}
+                    {countdown(card, now, locale).value}
                   </span>
                 </article>
               ))}
@@ -159,12 +168,15 @@ export function Dashboard({
         <section className="empty-state">
           <h1>
             {connection === "storage" || connection === "offline"
-              ? "Waiting for updates"
-              : "All clear"}
+              ? t.waitingUpdates
+              : t.allClear}
           </h1>
         </section>
       )}
-      <footer className="screen-footer">Demo events · Moscow</footer>
+      <footer className="screen-footer">
+        <Link href="/settings">{t.settings}</Link>
+        <span>{t.footer}</span>
+      </footer>
     </main>
   );
 }

@@ -305,3 +305,159 @@ body {
   border-radius: 8px;
   font-size: 13px;
 }
+
+.screen-footer {
+  justify-content: space-between;
+}
+a {
+  color: inherit;
+}
+.screen-footer a {
+  text-decoration: none;
+  padding: 10px 0;
+}
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #9db9f0;
+  outline-offset: 4px;
+}
+.settings-page {
+  max-width: 1080px;
+  margin: auto;
+  padding: 32px 40px 64px;
+}
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+.settings-header a {
+  text-decoration: none;
+}
+.settings-header label {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 14px;
+}
+.settings-page h1 {
+  margin: 48px 0 10px;
+  font-weight: 450;
+  font-size: 36px;
+}
+.settings-caption {
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+.scenario-form {
+  border-top: 1px solid var(--line);
+  padding: 28px 0;
+}
+.scenario-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.scenario-heading h2 {
+  font-size: 23px;
+  font-weight: 450;
+  margin: 0 0 24px;
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.settings-page input:not([type="checkbox"]),
+.settings-page select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #454d60;
+  background: #252c39;
+  color: var(--foreground);
+  border-radius: 7px;
+  font: inherit;
+  padding: 12px;
+}
+.settings-header select {
+  width: auto;
+}
+.settings-page button {
+  background: #c8d8f2;
+  color: #202a3c;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+.settings-page button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.settings-page .quiet-button {
+  background: transparent;
+  color: var(--muted);
+}
+.run-info {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 24px 0;
+}
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.form-actions [role="status"] {
+  max-width: 500px;
+  color: #c8d8f2;
+  line-height: 1.5;
+}
+.form-error {
+  color: #f0d3ae;
+}
+.add-scenarios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 24px;
+}
+@media (max-width: 700px) {
+  .settings-page {
+    padding: 24px 18px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .settings-header {
+    font-size: 13px;
+    gap: 12px;
+  }
+  .settings-header label {
+    gap: 8px;
+  }
+}

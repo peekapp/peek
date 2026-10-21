@@ -10,9 +10,13 @@ it("runs as a separate process and preserves cards across worker restart", async
   const dir = mkdtempSync(join(tmpdir(), "peek-worker-"));
   const path = join(dir, "state.sqlite");
   const store = openStore(path);
-  const expected = createDemoCards(Date.now());
+  const input = createDemoCards(Date.now());
+  const expected = input.map((card) => ({
+    ...card,
+    id: `${card.kind === "meeting" ? "demo-meetings" : "demo-deadlines"}:${card.id}`,
+  }));
   store.migrate();
-  store.seedDemo(expected);
+  store.seedDemo(input);
   let child: ReturnType<typeof Bun.spawn> | undefined;
   try {
     for (let restart = 0; restart < 2; restart++) {

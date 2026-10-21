@@ -1,3 +1,4 @@
+import { messages, type Locale } from "./i18n";
 export type Owner = { name: string; color: "blue" | "pink" | "green" };
 
 /** UTC milliseconds. Visibility is [visibleFrom, expiresAt). */
@@ -33,18 +34,20 @@ export function activeCards(cards: readonly Card[], now: number): Card[] {
 export function countdown(
   card: Card,
   now: number,
+  locale: Locale = "en",
 ): { label: string; value: string } {
+  const t = messages(locale);
   const remaining = card.targetAt - now;
   if (remaining <= 0) {
     return card.kind === "meeting"
-      ? { label: "Meeting", value: "Started" }
-      : { label: "Deadline", value: "Overdue" };
+      ? { label: t.meeting, value: t.started }
+      : { label: t.deadline, value: t.overdue };
   }
   if (card.kind === "meeting") {
     const seconds = Math.ceil(remaining / 1000);
     const minutes = Math.floor(seconds / 60);
     return {
-      label: "Starts in",
+      label: t.startsIn,
       value: `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`,
     };
   }
@@ -53,12 +56,12 @@ export function countdown(
   const hours = Math.floor((minutes % 1440) / 60);
   const rest = minutes % 60;
   return {
-    label: "Due in",
+    label: t.dueIn,
     value:
       days > 0
-        ? `${days}d ${hours}h`
+        ? `${days}${t.dayUnit} ${hours}${t.hourUnit}`
         : hours > 0
-          ? `${hours}h ${rest}m`
-          : `${rest}m`,
+          ? `${hours}${t.hourUnit} ${rest}${t.minuteUnit}`
+          : `${rest}${t.minuteUnit}`,
   };
 }
