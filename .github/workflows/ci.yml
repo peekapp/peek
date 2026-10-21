@@ -74,6 +74,7 @@ jobs:
       - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci --profile extensions up --build --wait --wait-timeout 180
       - run: bun scripts/extensions-smoke.ts
       - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci --profile extensions restart
+      - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci --profile extensions up --wait --wait-timeout 180
       - run: bun scripts/extensions-smoke.ts verify
       - if: failure()
         run: docker compose -p peek-extensions-ci --profile extensions logs --no-color
