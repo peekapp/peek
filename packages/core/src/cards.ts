@@ -1,9 +1,10 @@
 import { messages, type Locale } from "./i18n";
+import type { ProfileColor } from "./colors";
 export type Owner = {
   profileId?: string;
   system?: boolean;
   name: string;
-  color: "blue" | "pink" | "green";
+  color: ProfileColor;
 };
 
 /** UTC milliseconds. Visibility is [visibleFrom, expiresAt). */

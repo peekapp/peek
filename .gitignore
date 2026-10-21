@@ -13,3 +13,5 @@ data/
 *.sqlite-shm
 *.sqlite-wal
 secret.key
+
+peek-backup*.tar.gz

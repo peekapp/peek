@@ -11,6 +11,7 @@
     "./scenarios": "./src/scenarios.ts",
     "./calendars": "./src/calendars.ts",
     "./registry": "./src/registry.ts",
-    "./profiles": "./src/profiles.ts"
+    "./profiles": "./src/profiles.ts",
+    "./colors": "./src/colors.ts"
   }
 }

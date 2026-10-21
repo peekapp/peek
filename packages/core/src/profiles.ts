@@ -1,3 +1,4 @@
+import { isProfileColor } from "./colors";
 import type { Owner } from "./cards";
 import type { Locale } from "./i18n";
 export type Profile = {
@@ -18,7 +19,7 @@ export function validateProfile(
     typeof value.name !== "string" ||
     !value.name.trim() ||
     value.name.length > 100 ||
-    !["blue", "pink", "green"].includes(value.color)
+    !isProfileColor(value.color)
   )
     throw new Error("invalid-profile");
   return { name: value.name.trim(), color: value.color };

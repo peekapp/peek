@@ -1,0 +1,48 @@
+name: peek
+x-runtime: &runtime
+  image: peek:local
+  build: .
+  environment:
+    PEEK_DATABASE_PATH: /data/peek.sqlite
+  volumes:
+    - peek-data:/data
+  init: true
+  stop_grace_period: 45s
+
+services:
+  migrate:
+    <<: *runtime
+    command: ["bun", "run", "db:migrate"]
+    restart: "no"
+  worker:
+    <<: *runtime
+    command: ["bun", "run", "worker"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "bun", "scripts/healthcheck.ts", "worker"]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+  web:
+    <<: *runtime
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PEEK_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      worker:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bun", "scripts/healthcheck.ts", "web"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  peek-data:

@@ -142,3 +142,25 @@ it("migrates legacy connection owners once and binds their scenarios", async () 
     rmSync(dir, { recursive: true });
   }
 });
+
+it("supports every palette color through persistence and rejects unknown colors", async () => {
+  const { profileColors } = await import("../packages/core/src/colors");
+  const store = openStore(":memory:");
+  try {
+    store.migrate();
+    for (const color of Object.keys(profileColors)) {
+      store.saveProfile(`profile-${color}`, { name: color, color });
+      assert.equal(
+        store.listProfiles().find((p) => p.id === `profile-${color}`)?.color,
+        color,
+      );
+    }
+    for (const color of ["toString", "__proto__", "#fff", null])
+      assert.throws(
+        () => store.saveProfile("profile-invalid", { name: "Bad", color }),
+        /invalid-profile/,
+      );
+  } finally {
+    store.close();
+  }
+});

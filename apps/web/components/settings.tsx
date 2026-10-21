@@ -1,6 +1,7 @@
 "use client";
 import { profileName, type Profile } from "@peek/core/profiles";
 import { ProfileEditor } from "./settings/profile-editor";
+import { profileColors } from "@peek/core/colors";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
@@ -86,11 +87,6 @@ export function Settings({
               aria-current={tab === key ? "page" : undefined}
             >
               {t[key]}
-              {key === "scenarios" && data ? (
-                <span>{data.scenarios.length}</span>
-              ) : key === "connections" && data ? (
-                <span>{data.connections.length}</span>
-              ) : null}
             </Link>
           ),
         )}
@@ -162,7 +158,10 @@ export function Settings({
                     href={`/settings/profiles/${p.id}`}
                   >
                     <div className={`owner owner--${p.color}`}>
-                      <i aria-hidden="true" />
+                      <i
+                        aria-hidden="true"
+                        style={{ backgroundColor: profileColors[p.color] }}
+                      />
                       {p.system ? t.systemProfile : t.profiles}
                     </div>
                     <h3>{profileName(p, locale)}</h3>

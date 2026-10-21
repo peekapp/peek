@@ -1,4 +1,5 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import type { ProfileColor } from "@peek/core/colors";
 import type { Card } from "@peek/core";
 export const cards = sqliteTable("cards", {
   id: text("id").primaryKey(),
@@ -47,6 +48,6 @@ export const calendars = sqliteTable("calendars", {
 export const profiles = sqliteTable("profiles", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
-  color: text("color").$type<"blue" | "pink" | "green">().notNull(),
+  color: text("color").$type<ProfileColor>().notNull(),
   system: integer("system", { mode: "boolean" }).notNull(),
 });

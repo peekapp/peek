@@ -1,4 +1,5 @@
 "use client";
+import { profileColors, type ProfileColor } from "@peek/core/colors";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -65,22 +66,46 @@ export function ProfileEditor({
                   }}
                 />
               </label>
-              <label>
-                {t.ownerColor}
-                <select
-                  value={color}
-                  onChange={(e) => {
-                    setColor(e.target.value as Profile["color"]);
-                    setStatus("");
-                  }}
-                >
-                  {(["blue", "pink", "green"] as const).map((c) => (
-                    <option key={c} value={c}>
-                      {t[c]}
-                    </option>
+              <fieldset className="profile-color-field">
+                <legend>{t.ownerColor}</legend>
+                <div className="color-swatches">
+                  {(
+                    Object.entries(profileColors) as [ProfileColor, string][]
+                  ).map(([value, hex]) => (
+                    <label
+                      className="color-swatch"
+                      key={value}
+                      title={t[value]}
+                    >
+                      <input
+                        type="radio"
+                        name="profile-color"
+                        value={value}
+                        checked={color === value}
+                        aria-label={t[value]}
+                        onChange={() => {
+                          setColor(value);
+                          setStatus("");
+                        }}
+                      />
+                      <span style={{ backgroundColor: hex }} aria-hidden="true">
+                        {color === value ? "✓" : ""}
+                      </span>
+                    </label>
                   ))}
-                </select>
-              </label>
+                </div>
+              </fieldset>
+              <div className="profile-preview span-two" aria-label={t.preview}>
+                <span className="preview-label">{t.preview}</span>
+                <span className="owner">
+                  <i
+                    style={{ backgroundColor: profileColors[color] }}
+                    aria-hidden="true"
+                  />
+                  {name.trim() || t.profileName}
+                </span>
+                <span className="preview-color-name">{t[color]}</span>
+              </div>
             </div>
           </section>
           <div className="form-actions">

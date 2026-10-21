@@ -14,11 +14,53 @@ Implemented:
 - Distinct warnings for lost server connection, unavailable storage, and a stopped worker.
 - English and Russian interface dictionaries with a persistent language selection. Event titles and profile names support Unicode.
 - ICS calendar connections with encrypted subscription URLs, conditional requests, recurring event expansion, and failure recovery.
-- Tabbed Settings with scenario summaries and dedicated editors.
+- Tabbed Settings with scenario summaries, profiles, and dedicated editors.
+- Twelve profile colors with visual swatches and a live preview.
+- Docker Compose for web, worker, migrations, health checks, and persistent storage.
 - Editable Meetings/Deadlines scenarios with persistent configuration, source bindings, next-run times, retries, and execution status.
 - Relative event labels: time only today, Tomorrow/Завтра, nearby weekdays, then calendar dates.
 
-Account setup, authentication, and Docker delivery are **not implemented yet**. This is a local development milestone, not a deployable multi-user service. Both web commands bind to loopback; keep them local until access control is implemented.
+Account setup and authentication are **not implemented yet**. Docker Compose and local web commands expose the app only on the host loopback interface. Keep that binding until access control is implemented.
+
+## Docker Compose
+
+With Docker Engine and Docker Compose running, start from the repository root:
+
+```sh
+docker compose up --build --wait
+```
+
+Open [localhost:3000](http://localhost:3000). If a local development instance already uses port 3000, run `PEEK_PORT=3100 docker compose up --build --wait` and open port 3100 instead. Compose creates a separate named volume; it does not import your local `data/` directory or add demo events.
+
+The same image runs web, worker, and the one-off migration service. Web starts after migration completion and a healthy worker heartbeat. Both long-lived services restart automatically and run as the unprivileged `bun` user. Images use the pinned Bun 1.4.2 runtime. The database and its encryption key share the persistent `peek-data` volume. The Next.js server listens on all interfaces inside its container, while the host port is bound to `127.0.0.1`.
+
+```sh
+docker compose ps
+docker compose logs --tail=100 web worker
+docker compose down             # Stop; keep data
+```
+
+To update, back up first, stop the existing services, pull the code, and run `docker compose up --build --wait`. Do not run `docker compose down --volumes` unless you intend to delete the installation's database and encryption key. Docker does not automatically restart an unhealthy but still-running process; inspect health status and logs when a service is unhealthy.
+
+### Backup and restore
+
+Stop both services before copying SQLite and its encryption key. The archive contains the complete data volume, including any WAL/SHM files:
+
+```sh
+docker compose down
+docker compose run --rm --no-deps -T migrate tar -C /data -czf - . > peek-backup.tar.gz
+docker compose up --wait
+```
+
+Keep the archive private: it contains both encrypted subscription secrets and their decryption key. Restore into a new Compose project/volume, with the original installation stopped so the port is free:
+
+```sh
+docker compose down
+docker compose -p peek-restored run --rm --no-deps -T migrate tar -C /data -xzf - < peek-backup.tar.gz
+docker compose -p peek-restored up --wait
+```
+
+Continue using `-p peek-restored` for that installation. Its volume is separate from the original. GitHub CI checks a clean container startup, persistence across recreation, and restoration into a new volume, including the ability to decrypt a saved connection.
 
 ## Requirements
 
@@ -133,7 +175,7 @@ The build-time definitions in `packages/core/src/registry.ts` distinguish integr
 
 ## Profiles and ownership
 
-Create people in **Settings → Profiles**, with a name and color. The built-in **Shared** profile is localized and cannot be renamed or deleted. Profiles organize ownership, not accounts or access permissions.
+Create people in **Settings → Profiles**, with a name and one of twelve colors. The form shows selectable color swatches and a live name preview. The built-in **Shared** profile is localized and cannot be renamed or deleted. Profiles organize ownership, not accounts or access permissions.
 
 Select a profile in each connection and scenario. A scenario can explicitly use a connection owned by another profile; its output cards display the scenario owner. Renaming or recoloring a profile updates connected screens immediately without fetching the calendar again. Referenced profiles cannot be deleted; reassign or remove their connections and scenarios first.
 

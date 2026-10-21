@@ -6,7 +6,8 @@
     "dev": "bun --bun next dev --hostname 127.0.0.1",
     "build": "bun --bun next build",
     "start": "bun --bun next start --hostname 127.0.0.1",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "start:container": "bun --bun next start --hostname 0.0.0.0"
   },
   "dependencies": {
     "next": "16.4.2",

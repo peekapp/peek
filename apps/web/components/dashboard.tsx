@@ -10,6 +10,7 @@ import {
 
 import { workerHealthy, type ScreenState } from "@peek/core/state";
 
+import { profileColors } from "@peek/core/colors";
 import Link from "next/link";
 import { messages } from "@peek/core/i18n";
 import { relativeEventTime, formatTime } from "@peek/core/time";
@@ -23,7 +24,10 @@ function Owner({
 }) {
   return (
     <span className={`owner owner--${owner.color}`}>
-      <i aria-hidden="true" />
+      <i
+        aria-hidden="true"
+        style={{ backgroundColor: profileColors[owner.color] }}
+      />
       {owner.system ? sharedLabel : owner.name}
     </span>
   );

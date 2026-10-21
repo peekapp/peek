@@ -1,3 +1,4 @@
+import { isProfileColor } from "./colors";
 import type { Owner } from "./cards";
 export type CalendarConfig = {
   profileId?: string;
@@ -27,7 +28,7 @@ export function validateCalendar(input: unknown): CalendarConfig {
     typeof c.owner.name !== "string" ||
     !c.owner.name.trim() ||
     c.owner.name.length > 100 ||
-    !["blue", "pink", "green"].includes(c.owner.color) ||
+    !isProfileColor(c.owner.color) ||
     !Number.isInteger(c.intervalSeconds) ||
     c.intervalSeconds < 60 ||
     c.intervalSeconds > 86400 ||
