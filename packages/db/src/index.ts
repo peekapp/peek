@@ -1,3 +1,4 @@
+import { isTheme } from "@peek/core/themes";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { eq, lte, sql } from "drizzle-orm";
@@ -127,7 +128,7 @@ export function openStore(path: string, readonly = false) {
               user_version: number;
             }
           ).user_version;
-          if (version > 7)
+          if (version > 8)
             throw new Error("Database schema is newer than this application");
           if (version === 0)
             sqlite.exec(`
@@ -267,6 +268,18 @@ export function openStore(path: string, readonly = false) {
             db.delete(screens).run();
             for (const row of rows) db.insert(screens).values(row).run();
             sqlite.exec("PRAGMA user_version = 7;");
+          }
+          if (version < 8) {
+            sqlite.exec(`ALTER TABLE screen_state ADD COLUMN theme TEXT NOT NULL DEFAULT 'night';
+              PRAGMA user_version = 8;`);
+            // The former default follows the app; explicit light screens stay light.
+            for (const row of db.select().from(screens).all()) {
+              if (row.config.theme === "night")
+                db.update(screens)
+                  .set({ config: { ...row.config, theme: "inherit" } })
+                  .where(eq(screens.id, row.id))
+                  .run();
+            }
           }
         })
         .immediate();
@@ -418,6 +431,7 @@ export function openStore(path: string, readonly = false) {
         );
         return {
           screen,
+          theme: meta.theme,
           timeZone: installationTimeZone(),
           cards: tx
             .select()
@@ -766,6 +780,13 @@ export function openStore(path: string, readonly = false) {
         },
         { behavior: "immediate" },
       );
+    },
+    setTheme(theme: unknown) {
+      if (!isTheme(theme)) throw new Error("invalid");
+      db.update(state)
+        .set({ theme, revision: sql`${state.revision} + 1` })
+        .where(eq(state.id, 1))
+        .run();
     },
     setLocale(locale: Locale) {
       if (locale !== "en" && locale !== "ru") throw new Error("invalid");

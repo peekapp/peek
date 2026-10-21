@@ -1,8 +1,9 @@
+import { isTheme, type ScreenTheme } from "./themes";
 export type ScreenConfig = {
   name: string;
   allProfiles: boolean;
   profileIds: string[];
-  theme: "night" | "day";
+  theme: ScreenTheme;
   scale: number;
 };
 export type Screen = ScreenConfig & { id: string };
@@ -17,7 +18,7 @@ export function validateScreen(input: unknown): ScreenConfig {
     !Array.isArray(v.profileIds) ||
     v.profileIds.length > 100 ||
     v.profileIds.some((id) => typeof id !== "string") ||
-    !["night", "day"].includes(v.theme) ||
+    !(v.theme === "inherit" || isTheme(v.theme)) ||
     ![0.8, 1, 1.2, 1.4].includes(v.scale)
   )
     throw new Error("invalid-screen");

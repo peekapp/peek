@@ -122,7 +122,9 @@ it("migrates legacy connection owners once and binds their scenarios", async () 
         enabled: true,
       }),
     );
-    db.exec("DROP TABLE profiles; PRAGMA user_version = 4;");
+    db.exec(
+      "ALTER TABLE screen_state DROP COLUMN theme; DROP TABLE profiles; PRAGMA user_version = 4;",
+    );
     db.close();
     store = openStore(path);
     store.migrate();

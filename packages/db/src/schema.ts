@@ -11,6 +11,7 @@ export const state = sqliteTable("screen_state", {
   id: integer("id").primaryKey(),
   revision: integer("revision").notNull(),
   heartbeat: integer("heartbeat"),
+  theme: text("theme").$type<import("@peek/core/themes").Theme>().notNull(),
   locale: text("locale").$type<"en" | "ru">().notNull(),
   demoSeeded: integer("demo_seeded", { mode: "boolean" }).notNull(),
 });

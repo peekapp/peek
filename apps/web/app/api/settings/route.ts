@@ -38,6 +38,7 @@ export function GET(request: Request) {
             .listCalendars()
             .map((c) => ({ ...c, integrationId: "ical" })),
           locale: store.snapshot().locale,
+          theme: store.snapshot().theme,
         },
         { headers: { "Cache-Control": "no-store" } },
       );
@@ -113,7 +114,8 @@ export async function POST(request: Request) {
         if (!connection) throw new Error("invalid-calendar");
         checkedAt = connection.checkedAt;
         store.requestSync(body.id);
-      } else if (body.action === "locale") store.setLocale(body.locale);
+      } else if (body.action === "theme") store.setTheme(body.theme);
+      else if (body.action === "locale") store.setLocale(body.locale);
       else if (body.action === "save") {
         if (
           body.id !== undefined &&

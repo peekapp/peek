@@ -240,7 +240,9 @@ it("migrates legacy IDs without collisions or losing settings", async () => {
     store.migrate();
     store.close();
     const db = new Database(path);
-    db.exec("DELETE FROM screens; PRAGMA user_version = 6;");
+    db.exec(
+      "ALTER TABLE screen_state DROP COLUMN theme; DELETE FROM screens; PRAGMA user_version = 6;",
+    );
     for (const [id, name] of [
       ["screen-home", "Home"],
       ["screen-random-one", "Family TV"],

@@ -1,6 +1,7 @@
 "use client";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Empty, EmptyHeader, EmptyTitle } from "./ui/empty";
+import { resolveTheme } from "@peek/core/themes";
 import { Brand } from "./brand";
 
 import { useEffect, useRef, useState } from "react";
@@ -127,7 +128,8 @@ export function Dashboard({
 
   return (
     <main
-      className={`dashboard screen-theme-${screen?.theme ?? "night"}`}
+      className="dashboard"
+      data-theme={resolveTheme(screen?.theme, snapshot.theme)}
       style={{
         zoom: screen?.scale ?? 1,
         minHeight: `${100 / (screen?.scale ?? 1)}svh`,

@@ -8,6 +8,9 @@ import {
   CardFooter,
 } from "../ui/card";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "../ui/empty";
+import { resolveTheme } from "@peek/core/themes";
+import { useAppTheme } from "../theme";
+import { ThemeSelect } from "./theme-select";
 import { DeleteButton } from "./delete-button";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -40,9 +43,11 @@ function ScreenPreview({
   locale: Locale;
 }) {
   const t = messages(locale);
+  const { theme } = useAppTheme();
   return (
     <div
-      className={`screen-preview screen-theme-${config.theme}`}
+      className="screen-preview"
+      data-theme={resolveTheme(config.theme, theme)}
       aria-label={t.preview}
     >
       <div className="screen-preview-heading">
@@ -163,7 +168,7 @@ export function ScreenEditor({
         name: "",
         allProfiles: true,
         profileIds: [],
-        theme: "night",
+        theme: "inherit",
         scale: 1,
       },
   );
@@ -331,27 +336,17 @@ export function ScreenEditor({
               <h2>{t.appearance}</h2>
               <FieldGroup>
                 <Field>
-                  <FieldLabel>{t.screenTheme}</FieldLabel>
-                  <ToggleGroup
-                    type="single"
-                    variant="outline"
+                  <FieldLabel htmlFor="screen-theme">
+                    {t.screenTheme}
+                  </FieldLabel>
+                  <ThemeSelect
+                    id="screen-theme"
                     value={config.theme}
-                    onValueChange={(value) => {
-                      if (value === "night" || value === "day")
-                        update({ theme: value });
-                    }}
-                    aria-label={t.screenTheme}
-                  >
-                    {(["night", "day"] as const).map((theme) => (
-                      <ToggleGroupItem
-                        key={theme}
-                        value={theme}
-                        aria-label={t[theme]}
-                      >
-                        {t[theme]}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
+                    locale={locale}
+                    inherit
+                    onValueChange={(theme) => update({ theme })}
+                  />
+                  <FieldDescription>{t.screenThemeHint}</FieldDescription>
                 </Field>
                 <Field>
                   <FieldLabel>{t.screenScale}</FieldLabel>

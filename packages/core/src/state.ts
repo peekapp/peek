@@ -1,6 +1,7 @@
 import type { Card } from "./cards";
 export type ScreenState = {
   timeZone?: string;
+  theme?: import("./themes").Theme;
   screen?: import("./screens").Screen;
   cards: Card[];
   revision: number;

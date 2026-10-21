@@ -7,37 +7,37 @@
 @theme static inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: #1e2626;
+  --color-card: var(--ui-card);
   --color-card-foreground: var(--foreground);
-  --color-popover: #1e2626;
+  --color-popover: var(--ui-popover);
   --color-popover-foreground: var(--foreground);
-  --color-primary: #e8e5de;
-  --color-primary-foreground: #253130;
-  --color-muted: #252d2d;
-  --color-muted-foreground: #a9b2b1;
-  --color-accent: #303c3c;
-  --color-accent-foreground: #f1eee7;
-  --color-border: rgb(208 222 218 / 13%);
-  --color-input: rgb(208 222 218 / 20%);
-  --color-ring: #9bafad;
-  --color-destructive: #dc4949;
-  --color-success: #243d35;
-  --color-success-foreground: #a5d9b5;
-  --color-status-error: #472c33;
-  --color-status-error-foreground: #f2afb5;
-  --color-warning: #4c3a29;
-  --color-warning-foreground: #f0d3ae;
-  --color-settings-card: #1e2626;
-  --color-settings-card-hover: #273232;
-  --color-settings-border: #384646;
-  --color-settings-border-hover: #9bafad;
-  --color-detail: #c3cdcb;
-  --color-navigation-active: #fff9ef;
-  --color-navigation-indicator: #c5d6d2;
-  --color-choice-border: #384646;
-  --color-choice-foreground: #b2bfbc;
-  --color-secondary: #293434;
-  --color-secondary-foreground: #f1eee7;
+  --color-primary: var(--ui-primary);
+  --color-primary-foreground: var(--ui-primary-foreground);
+  --color-muted: var(--ui-muted);
+  --color-muted-foreground: var(--ui-muted-foreground);
+  --color-accent: var(--ui-accent);
+  --color-accent-foreground: var(--ui-accent-foreground);
+  --color-border: var(--ui-border);
+  --color-input: var(--ui-input);
+  --color-ring: var(--ui-ring);
+  --color-destructive: var(--ui-destructive);
+  --color-success: var(--ui-success);
+  --color-success-foreground: var(--ui-success-foreground);
+  --color-status-error: var(--ui-status-error);
+  --color-status-error-foreground: var(--ui-status-error-foreground);
+  --color-warning: var(--ui-warning);
+  --color-warning-foreground: var(--ui-warning-foreground);
+  --color-settings-card: var(--ui-settings-card);
+  --color-settings-card-hover: var(--ui-settings-card-hover);
+  --color-settings-border: var(--ui-settings-border);
+  --color-settings-border-hover: var(--ui-settings-border-hover);
+  --color-detail: var(--ui-detail);
+  --color-navigation-active: var(--ui-navigation-active);
+  --color-navigation-indicator: var(--ui-navigation-indicator);
+  --color-choice-border: var(--ui-choice-border);
+  --color-choice-foreground: var(--ui-choice-foreground);
+  --color-secondary: var(--ui-secondary);
+  --color-secondary-foreground: var(--ui-secondary-foreground);
   --radius-md: 7px;
 }
 @layer base {
@@ -86,13 +86,445 @@
     margin: 0;
   }
 }
-:root {
+
+/* Resolve semantic aliases at each boundary, including nested screen previews. */
+:root,
+[data-theme] {
+  --color-card: var(--ui-card);
+  --color-popover: var(--ui-popover);
+  --color-primary: var(--ui-primary);
+  --color-primary-foreground: var(--ui-primary-foreground);
+  --color-muted: var(--ui-muted);
+  --color-muted-foreground: var(--ui-muted-foreground);
+  --color-accent: var(--ui-accent);
+  --color-accent-foreground: var(--ui-accent-foreground);
+  --color-border: var(--ui-border);
+  --color-input: var(--ui-input);
+  --color-ring: var(--ui-ring);
+  --color-destructive: var(--ui-destructive);
+  --color-success: var(--ui-success);
+  --color-success-foreground: var(--ui-success-foreground);
+  --color-status-error: var(--ui-status-error);
+  --color-status-error-foreground: var(--ui-status-error-foreground);
+  --color-warning: var(--ui-warning);
+  --color-warning-foreground: var(--ui-warning-foreground);
+  --color-settings-card: var(--ui-settings-card);
+  --color-settings-card-hover: var(--ui-settings-card-hover);
+  --color-settings-border: var(--ui-settings-border);
+  --color-settings-border-hover: var(--ui-settings-border-hover);
+  --color-detail: var(--ui-detail);
+  --color-navigation-active: var(--ui-navigation-active);
+  --color-navigation-indicator: var(--ui-navigation-indicator);
+  --color-choice-border: var(--ui-choice-border);
+  --color-choice-foreground: var(--ui-choice-foreground);
+  --color-secondary: var(--ui-secondary);
+  --color-secondary-foreground: var(--ui-secondary-foreground);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-foreground: var(--foreground);
+  --color-popover-foreground: var(--foreground);
+}
+/* Shared palettes apply to the app, individual screens, and previews. */
+:root,
+[data-theme="night"] {
   color-scheme: dark;
+  --ui-card: #1e2626;
+  --ui-popover: #1e2626;
+  --ui-primary: #e8e5de;
+  --ui-primary-foreground: #253130;
+  --ui-muted: #252d2d;
+  --ui-muted-foreground: #a9b2b1;
+  --ui-accent: #303c3c;
+  --ui-accent-foreground: #f1eee7;
+  --ui-border: rgb(208 222 218 / 13%);
+  --ui-input: rgb(208 222 218 / 20%);
+  --ui-ring: #9bafad;
+  --ui-destructive: #dc4949;
+  --ui-success: #243d35;
+  --ui-success-foreground: #a5d9b5;
+  --ui-status-error: #472c33;
+  --ui-status-error-foreground: #f2afb5;
+  --ui-warning: #4c3a29;
+  --ui-warning-foreground: #f0d3ae;
+  --ui-settings-card: #1e2626;
+  --ui-settings-card-hover: #273232;
+  --ui-settings-border: #384646;
+  --ui-settings-border-hover: #9bafad;
+  --ui-detail: #c3cdcb;
+  --ui-navigation-active: #fff9ef;
+  --ui-navigation-indicator: #c5d6d2;
+  --ui-choice-border: #384646;
+  --ui-choice-foreground: #b2bfbc;
+  --ui-secondary: #293434;
+  --ui-secondary-foreground: #f1eee7;
   --background: #151b1b;
   --foreground: #f1eee7;
   --muted: #a9b2b1;
   --surface: #293434;
   --line: #384646;
+  --timer: #e5e8e5;
+  --due: #d4b393;
+  --brand-filter: invert(1);
+}
+[data-theme="day"] {
+  color-scheme: light;
+  --ui-card: #ffffff;
+  --ui-popover: #ffffff;
+  --ui-primary: #2c4943;
+  --ui-primary-foreground: #ffffff;
+  --ui-muted: #e7edeb;
+  --ui-muted-foreground: #5d6c6a;
+  --ui-accent: #dce6e2;
+  --ui-accent-foreground: #2c3938;
+  --ui-border: #bbc9c5;
+  --ui-input: #bbc9c5;
+  --ui-ring: #52796b;
+  --ui-destructive: #b82e38;
+  --ui-success: #deeee3;
+  --ui-success-foreground: #235c39;
+  --ui-status-error: #f7e1e3;
+  --ui-status-error-foreground: #992e3b;
+  --ui-warning: #f4e8d6;
+  --ui-warning-foreground: #774811;
+  --ui-settings-card: #ffffff;
+  --ui-settings-card-hover: #dce6e2;
+  --ui-settings-border: #bbc9c5;
+  --ui-settings-border-hover: #52796b;
+  --ui-detail: #425b54;
+  --ui-navigation-active: #2c3938;
+  --ui-navigation-indicator: #52796b;
+  --ui-choice-border: #bbc9c5;
+  --ui-choice-foreground: #425b54;
+  --ui-secondary: #e7edeb;
+  --ui-secondary-foreground: #2c3938;
+  --background: #f7f5ed;
+  --foreground: #2c3938;
+  --muted: #5d6c6a;
+  --surface: #e7edeb;
+  --line: #bbc9c5;
+  --timer: #2c3938;
+  --due: #83501f;
+  --brand-filter: none;
+}
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --ui-card: #192740;
+  --ui-popover: #192740;
+  --ui-primary: #d5e4ff;
+  --ui-primary-foreground: #162641;
+  --ui-muted: #22334f;
+  --ui-muted-foreground: #a4b4cf;
+  --ui-accent: #2c4161;
+  --ui-accent-foreground: #e7eef9;
+  --ui-border: #3a4e6e;
+  --ui-input: #3a4e6e;
+  --ui-ring: #93b9f3;
+  --ui-destructive: #dc4949;
+  --ui-success: #243d35;
+  --ui-success-foreground: #a5d9b5;
+  --ui-status-error: #472c33;
+  --ui-status-error-foreground: #f2afb5;
+  --ui-warning: #4c3a29;
+  --ui-warning-foreground: #f0d3ae;
+  --ui-settings-card: #192740;
+  --ui-settings-card-hover: #2c4161;
+  --ui-settings-border: #3a4e6e;
+  --ui-settings-border-hover: #93b9f3;
+  --ui-detail: #c2d0e6;
+  --ui-navigation-active: #e7eef9;
+  --ui-navigation-indicator: #93b9f3;
+  --ui-choice-border: #3a4e6e;
+  --ui-choice-foreground: #c2d0e6;
+  --ui-secondary: #22334f;
+  --ui-secondary-foreground: #e7eef9;
+  --background: #101a2c;
+  --foreground: #e7eef9;
+  --muted: #a4b4cf;
+  --surface: #22334f;
+  --line: #3a4e6e;
+  --timer: #e7eef9;
+  --due: #e3bd8b;
+  --brand-filter: invert(1);
+}
+[data-theme="graphite"] {
+  color-scheme: dark;
+  --ui-card: #26262c;
+  --ui-popover: #26262c;
+  --ui-primary: #e6e2f0;
+  --ui-primary-foreground: #292630;
+  --ui-muted: #303036;
+  --ui-muted-foreground: #aeacb8;
+  --ui-accent: #3a3943;
+  --ui-accent-foreground: #f0eff4;
+  --ui-border: #46454f;
+  --ui-input: #46454f;
+  --ui-ring: #b8aacd;
+  --ui-destructive: #dc4949;
+  --ui-success: #243d35;
+  --ui-success-foreground: #a5d9b5;
+  --ui-status-error: #472c33;
+  --ui-status-error-foreground: #f2afb5;
+  --ui-warning: #4c3a29;
+  --ui-warning-foreground: #f0d3ae;
+  --ui-settings-card: #26262c;
+  --ui-settings-card-hover: #3a3943;
+  --ui-settings-border: #46454f;
+  --ui-settings-border-hover: #b8aacd;
+  --ui-detail: #cdcad6;
+  --ui-navigation-active: #f0eff4;
+  --ui-navigation-indicator: #b8aacd;
+  --ui-choice-border: #46454f;
+  --ui-choice-foreground: #cdcad6;
+  --ui-secondary: #303036;
+  --ui-secondary-foreground: #f0eff4;
+  --background: #1c1c20;
+  --foreground: #f0eff4;
+  --muted: #aeacb8;
+  --surface: #303036;
+  --line: #46454f;
+  --timer: #f0eff4;
+  --due: #dcc19e;
+  --brand-filter: invert(1);
+}
+[data-theme="forest"] {
+  color-scheme: dark;
+  --ui-card: #1d3023;
+  --ui-popover: #1d3023;
+  --ui-primary: #c9e6b1;
+  --ui-primary-foreground: #203321;
+  --ui-muted: #293e2e;
+  --ui-muted-foreground: #a8bfaa;
+  --ui-accent: #354d39;
+  --ui-accent-foreground: #edf3e7;
+  --ui-border: #455e49;
+  --ui-input: #455e49;
+  --ui-ring: #a4cd8c;
+  --ui-destructive: #dc4949;
+  --ui-success: #243d35;
+  --ui-success-foreground: #a5d9b5;
+  --ui-status-error: #472c33;
+  --ui-status-error-foreground: #f2afb5;
+  --ui-warning: #4c3a29;
+  --ui-warning-foreground: #f0d3ae;
+  --ui-settings-card: #1d3023;
+  --ui-settings-card-hover: #354d39;
+  --ui-settings-border: #455e49;
+  --ui-settings-border-hover: #a4cd8c;
+  --ui-detail: #c5d5bf;
+  --ui-navigation-active: #edf3e7;
+  --ui-navigation-indicator: #a4cd8c;
+  --ui-choice-border: #455e49;
+  --ui-choice-foreground: #c5d5bf;
+  --ui-secondary: #293e2e;
+  --ui-secondary-foreground: #edf3e7;
+  --background: #14231b;
+  --foreground: #edf3e7;
+  --muted: #a8bfaa;
+  --surface: #293e2e;
+  --line: #455e49;
+  --timer: #edf3e7;
+  --due: #dfc18e;
+  --brand-filter: invert(1);
+}
+[data-theme="ocean"] {
+  color-scheme: dark;
+  --ui-card: #18323a;
+  --ui-popover: #18323a;
+  --ui-primary: #b6e6e5;
+  --ui-primary-foreground: #18373c;
+  --ui-muted: #203e45;
+  --ui-muted-foreground: #9dbfc1;
+  --ui-accent: #2c4c55;
+  --ui-accent-foreground: #e4f4f3;
+  --ui-border: #3a5c64;
+  --ui-input: #3a5c64;
+  --ui-ring: #7fcacc;
+  --ui-destructive: #dc4949;
+  --ui-success: #243d35;
+  --ui-success-foreground: #a5d9b5;
+  --ui-status-error: #472c33;
+  --ui-status-error-foreground: #f2afb5;
+  --ui-warning: #4c3a29;
+  --ui-warning-foreground: #f0d3ae;
+  --ui-settings-card: #18323a;
+  --ui-settings-card-hover: #2c4c55;
+  --ui-settings-border: #3a5c64;
+  --ui-settings-border-hover: #7fcacc;
+  --ui-detail: #bed6d6;
+  --ui-navigation-active: #e4f4f3;
+  --ui-navigation-indicator: #7fcacc;
+  --ui-choice-border: #3a5c64;
+  --ui-choice-foreground: #bed6d6;
+  --ui-secondary: #203e45;
+  --ui-secondary-foreground: #e4f4f3;
+  --background: #10252a;
+  --foreground: #e4f4f3;
+  --muted: #9dbfc1;
+  --surface: #203e45;
+  --line: #3a5c64;
+  --timer: #e4f4f3;
+  --due: #e7c699;
+  --brand-filter: invert(1);
+}
+[data-theme="plum"] {
+  color-scheme: dark;
+  --ui-card: #352336;
+  --ui-popover: #352336;
+  --ui-primary: #ecd0e5;
+  --ui-primary-foreground: #392339;
+  --ui-muted: #422d43;
+  --ui-muted-foreground: #c2a9bf;
+  --ui-accent: #503753;
+  --ui-accent-foreground: #f6eaf3;
+  --ui-border: #614760;
+  --ui-input: #614760;
+  --ui-ring: #d7a4c9;
+  --ui-destructive: #dc4949;
+  --ui-success: #243d35;
+  --ui-success-foreground: #a5d9b5;
+  --ui-status-error: #472c33;
+  --ui-status-error-foreground: #f2afb5;
+  --ui-warning: #4c3a29;
+  --ui-warning-foreground: #f0d3ae;
+  --ui-settings-card: #352336;
+  --ui-settings-card-hover: #503753;
+  --ui-settings-border: #614760;
+  --ui-settings-border-hover: #d7a4c9;
+  --ui-detail: #ddc4d7;
+  --ui-navigation-active: #f6eaf3;
+  --ui-navigation-indicator: #d7a4c9;
+  --ui-choice-border: #614760;
+  --ui-choice-foreground: #ddc4d7;
+  --ui-secondary: #422d43;
+  --ui-secondary-foreground: #f6eaf3;
+  --background: #281a29;
+  --foreground: #f6eaf3;
+  --muted: #c2a9bf;
+  --surface: #422d43;
+  --line: #614760;
+  --timer: #f6eaf3;
+  --due: #e7bc99;
+  --brand-filter: invert(1);
+}
+[data-theme="sand"] {
+  color-scheme: light;
+  --ui-card: #fffaf0;
+  --ui-popover: #fffaf0;
+  --ui-primary: #695335;
+  --ui-primary-foreground: #fffaf0;
+  --ui-muted: #e9dfc9;
+  --ui-muted-foreground: #71644e;
+  --ui-accent: #e1d3b7;
+  --ui-accent-foreground: #41392b;
+  --ui-border: #c6b89b;
+  --ui-input: #c6b89b;
+  --ui-ring: #907345;
+  --ui-destructive: #b82e38;
+  --ui-success: #deeee3;
+  --ui-success-foreground: #235c39;
+  --ui-status-error: #f7e1e3;
+  --ui-status-error-foreground: #992e3b;
+  --ui-warning: #f4e8d6;
+  --ui-warning-foreground: #774811;
+  --ui-settings-card: #fffaf0;
+  --ui-settings-card-hover: #e1d3b7;
+  --ui-settings-border: #c6b89b;
+  --ui-settings-border-hover: #907345;
+  --ui-detail: #62533d;
+  --ui-navigation-active: #41392b;
+  --ui-navigation-indicator: #907345;
+  --ui-choice-border: #c6b89b;
+  --ui-choice-foreground: #62533d;
+  --ui-secondary: #e9dfc9;
+  --ui-secondary-foreground: #41392b;
+  --background: #f5efdf;
+  --foreground: #41392b;
+  --muted: #71644e;
+  --surface: #e9dfc9;
+  --line: #c6b89b;
+  --timer: #41392b;
+  --due: #87501d;
+  --brand-filter: none;
+}
+[data-theme="lavender"] {
+  color-scheme: light;
+  --ui-card: #fdfaff;
+  --ui-popover: #fdfaff;
+  --ui-primary: #644b80;
+  --ui-primary-foreground: #ffffff;
+  --ui-muted: #e6dff0;
+  --ui-muted-foreground: #71627f;
+  --ui-accent: #ddd2eb;
+  --ui-accent-foreground: #393047;
+  --ui-border: #c8bbd8;
+  --ui-input: #c8bbd8;
+  --ui-ring: #8868a5;
+  --ui-destructive: #b82e38;
+  --ui-success: #deeee3;
+  --ui-success-foreground: #235c39;
+  --ui-status-error: #f7e1e3;
+  --ui-status-error-foreground: #992e3b;
+  --ui-warning: #f4e8d6;
+  --ui-warning-foreground: #774811;
+  --ui-settings-card: #fdfaff;
+  --ui-settings-card-hover: #ddd2eb;
+  --ui-settings-border: #c8bbd8;
+  --ui-settings-border-hover: #8868a5;
+  --ui-detail: #64516f;
+  --ui-navigation-active: #393047;
+  --ui-navigation-indicator: #8868a5;
+  --ui-choice-border: #c8bbd8;
+  --ui-choice-foreground: #64516f;
+  --ui-secondary: #e6dff0;
+  --ui-secondary-foreground: #393047;
+  --background: #f3eff9;
+  --foreground: #393047;
+  --muted: #71627f;
+  --surface: #e6dff0;
+  --line: #c8bbd8;
+  --timer: #393047;
+  --due: #8a4b24;
+  --brand-filter: none;
+}
+[data-theme="ice"] {
+  color-scheme: light;
+  --ui-card: #f9fdff;
+  --ui-popover: #f9fdff;
+  --ui-primary: #325e79;
+  --ui-primary-foreground: #ffffff;
+  --ui-muted: #dce9f0;
+  --ui-muted-foreground: #536e7e;
+  --ui-accent: #cedfe9;
+  --ui-accent-foreground: #263d4b;
+  --ui-border: #b1c8d5;
+  --ui-input: #b1c8d5;
+  --ui-ring: #5487a3;
+  --ui-destructive: #b82e38;
+  --ui-success: #deeee3;
+  --ui-success-foreground: #235c39;
+  --ui-status-error: #f7e1e3;
+  --ui-status-error-foreground: #992e3b;
+  --ui-warning: #f4e8d6;
+  --ui-warning-foreground: #774811;
+  --ui-settings-card: #f9fdff;
+  --ui-settings-card-hover: #cedfe9;
+  --ui-settings-border: #b1c8d5;
+  --ui-settings-border-hover: #5487a3;
+  --ui-detail: #425e70;
+  --ui-navigation-active: #263d4b;
+  --ui-navigation-indicator: #5487a3;
+  --ui-choice-border: #b1c8d5;
+  --ui-choice-foreground: #425e70;
+  --ui-secondary: #dce9f0;
+  --ui-secondary-foreground: #263d4b;
+  --background: #edf5f9;
+  --foreground: #263d4b;
+  --muted: #536e7e;
+  --surface: #dce9f0;
+  --line: #b1c8d5;
+  --timer: #263d4b;
+  --due: #83501f;
+  --brand-filter: none;
 }
 * {
   box-sizing: border-box;
@@ -135,7 +567,7 @@ body {
   flex-shrink: 0;
 }
 .brand img {
-  filter: invert(1);
+  filter: var(--brand-filter);
 }
 .brand span {
   font-size: 24px;
@@ -200,7 +632,7 @@ body {
   background: #95b89e;
 }
 .meeting-time {
-  color: #a9b2b1;
+  color: var(--muted);
   font-size: 12px;
 }
 .timer {
@@ -210,7 +642,7 @@ body {
   font-size: 13px;
   display: block;
   margin: 28px 0 8px;
-  color: #a9b2b1;
+  color: var(--muted);
 }
 .timer strong {
   font-size: clamp(90px, 13.6vw, 220px);
@@ -218,7 +650,7 @@ body {
   line-height: 1;
   letter-spacing: -0.07em;
   font-variant-numeric: tabular-nums;
-  color: #e5e8e5;
+  color: var(--timer);
 }
 .timer strong span {
   opacity: 0.4;
@@ -237,7 +669,7 @@ body {
 }
 .source {
   font-size: 12px;
-  color: #a9b2b1;
+  color: var(--muted);
 }
 .secondary {
   min-width: 0;
@@ -272,10 +704,10 @@ body {
 }
 .remaining {
   font-size: 15px;
-  color: #d4b393;
+  color: var(--due);
 }
 .event--today .due {
-  color: #d4b393;
+  color: var(--due);
 }
 .screen-footer {
   height: 50px;
@@ -418,7 +850,7 @@ body {
   padding: 10px 0;
 }
 :is(a, button, input, select):not([data-slot]):focus-visible {
-  outline: 2px solid #c5d6d2;
+  outline: 2px solid var(--ui-navigation-indicator);
   outline-offset: 4px;
 }
 .settings-page {
@@ -479,8 +911,8 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 9px;
-  background: #303c3c;
-  color: #d1dcd8;
+  background: var(--ui-accent);
+  color: var(--ui-detail);
   display: inline-grid;
   place-items: center;
   font-size: 24px;
@@ -592,7 +1024,7 @@ body {
   text-decoration: none;
 }
 .form-feedback {
-  color: #e8e5de;
+  color: var(--ui-primary);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -644,10 +1076,10 @@ body {
   text-decoration: none;
 }
 .picker-option:hover {
-  background: #293434;
+  background: var(--surface);
 }
 .picker-options strong {
-  color: #f1eee7;
+  color: var(--foreground);
   font-size: 18px;
 }
 .picker-options span {
@@ -738,15 +1170,15 @@ body {
   height: 32px;
   margin: 4px;
   border-radius: 50%;
-  color: #151b1b;
+  color: var(--background);
   font-size: 20px;
 }
 .color-swatch:has([data-state="checked"]) > span {
-  outline: 1px solid #f1eee7;
+  outline: 1px solid var(--foreground);
   outline-offset: 3px;
 }
 .color-swatch:has(.color-swatch-control:focus-visible) > span {
-  outline: 3px solid #f1eee7;
+  outline: 3px solid var(--foreground);
   outline-offset: 3px;
 }
 .profile-preview {
@@ -757,7 +1189,7 @@ body {
   padding: 24px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #151b1b;
+  background: var(--background);
 }
 .preview-label,
 .preview-color-name {
@@ -772,38 +1204,9 @@ body {
   margin-left: auto;
 }
 
-/* Cool, subdued green surfaces with ivory accents drawn from the logo. */
-.screen-theme-night {
-  color-scheme: dark;
-  --background: #151b1b;
-  --foreground: #f1eee7;
-  --muted: #a9b2b1;
-  --surface: #293434;
-  --line: #384646;
-}
-.screen-theme-day {
-  color-scheme: light;
-  --background: #f7f5ed;
-  --foreground: #2c3938;
-  --muted: #5d6c6a;
-  --surface: #e7edeb;
-  --line: #cbd5d2;
-}
 .dashboard {
   background: var(--background);
   color: var(--foreground);
-}
-.screen-theme-day .brand img {
-  filter: none;
-}
-.screen-theme-day .timer strong {
-  color: #3c5350;
-}
-.screen-theme-day :is(.meeting-time, .timer > span, .source) {
-  color: var(--muted);
-}
-.screen-theme-day :is(.remaining, .event--today .due) {
-  color: #83501f;
 }
 .screen-name {
   display: block;
@@ -986,7 +1389,7 @@ body {
 }
 
 .settings-page :is(input, select, button, a):not([data-slot]):focus-visible {
-  outline: 2px solid #c5d6d2;
+  outline: 2px solid var(--ui-navigation-indicator);
   outline-offset: 3px;
 }
 .settings-page [data-slot="field-description"] small {
@@ -1028,7 +1431,7 @@ body {
   color: var(--color-navigation-active);
 }
 .navigation-tab > span {
-  background: #293434;
+  background: var(--surface);
   border-radius: 5px;
   font-size: 11px;
   padding: 3px 6px;
@@ -1085,7 +1488,7 @@ body {
 }
 .card-bottom > span:last-child {
   font-size: 22px;
-  color: #c3cdcb;
+  color: var(--ui-detail);
 }
 .connection-card h3 a {
   color: inherit;
@@ -1108,7 +1511,7 @@ body {
   z-index: 1;
 }
 .connection-card:focus-within {
-  border-color: #9bafad;
+  border-color: var(--ui-ring);
 }
 .screen-tile {
   min-width: 0;
@@ -1508,4 +1911,31 @@ body {
   .scenario-library-arrow {
     display: none;
   }
+}
+
+.theme-preference-control {
+  width: 230px;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+.theme-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.theme-swatch {
+  display: inline-flex;
+  align-items: center;
+  width: 24px;
+  height: 18px;
+  padding: 3px;
+  border-radius: 4px;
+  background: var(--background);
+  border: 1px solid var(--line);
+}
+.theme-swatch i {
+  width: 9px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--foreground);
 }

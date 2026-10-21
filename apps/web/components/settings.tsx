@@ -17,6 +17,9 @@ import { Badge } from "./ui/badge";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "./ui/empty";
 import { Button } from "./ui/button";
+import { useAppTheme } from "./theme";
+import { ThemeSelect } from "./settings/theme-select";
+import type { Theme } from "@peek/core/themes";
 import { SettingsSelect } from "./settings/select";
 import { SelectItem } from "./ui/select";
 import { Brand } from "./brand";
@@ -38,6 +41,7 @@ import { ConnectionCheck } from "./settings/connection-check";
 import { integrationDefinitions, type Connection } from "@peek/core/registry";
 import { mutate } from "./settings/api";
 type Data = {
+  theme: Theme;
   screens: Screen[];
   profiles: Profile[];
   scenarios: Scenario[];
@@ -54,6 +58,9 @@ export function Settings({
   const [locale, setLocale] = useState<Locale>(initialLocale),
     [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(false);
+  const { theme, setTheme } = useAppTheme();
+  const [themeBusy, setThemeBusy] = useState(false);
+  const [themeStatus, setThemeStatus] = useState<"saved" | "error" | "">("");
   const timeZone = useInstallationTimeZone();
   const t = messages(locale),
     tab = path[0] ?? "screens",
@@ -64,6 +71,7 @@ export function Settings({
       if (!res.ok) throw new Error();
       const next = (await res.json()) as Data;
       setData(next);
+      setTheme(next.theme);
       setLocale(next.locale ?? "en");
       setError(false);
     } catch {
@@ -147,6 +155,42 @@ export function Settings({
             <div className="section-intro">
               <h2>{t.general}</h2>
               <p>{t.generalDescription}</p>
+            </div>
+            <div className="preference-row">
+              <div>
+                <h3>{t.appTheme}</h3>
+                <p>{t.appThemeHint}</p>
+              </div>
+              <div className="theme-preference-control">
+                <ThemeSelect
+                  value={theme}
+                  locale={locale}
+                  disabled={!data || themeBusy}
+                  onValueChange={async (value) => {
+                    if (value === "inherit") return;
+                    setThemeBusy(true);
+                    setThemeStatus("");
+                    try {
+                      await mutate({ action: "theme", theme: value });
+                      await refresh();
+                      setThemeStatus("saved");
+                    } catch {
+                      setThemeStatus("error");
+                    } finally {
+                      setThemeBusy(false);
+                    }
+                  }}
+                />
+                <p role="status" className="form-feedback">
+                  {themeBusy
+                    ? t.saving
+                    : themeStatus === "saved"
+                      ? t.saved
+                      : themeStatus === "error"
+                        ? t.loadError
+                        : ""}
+                </p>
+              </div>
             </div>
             <div className="preference-row">
               <div>
