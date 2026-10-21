@@ -1,4 +1,6 @@
 "use client";
+import { Alert, AlertDescription } from "./ui/alert";
+import { Empty, EmptyHeader, EmptyTitle } from "./ui/empty";
 import { Brand } from "./brand";
 
 import { useEffect, useRef, useState } from "react";
@@ -146,9 +148,9 @@ export function Dashboard({
         </div>
       </header>
       {warning ? (
-        <div className="system-warning" role="status">
-          {warning}
-        </div>
+        <Alert variant="warning" role="status">
+          <AlertDescription>{warning}</AlertDescription>
+        </Alert>
       ) : null}
       {primary && timer ? (
         <section
@@ -204,15 +206,19 @@ export function Dashboard({
           ) : null}
         </section>
       ) : (
-        <section className="empty-state">
-          <h1>
-            {removed
-              ? t.screenRemoved
-              : connection === "storage" || connection === "offline"
-                ? t.waitingUpdates
-                : t.allClear}
-          </h1>
-        </section>
+        <Empty variant="screen">
+          <EmptyHeader>
+            <EmptyTitle asChild>
+              <h1>
+                {removed
+                  ? t.screenRemoved
+                  : connection === "storage" || connection === "offline"
+                    ? t.waitingUpdates
+                    : t.allClear}
+              </h1>
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       )}
       <footer className="screen-footer">
         <Link href="/settings">{t.settings}</Link>

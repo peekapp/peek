@@ -120,7 +120,7 @@ export const en = {
     "Enter an HTTPS calendar subscription URL (port 443, no username or password).",
   syncError:
     "Could not sync. Check the subscription URL; saved events are kept.",
-  blockedAddress: "This address is not a public HTTPS calendar.",
+  blockedAddress: "The calendar server resolves to a blocked IP address. Check DNS and VPN/proxy settings on the machine running Peek.",
   invalidFeed: "The response is not a supported ICS calendar.",
   keyError:
     "The encryption key is missing or invalid. Restore the key before continuing.",
@@ -314,7 +314,7 @@ export const ru: Record<keyof typeof en, string> = {
     "Введите HTTPS-ссылку на календарь (порт 443, без логина и пароля).",
   syncError:
     "Не удалось обновить. Проверьте ссылку подписки; сохранённые события не удалены.",
-  blockedAddress: "Адрес не является публичным HTTPS-календарём.",
+  blockedAddress: "Адрес сервера календаря определяется через DNS как запрещённый IP-адрес. Проверьте DNS и настройки VPN/прокси на устройстве, где запущен Peek.",
   invalidFeed: "Ответ не является поддерживаемым ICS-календарём.",
   keyError:
     "Ключ шифрования отсутствует или неверен. Восстановите ключ для продолжения.",

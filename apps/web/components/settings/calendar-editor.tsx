@@ -14,7 +14,6 @@ import { messages, type Locale } from "@peek/core/i18n";
 import type { CalendarConfig, CalendarConnection } from "@peek/core/calendars";
 import { relativeEventTime } from "@peek/core/time";
 import { mutate, errorText } from "./api";
-import { syncError } from "./sync-error";
 import { ConnectionCheck } from "./connection-check";
 export function CalendarEditor({
   calendar,
@@ -136,28 +135,37 @@ export function CalendarEditor({
           </FieldGroup>
         </section>
         {calendar ? (
-          <div className="execution-note">
-            <span>{t.checkSavedHint}</span>
-            <span>
-              {t.lastSync}:{" "}
-              {calendar.lastSuccess === null
-                ? t.never
-                : relativeEventTime(
-                    calendar.lastSuccess,
-                    Date.now(),
-                    locale,
-                    timeZone,
-                  )}
-            </span>
-            <span>
-              {t.eventCount}: {calendar.eventCount}
-            </span>
-            {calendar.error ? (
-              <span className="form-error">
-                {syncError(calendar.error, locale)}
-              </span>
-            ) : null}
-          </div>
+          <section
+            className="connection-diagnostics"
+            aria-label={t.checkConnection}
+          >
+            <ConnectionCheck
+              key={`${calendar.id}:${calendar.version}`}
+              connection={calendar}
+              locale={locale}
+              refresh={refresh}
+            >
+              <div className="connection-check-details">
+                <p>{t.checkSavedHint}</p>
+                <div className="connection-check-meta">
+                  <span>
+                    {t.lastSync}:{" "}
+                    {calendar.lastSuccess === null
+                      ? t.never
+                      : relativeEventTime(
+                          calendar.lastSuccess,
+                          Date.now(),
+                          locale,
+                          timeZone,
+                        )}
+                  </span>
+                  <span>
+                    {t.eventCount}: {calendar.eventCount}
+                  </span>
+                </div>
+              </div>
+            </ConnectionCheck>
+          </section>
         ) : null}
         <div className="form-actions">
           <Button disabled={status === "saving"}>
@@ -168,12 +176,6 @@ export function CalendarEditor({
           </Button>
           {calendar ? (
             <>
-              <ConnectionCheck
-                key={`${calendar.id}:${calendar.version}`}
-                connection={calendar}
-                locale={locale}
-                refresh={refresh}
-              />
               <DeleteButton
                 locale={locale}
                 description={t.confirmCalendarDelete}

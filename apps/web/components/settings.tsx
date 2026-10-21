@@ -1,4 +1,18 @@
 "use client";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "./ui/card";
+import {
+  NavigationMenu,
+  NavigationMenuList,
+  NavigationMenuItem,
+  NavigationMenuLink,
+} from "./ui/navigation-menu";
 import { Badge } from "./ui/badge";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "./ui/empty";
@@ -89,25 +103,34 @@ export function Settings({
       <div className="settings-heading">
         <h1>{t.settings}</h1>
       </div>
-      <nav className="settings-tabs" aria-label={t.settings}>
-        {(
-          [
-            "screens",
-            "scenarios",
-            "connections",
-            "profiles",
-            "general",
-          ] as const
-        ).map((key) => (
-          <Link
-            key={key}
-            href={`/settings/${key}`}
-            aria-current={tab === key ? "page" : undefined}
-          >
-            {t[key]}
-          </Link>
-        ))}
-      </nav>
+      <NavigationMenu
+        className="settings-tabs"
+        aria-label={t.settings}
+        viewport={false}
+      >
+        <NavigationMenuList>
+          {(
+            [
+              "screens",
+              "scenarios",
+              "connections",
+              "profiles",
+              "general",
+            ] as const
+          ).map((key) => (
+            <NavigationMenuItem key={key}>
+              <NavigationMenuLink asChild variant="tab" active={tab === key}>
+                <Link
+                  href={`/settings/${key}`}
+                  aria-current={tab === key ? "page" : undefined}
+                >
+                  {t[key]}
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          ))}
+        </NavigationMenuList>
+      </NavigationMenu>
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>
@@ -195,34 +218,36 @@ export function Settings({
               </div>
               <div className="settings-card-grid">
                 {data.profiles.map((p) => (
-                  <Link
-                    className="settings-card"
-                    key={p.id}
-                    href={`/settings/profiles/${p.id}`}
-                  >
-                    <div className={`owner owner--${p.color}`}>
-                      <i
-                        aria-hidden="true"
-                        style={{
-                          backgroundColor: profileColors[p.color],
-                        }}
-                      />
-                      {p.system ? t.systemProfile : t.profiles}
-                    </div>
-                    <h3>{profileName(p, locale)}</h3>
-                    <div className="card-source">
-                      {t.connections}:{" "}
-                      {
-                        data.connections.filter((c) => c.profileId === p.id)
-                          .length
-                      }{" "}
-                      · {t.scenarios}:{" "}
-                      {
-                        data.scenarios.filter((s) => s.profileId === p.id)
-                          .length
-                      }
-                    </div>
-                  </Link>
+                  <Card variant="settings" asChild key={p.id}>
+                    <Link href={`/settings/profiles/${p.id}`}>
+                      <CardHeader>
+                        <div className={`owner owner--${p.color}`}>
+                          <i
+                            aria-hidden="true"
+                            style={{
+                              backgroundColor: profileColors[p.color],
+                            }}
+                          />
+                          {p.system ? t.systemProfile : t.profiles}
+                        </div>
+                        <CardTitle asChild>
+                          <h3>{profileName(p, locale)}</h3>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="card-source">
+                        {t.connections}:{" "}
+                        {
+                          data.connections.filter((c) => c.profileId === p.id)
+                            .length
+                        }{" "}
+                        · {t.scenarios}:{" "}
+                        {
+                          data.scenarios.filter((s) => s.profileId === p.id)
+                            .length
+                        }
+                      </CardContent>
+                    </Link>
+                  </Card>
                 ))}
               </div>
             </>
@@ -267,47 +292,53 @@ export function Settings({
             </div>
             <div className="settings-card-grid">
               {data.scenarios.map((s) => (
-                <Link
-                  className="settings-card"
-                  key={s.id}
-                  href={`/settings/scenarios/${s.id}`}
-                >
-                  <div className="card-top">
-                    <span className="type-icon">
-                      {s.definition === "meetings" ? "◷" : "▤"}
-                    </span>
-                    <Badge
-                      variant={
-                        s.lastError
-                          ? "destructive"
+                <Card variant="settings" asChild key={s.id}>
+                  <Link href={`/settings/scenarios/${s.id}`}>
+                    <CardHeader>
+                      <div className="card-top">
+                        <span className="type-icon">
+                          {s.definition === "meetings" ? "◷" : "▤"}
+                        </span>
+                        <Badge
+                          variant={
+                            s.lastError
+                              ? "error"
+                              : s.enabled
+                                ? "success"
+                                : "inactive"
+                          }
+                        >
+                          {s.lastError
+                            ? t.needsAttention
+                            : s.enabled
+                              ? t.active
+                              : t.disabled}
+                        </Badge>
+                      </div>
+                      <CardTitle asChild>
+                        <h3>{s.name}</h3>
+                      </CardTitle>
+                      <CardDescription asChild>
+                        <p>
+                          {t[s.definition]} · {ownerName(s.profileId)}
+                        </p>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="card-source">
+                      {sourceName(s.sourceId)}
+                    </CardContent>
+                    <CardFooter className="card-bottom">
+                      <span>
+                        {s.enabled && s.nextRunAt !== null
+                          ? `${t.nextRun}: ${relativeEventTime(s.nextRunAt, Date.now(), locale, timeZone)}`
                           : s.enabled
-                            ? "secondary"
-                            : "outline"
-                      }
-                    >
-                      {s.lastError
-                        ? t.needsAttention
-                        : s.enabled
-                          ? t.active
-                          : t.disabled}
-                    </Badge>
-                  </div>
-                  <h3>{s.name}</h3>
-                  <p>
-                    {t[s.definition]} · {ownerName(s.profileId)}
-                  </p>
-                  <div className="card-source">{sourceName(s.sourceId)}</div>
-                  <div className="card-bottom">
-                    <span>
-                      {s.enabled && s.nextRunAt !== null
-                        ? `${t.nextRun}: ${relativeEventTime(s.nextRunAt, Date.now(), locale, timeZone)}`
-                        : s.enabled
-                          ? t.waiting
-                          : t.disabled}
-                    </span>
-                    <span aria-hidden="true">›</span>
-                  </div>
-                </Link>
+                            ? t.waiting
+                            : t.disabled}
+                      </span>
+                      <span aria-hidden="true">›</span>
+                    </CardFooter>
+                  </Link>
+                </Card>
               ))}
             </div>
             {!data.scenarios.length ? (
@@ -330,43 +361,54 @@ export function Settings({
             </div>
             <div className="settings-card-grid">
               {data.connections.map((c) => (
-                <article className="settings-card connection-card" key={c.id}>
-                  <div className="card-top">
-                    <span className="type-icon">▦</span>
-                    <Badge
-                      variant={
-                        c.error
-                          ? "destructive"
-                          : c.lastSuccess
-                            ? "secondary"
-                            : "outline"
-                      }
-                    >
-                      {c.error
-                        ? t.needsAttention
-                        : c.lastSuccess === null
-                          ? t.pending
-                          : Date.now() - c.lastSuccess >
-                              c.intervalSeconds * 2000 + 30000
-                            ? t.stale
-                            : t.connected}
-                    </Badge>
-                  </div>
-                  <h3>
-                    <Link href={`/settings/connections/${c.id}`}>{c.name}</Link>
-                  </h3>
-                  <p>
-                    {
-                      integrationDefinitions.find(
-                        (d) => d.id === c.integrationId,
-                      )?.name
-                    }{" "}
-                    · {ownerName(c.profileId)}
-                  </p>
-                  <div className="card-source">
+                <Card variant="settings" className="connection-card" key={c.id}>
+                  <CardHeader>
+                    <div className="card-top">
+                      <span className="type-icon">▦</span>
+                      <Badge
+                        variant={
+                          c.error
+                            ? "error"
+                            : c.lastSuccess === null
+                              ? "inactive"
+                              : Date.now() - c.lastSuccess >
+                                  c.intervalSeconds * 2000 + 30000
+                                ? "warning"
+                                : "success"
+                        }
+                      >
+                        {c.error
+                          ? t.needsAttention
+                          : c.lastSuccess === null
+                            ? t.pending
+                            : Date.now() - c.lastSuccess >
+                                c.intervalSeconds * 2000 + 30000
+                              ? t.stale
+                              : t.connected}
+                      </Badge>
+                    </div>
+                    <CardTitle asChild>
+                      <h3>
+                        <Link href={`/settings/connections/${c.id}`}>
+                          {c.name}
+                        </Link>
+                      </h3>
+                    </CardTitle>
+                    <CardDescription asChild>
+                      <p>
+                        {
+                          integrationDefinitions.find(
+                            (d) => d.id === c.integrationId,
+                          )?.name
+                        }{" "}
+                        · {ownerName(c.profileId)}
+                      </p>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="card-source">
                     {c.eventCount} {t.eventCount.toLowerCase()}
-                  </div>
-                  <div className="card-bottom">
+                  </CardContent>
+                  <CardFooter className="card-bottom">
                     <span>
                       {t.lastSync}:{" "}
                       {c.lastSuccess === null
@@ -379,14 +421,14 @@ export function Settings({
                           )}
                     </span>
                     <span aria-hidden="true">›</span>
-                  </div>
+                  </CardFooter>
                   <ConnectionCheck
                     key={`${c.id}:${c.version}`}
                     connection={c}
                     locale={locale}
                     refresh={refresh}
                   />
-                </article>
+                </Card>
               ))}
             </div>
             {!data.connections.length ? (

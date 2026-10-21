@@ -1,4 +1,7 @@
 "use client";
+import { Alert, AlertDescription } from "../ui/alert";
+import { CircleAlertIcon, CircleCheckIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "../ui/button";
 import { useEffect, useRef, useState } from "react";
 import type { CalendarConnection } from "@peek/core/calendars";
@@ -10,10 +13,12 @@ export function ConnectionCheck({
   connection,
   locale,
   refresh,
+  children,
 }: {
   connection: CalendarConnection;
   locale: Locale;
   refresh: () => Promise<void>;
+  children?: ReactNode;
 }) {
   const t = messages(locale);
   const [status, setStatus] = useState("");
@@ -69,34 +74,43 @@ export function ConnectionCheck({
       controller.current = null;
     }
   }
+  const message =
+    status === "checking"
+      ? ""
+      : status === "success"
+        ? t.checkSuccess
+        : status === "timeout"
+          ? t.checkTimeout
+          : status.startsWith("sync:")
+            ? syncError(status.slice(5), locale)
+            : status
+              ? errorText(status, locale)
+              : connection.error
+                ? syncError(connection.error, locale)
+                : "";
+  const succeeded = status === "success";
+  const StatusIcon = succeeded ? CircleCheckIcon : CircleAlertIcon;
   return (
     <div className="connection-check">
-      <Button
-        type="button"
-        variant="outline"
-        disabled={status === "checking"}
-        onClick={check}
-      >
-        {status === "checking" ? t.checkingConnection : t.checkConnection}
-      </Button>
-      <p
-        role="status"
-        className={
-          status && !["success", "checking"].includes(status)
-            ? "form-error"
-            : ""
-        }
-      >
-        {status === "success"
-          ? t.checkSuccess
-          : status === "timeout"
-            ? t.checkTimeout
-            : status.startsWith("sync:")
-              ? syncError(status.slice(5), locale)
-              : status && status !== "checking"
-                ? errorText(status, locale)
-                : ""}
-      </p>
+      <div className="connection-check-heading">
+        {children}
+        <Button
+          type="button"
+          variant="outline"
+          disabled={status === "checking"}
+          onClick={check}
+        >
+          {status === "checking" ? t.checkingConnection : t.checkConnection}
+        </Button>
+      </div>
+      <div aria-live="polite" aria-atomic="true">
+        {message ? (
+          <Alert variant={succeeded ? "success" : "error"} role="status">
+            <StatusIcon aria-hidden="true" />
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
     </div>
   );
 }

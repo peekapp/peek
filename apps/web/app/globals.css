@@ -2,8 +2,9 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 @source "../components";
+@source "./";
 @custom-variant dark (&:where(.dark, .dark *));
-@theme inline {
+@theme static inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: #202126;
@@ -20,6 +21,21 @@
   --color-input: rgb(255 255 255 / 14%);
   --color-ring: #717782;
   --color-destructive: #dc4949;
+  --color-success: #243d35;
+  --color-success-foreground: #a5d9b5;
+  --color-status-error: #472c33;
+  --color-status-error-foreground: #f2afb5;
+  --color-warning: #4c3a29;
+  --color-warning-foreground: #f0d3ae;
+  --color-settings-card: #202630;
+  --color-settings-card-hover: #242c39;
+  --color-settings-border: #343d4d;
+  --color-settings-border-hover: #6d819f;
+  --color-detail: #bdc8d9;
+  --color-navigation-active: #e3ebfa;
+  --color-navigation-indicator: #a6bce1;
+  --color-choice-border: #394354;
+  --color-choice-foreground: #adb6c6;
   --color-secondary: #2b2d33;
   --color-secondary-foreground: #e9ebf0;
   --radius-md: 7px;
@@ -379,8 +395,9 @@ body {
 }
 
 .system-warning {
-  background: #4c3a29;
-  color: #f0d3ae;
+  border: 0;
+  background: var(--color-warning);
+  color: var(--color-warning-foreground);
   padding: 14px 18px;
   margin-bottom: 20px;
   border-radius: 8px;
@@ -390,8 +407,11 @@ body {
 .screen-footer {
   justify-content: space-between;
 }
-a {
-  color: inherit;
+/* Resets must stay below component utilities, including Button asChild links. */
+@layer base {
+  a {
+    color: inherit;
+  }
 }
 .screen-footer a {
   text-decoration: none;
@@ -577,7 +597,7 @@ a {
   line-height: 1.6;
 }
 .form-error {
-  color: #f0d3ae;
+  color: var(--color-warning-foreground);
 }
 @media (max-width: 700px) {
   .settings-page {
@@ -614,16 +634,16 @@ a {
   display: grid;
   gap: 12px;
 }
-.picker-options a {
+.picker-option {
   position: relative;
   display: grid;
   gap: 8px;
   padding: 20px 42px 20px 20px;
-  border: 1px solid #394354;
+  border: 1px solid var(--color-choice-border);
   border-radius: 10px;
   text-decoration: none;
 }
-.picker-options a:hover {
+.picker-option:hover {
   background: #293141;
 }
 .picker-options strong {
@@ -631,7 +651,7 @@ a {
   font-size: 18px;
 }
 .picker-options span {
-  color: #adb6c6;
+  color: var(--color-choice-foreground);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -641,19 +661,43 @@ a {
   top: 24px;
   font-size: 24px;
 }
+.connection-diagnostics {
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+}
 .connection-check {
-  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
-.connection-check p {
-  margin: 10px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.connection-check p:empty {
+.connection-check > [aria-live]:empty {
   display: none;
 }
-.form-actions .connection-check {
-  margin-top: 0;
+.connection-check-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.connection-check-details {
+  flex: 1;
+  min-width: 220px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.connection-check-details p {
+  margin: 0 0 8px;
+}
+.connection-check-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+.connection-check [data-slot="alert-description"] {
+  overflow-wrap: anywhere;
 }
 .profile-color-field {
   margin: 0;
@@ -968,7 +1012,7 @@ a {
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
 }
-.settings-tabs a {
+.navigation-tab {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -979,11 +1023,11 @@ a {
   border-bottom: 2px solid transparent;
   flex-shrink: 0;
 }
-.settings-tabs a[aria-current="page"] {
-  border-color: #a6bce1;
-  color: #e3ebfa;
+.navigation-tab[aria-current="page"] {
+  border-color: var(--color-navigation-indicator);
+  color: var(--color-navigation-active);
 }
-.settings-tabs a > span {
+.navigation-tab > span {
   background: #2a303e;
   border-radius: 5px;
   font-size: 11px;
@@ -994,14 +1038,14 @@ a {
   flex-direction: column;
   gap: 16px;
   padding: 24px;
-  background: #202630;
-  border: 1px solid #343d4d;
+  background: var(--color-settings-card);
+  border: 1px solid var(--color-settings-border);
   border-radius: 16px;
   text-decoration: none;
 }
 .settings-card:hover {
-  border-color: #6d819f;
-  background: #242c39;
+  border-color: var(--color-settings-border-hover);
+  background: var(--color-settings-card-hover);
 }
 .card-top {
   display: flex;
@@ -1023,14 +1067,14 @@ a {
   margin: 0;
 }
 .card-source {
-  color: #bdc8d9;
+  color: var(--color-detail);
   font-size: 13px;
   margin: 0;
   overflow-wrap: anywhere;
 }
 .card-bottom {
   margin-top: auto;
-  border-top: 1px solid #343d4d;
+  border-top: 1px solid var(--color-settings-border);
   padding-top: 16px;
   display: flex;
   justify-content: space-between;
@@ -1071,7 +1115,7 @@ a {
   padding: 16px 16px 0;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: #202630;
+  background: var(--color-settings-card);
 }
 .screen-tile > a {
   display: block;
@@ -1127,7 +1171,7 @@ a {
   .settings-tabs {
     gap: 22px;
   }
-  .settings-tabs a {
+  .navigation-tab {
     gap: 6px;
     font-size: 13px;
   }
@@ -1140,4 +1184,100 @@ a {
     flex-wrap: wrap;
     gap: 8px;
   }
+}
+
+/* shadcn compositions retain Peek's existing card and navigation geometry. */
+.settings-tabs {
+  display: block;
+  max-width: none;
+}
+.settings-tabs [data-slot="navigation-menu-list"] {
+  justify-content: flex-start;
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+}
+.navigation-tab {
+  outline: none;
+}
+.navigation-tab:hover {
+  color: var(--foreground);
+}
+.navigation-tab:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: -2px;
+}
+[data-slot="card"]:not([data-variant="default"]) [data-slot="card-header"] {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  padding: 0;
+}
+[data-slot="card"]:not([data-variant="default"]) [data-slot="card-content"],
+[data-slot="card"]:not([data-variant="default"]) [data-slot="card-footer"] {
+  padding-left: 0;
+  padding-right: 0;
+}
+[data-slot="card"]:not([data-variant="default"]) [data-slot="card-title"] {
+  line-height: normal;
+}
+.screen-tile [data-slot="card-header"] {
+  gap: 0;
+}
+.screen-preview-panel [data-slot="card-header"] {
+  gap: 0;
+}
+@media (max-width: 700px) {
+  .settings-tabs [data-slot="navigation-menu-list"] {
+    gap: 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.system-warning [data-slot="alert-description"] {
+  color: inherit;
+  font-size: inherit;
+}
+.empty-state [data-slot="empty-header"] {
+  max-width: none;
+}
+[data-slot="card"][data-variant="choice"] [data-slot="card-header"] {
+  gap: 8px;
+}
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"] {
+  max-height: calc(100svh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Preview states reuse the same utilities as real interactions. */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:hover {
+      @slot;
+    }
+  }
+  .design-system &[data-preview="hover"] {
+    @slot;
+  }
+}
+@custom-variant focus-visible (&:focus-visible, .design-system &[data-preview="focus"]);
+.design-system > section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 0;
+}
+.design-system > section > h2,
+.design-system > section > p {
+  margin: 0;
 }

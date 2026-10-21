@@ -1,4 +1,5 @@
 "use client";
+import { Card, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import Link from "next/link";
 import { useState } from "react";
 import { XIcon } from "lucide-react";
@@ -66,17 +67,21 @@ export function DefinitionPicker({
         </DialogClose>
         <div className="picker-options">
           {choices.map((choice) => (
-            <Link
-              key={choice.id}
-              href={choice.href}
-              onClick={() => setOpen(false)}
-            >
-              <strong>{choice.title}</strong>
-              <span>{choice.description}</span>
-              <span className="picker-arrow" aria-hidden="true">
-                ›
-              </span>
-            </Link>
+            <Card variant="choice" asChild key={choice.id}>
+              <Link href={choice.href} onClick={() => setOpen(false)}>
+                <CardHeader>
+                  <CardTitle asChild>
+                    <strong>{choice.title}</strong>
+                  </CardTitle>
+                  <CardDescription asChild>
+                    <span>{choice.description}</span>
+                  </CardDescription>
+                </CardHeader>
+                <span className="picker-arrow" aria-hidden="true">
+                  ›
+                </span>
+              </Link>
+            </Card>
           ))}
         </div>
       </DialogContent>

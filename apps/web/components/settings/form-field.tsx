@@ -21,7 +21,7 @@ export function SettingsField({
   children: ReactNode;
   className?: string;
 }) {
-  const id = useId();
+  const generatedId = useId();
   const items = Children.toArray(children);
   const control = items.find(
     (child) =>
@@ -29,6 +29,17 @@ export function SettingsField({
       (child.type === Input || child.type === SettingsSelect),
   );
   const hints = items.filter((child) => child !== control);
+  const controlProps = isValidElement(control)
+    ? (control.props as { id?: string; "aria-describedby"?: string })
+    : undefined;
+  const id = controlProps?.id ?? generatedId;
+  const describedBy =
+    [
+      controlProps?.["aria-describedby"],
+      hints.length ? `${id}-hint` : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
   return (
     <Field className={className}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
@@ -38,7 +49,7 @@ export function SettingsField({
               id?: string;
               "aria-describedby"?: string;
             }>,
-            { id, "aria-describedby": hints.length ? `${id}-hint` : undefined },
+            { id, "aria-describedby": describedBy },
           )
         : control}
       {hints.length ? (

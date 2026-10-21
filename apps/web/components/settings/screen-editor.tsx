@@ -1,4 +1,12 @@
 "use client";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "../ui/card";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "../ui/empty";
 import { DeleteButton } from "./delete-button";
 import { Button } from "../ui/button";
@@ -79,7 +87,7 @@ export function ScreenList({
       </div>
       <div className="screens-grid">
         {screens.map((screen) => (
-          <article className="screen-tile" key={screen.id}>
+          <Card variant="screen" key={screen.id}>
             <Link
               href={`/settings/screens/${screen.id}`}
               aria-label={screen.name}
@@ -87,23 +95,29 @@ export function ScreenList({
               <ScreenPreview config={screen} locale={locale} />
             </Link>
             <div className="screen-tile-body">
-              <div className="screen-tile-title">
-                <h3>
-                  <Link href={`/settings/screens/${screen.id}`}>
-                    {screen.name}
-                  </Link>
-                </h3>
-                <code>/{screen.id}</code>
-              </div>
-              <p>
-                {screen.allProfiles
-                  ? t.allProfiles
-                  : profiles
-                      .filter((p) => screen.profileIds.includes(p.id))
-                      .map((p) => profileName(p, locale))
-                      .join(", ") || t.noScreenProfiles}
-              </p>
-              <div className="card-bottom">
+              <CardHeader>
+                <div className="screen-tile-title">
+                  <CardTitle asChild>
+                    <h3>
+                      <Link href={`/settings/screens/${screen.id}`}>
+                        {screen.name}
+                      </Link>
+                    </h3>
+                  </CardTitle>
+                  <code>/{screen.id}</code>
+                </div>
+              </CardHeader>
+              <CardDescription asChild>
+                <p>
+                  {screen.allProfiles
+                    ? t.allProfiles
+                    : profiles
+                        .filter((p) => screen.profileIds.includes(p.id))
+                        .map((p) => profileName(p, locale))
+                        .join(", ") || t.noScreenProfiles}
+                </p>
+              </CardDescription>
+              <CardFooter className="card-bottom">
                 <Link href={`/settings/screens/${screen.id}`}>
                   {t.editScreen}
                 </Link>
@@ -114,9 +128,9 @@ export function ScreenList({
                 >
                   {t.openScreen} ↗
                 </Link>
-              </div>
+              </CardFooter>
             </div>
-          </article>
+          </Card>
         ))}
       </div>
       {!screens.length ? (
@@ -365,18 +379,26 @@ export function ScreenEditor({
             </section>
           </div>
           <aside className="screen-editor-aside">
-            <div className="screen-preview-panel">
-              <h2>{t.preview}</h2>
-              <ScreenPreview config={config} locale={locale} />
-              <p>
-                {config.allProfiles
-                  ? t.allProfiles
-                  : profiles
-                      .filter((p) => config.profileIds.includes(p.id))
-                      .map((p) => profileName(p, locale))
-                      .join(", ") || t.noScreenProfiles}
-              </p>
-            </div>
+            <Card variant="preview">
+              <CardHeader>
+                <CardTitle asChild>
+                  <h2>{t.preview}</h2>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScreenPreview config={config} locale={locale} />
+              </CardContent>
+              <CardDescription asChild>
+                <p>
+                  {config.allProfiles
+                    ? t.allProfiles
+                    : profiles
+                        .filter((p) => config.profileIds.includes(p.id))
+                        .map((p) => profileName(p, locale))
+                        .join(", ") || t.noScreenProfiles}
+                </p>
+              </CardDescription>
+            </Card>
             <div className="screen-link-panel">
               <Field>
                 <FieldLabel htmlFor="screen-link">{t.screenLink}</FieldLabel>
