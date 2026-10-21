@@ -167,7 +167,7 @@ A distribution license has not been selected yet.
 Open **Settings** from the screen footer. **Scenarios** is the first and default tab, followed by **Connections**, **Profiles**, **Screens**, and **General** (language preferences). Open a card to edit that scenario on its own page. Each tab and detail page has its own URL. A single **Create scenario** button opens the available scenario definitions in a dialog. **Add connection** similarly selects an integration definition; iCalendar is currently the only supported integration.
 
 - Create multiple Meetings or Deadlines instances and give each a name.
-- Select one or more ICS calendars or saved demo sources using the Sources checkboxes. Owners are shown beside calendars. Sources are shared; each scenario receives only events from its selected sources. At least one source is required.
+- Select one or more ICS calendars using the Sources checkboxes. Owners are shown beside calendars. Sources are shared; each scenario receives only events from its selected sources. At least one source is required.
 - Configure visibility, priority, and retention in minutes. Visibility must begin before priority escalation; the horizon is 90 days and retention is at most 24 hours.
 - Optionally filter titles by case-insensitive text matching. An empty filter includes every event from the selected source.
 - Save to schedule immediate re-evaluation; disable or delete to remove that scenario's cards. The main screen updates over SSE.

@@ -1,4 +1,5 @@
 "use client";
+import { ScenarioIntegrations } from "./settings/scenario-integrations";
 import { IntegrationIcon } from "./settings/integration-icon";
 import {
   Card,
@@ -88,12 +89,7 @@ export function Settings({
     document.documentElement.lang = locale;
   }, [locale]);
   const sourceName = (id: string) =>
-    data?.connections.find((c) => c.id === id)?.name ??
-    (id === "demo-meetings"
-      ? t.demoMeetings
-      : id === "demo-deadlines"
-        ? t.demoDeadlines
-        : t.sourceMissing);
+    data?.connections.find((c) => c.id === id)?.name ?? t.sourceMissing;
   const ownerName = (id?: string) => {
     const p = data?.profiles.find((p) => p.id === (id ?? "shared"));
     return p ? profileName(p, locale) : t.profileMissing;
@@ -361,7 +357,16 @@ export function Settings({
                         </Badge>
                       </div>
                       <CardTitle asChild>
-                        <h3>{s.name}</h3>
+                        <h3 className="flex flex-wrap items-center gap-2">
+                          {s.name}
+                          <ScenarioIntegrations
+                            integrationIds={data.connections
+                              .filter((connection) =>
+                                s.sourceIds.includes(connection.id),
+                              )
+                              .map((connection) => connection.integrationId)}
+                          />
+                        </h3>
                       </CardTitle>
                       <CardDescription asChild>
                         <p>

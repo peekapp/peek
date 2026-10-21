@@ -12,7 +12,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { messages, type Locale } from "@peek/core/i18n";
-import { scenarioDefinitions } from "@peek/core/registry";
+import { ScenarioIntegrations } from "./scenario-integrations";
+import {
+  integrationDefinitions,
+  scenarioDefinitions,
+} from "@peek/core/registry";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
@@ -84,7 +88,20 @@ export function ScenarioLibrary({
             <Icon aria-hidden="true" />
           </span>
           <span className="scenario-library-copy">
-            <strong>{t[definition.nameKey]}</strong>
+            <strong className="flex flex-wrap items-center gap-2">
+              {t[definition.nameKey]}
+              <ScenarioIntegrations
+                integrationIds={integrationDefinitions
+                  .filter((integration) =>
+                    definition.requires.every((capability) =>
+                      integration.capabilities.some(
+                        (supported) => supported === capability,
+                      ),
+                    ),
+                  )
+                  .map((integration) => integration.id)}
+              />
+            </strong>
             <span>{t[definition.descriptionKey]}</span>
           </span>
           <ChevronRight className="scenario-library-arrow" aria-hidden="true" />

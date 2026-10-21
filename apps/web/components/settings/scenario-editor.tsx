@@ -27,7 +27,7 @@ import {
   type Scenario,
   type ScenarioConfig,
 } from "@peek/core/scenarios";
-import type { CalendarConnection } from "@peek/core/calendars";
+import type { Connection } from "@peek/core/registry";
 import { relativeEventTime } from "@peek/core/time";
 import { mutate, errorText } from "./api";
 export function ScenarioEditor({
@@ -41,7 +41,7 @@ export function ScenarioEditor({
   scenario?: Scenario;
   definition: "meetings" | "deadlines";
   locale: Locale;
-  calendars: CalendarConnection[];
+  calendars: Connection[];
   profiles: Profile[];
   refresh: () => Promise<void>;
 }) {
@@ -54,7 +54,7 @@ export function ScenarioEditor({
       profileId: "shared",
       definition,
       enabled: true,
-      sourceIds: [calendars[0]?.id ?? `demo-${definition}`],
+      sourceIds: calendars[0] ? [calendars[0].id] : [],
       filterText: "",
       ...definitions[definition].defaults,
     },
@@ -137,26 +137,7 @@ export function ScenarioEditor({
             <FieldLegend variant="label">{t.sources}</FieldLegend>
             <FieldDescription>{t.sourcesHint}</FieldDescription>
             <FieldGroup className="gap-3">
-              {[
-                ...calendars.map((c) => ({
-                  id: c.id,
-                  name: c.name,
-                  profileId: c.profileId,
-                  integrationId: "ical",
-                })),
-                {
-                  id: "demo-meetings",
-                  name: t.demoMeetings,
-                  profileId: undefined,
-                  integrationId: undefined,
-                },
-                {
-                  id: "demo-deadlines",
-                  name: t.demoDeadlines,
-                  profileId: undefined,
-                  integrationId: undefined,
-                },
-              ].map((source) => {
+              {calendars.map((source) => {
                 const profile = profiles.find((p) => p.id === source.profileId);
                 return (
                   <Field key={source.id} orientation="horizontal">

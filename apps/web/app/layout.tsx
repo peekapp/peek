@@ -1,3 +1,4 @@
+import { TooltipProvider } from "../components/ui/tooltip";
 import { ThemeProvider } from "../components/theme";
 import { defaultTheme, isLightTheme, type Theme } from "@peek/core/themes";
 import { installationTimeZone } from "@peek/db";
@@ -31,7 +32,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider initialTheme={theme}>
           <TimeZoneProvider value={installationTimeZone()}>
-            {children}
+            <TooltipProvider>{children}</TooltipProvider>
           </TimeZoneProvider>
         </ThemeProvider>
       </body>
