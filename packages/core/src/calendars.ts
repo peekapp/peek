@@ -1,5 +1,6 @@
 import type { Owner } from "./cards";
 export type CalendarConfig = {
+  profileId?: string;
   name: string;
   owner: Owner;
   timeZone: string;
@@ -39,6 +40,7 @@ export function validateCalendar(input: unknown): CalendarConfig {
     throw new Error("invalid-calendar");
   }
   return {
+    profileId: c.profileId,
     name: c.name.trim(),
     owner: { name: c.owner.name.trim(), color: c.owner.color },
     timeZone: c.timeZone,

@@ -11,6 +11,7 @@ export type CalendarEvent = {
   deadlineAt?: number;
 };
 export type ScenarioConfig = {
+  profileId?: string;
   name: string;
   definition: "meetings" | "deadlines";
   sourceId: string;
@@ -66,6 +67,7 @@ export function validateConfig(input: unknown): ScenarioConfig {
   )
     throw new Error("invalid");
   return {
+    profileId: v.profileId,
     name: v.name.trim(),
     definition: v.definition,
     sourceId: v.sourceId,

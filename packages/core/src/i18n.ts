@@ -16,6 +16,21 @@ export const en = {
   checkTimeout:
     "No result yet. Check that the background worker is running and try again.",
   close: "Close",
+  profiles: "Profiles",
+  profilesDescription:
+    "People and shared ownership. Profiles organize data; they are not separate accounts or access permissions.",
+  addProfile: "Create profile",
+  profileName: "Profile name",
+  profileOwner: "Owner",
+  sharedProfile: "Shared",
+  systemProfile: "System profile",
+  profileInUse:
+    "This profile owns connections or scenarios. Reassign them before deleting it.",
+  invalidProfile:
+    "Choose an existing profile, or enter a profile name and color.",
+  confirmProfileDelete: "Delete this profile?",
+  backToProfiles: "All profiles",
+  profileMissing: "Profile unavailable",
   general: "General",
   calendars: "Calendars",
   generalDescription: "Language and display preferences.",
@@ -152,6 +167,21 @@ export const ru: Record<keyof typeof en, string> = {
   checkTimeout:
     "Результат пока не получен. Проверьте, что фоновый процесс запущен, и повторите попытку.",
   close: "Закрыть",
+  profiles: "Профили",
+  profilesDescription:
+    "Люди и общий владелец. Профили упорядочивают данные, но не создают отдельные аккаунты или права доступа.",
+  addProfile: "Создать профиль",
+  profileName: "Название профиля",
+  profileOwner: "Владелец",
+  sharedProfile: "Общее",
+  systemProfile: "Системный профиль",
+  profileInUse:
+    "У профиля есть подключения или сценарии. Перед удалением назначьте им другого владельца.",
+  invalidProfile:
+    "Выберите существующий профиль или укажите имя и цвет профиля.",
+  confirmProfileDelete: "Удалить этот профиль?",
+  backToProfiles: "Все профили",
+  profileMissing: "Профиль недоступен",
   general: "Общие",
   calendars: "Календари",
   generalDescription: "Язык и параметры отображения.",

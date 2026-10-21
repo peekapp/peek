@@ -1,4 +1,6 @@
 "use client";
+import type { Profile } from "@peek/core/profiles";
+import { ProfileSelect } from "./profile-select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -10,10 +12,12 @@ import { syncError } from "./sync-error";
 import { ConnectionCheck } from "./connection-check";
 export function CalendarEditor({
   calendar,
+  profiles,
   locale,
   refresh,
 }: {
   calendar?: CalendarConnection;
+  profiles: Profile[];
   locale: Locale;
   refresh: () => Promise<void>;
 }) {
@@ -22,6 +26,7 @@ export function CalendarEditor({
   const [config, setConfig] = useState<CalendarConfig>(
     calendar ?? {
       name: "",
+      profileId: "shared",
       owner: { name: "", color: "blue" },
       timeZone: "Europe/Moscow",
       intervalSeconds: 60,
@@ -95,37 +100,12 @@ export function CalendarEditor({
               />
               <small>{calendar ? t.urlSaved : t.urlHint}</small>
             </label>
-            <label>
-              {t.ownerName}
-              <input
-                required
-                maxLength={100}
-                value={config.owner.name}
-                onChange={(e) =>
-                  update({ owner: { ...config.owner, name: e.target.value } })
-                }
-              />
-            </label>
-            <label>
-              {t.ownerColor}
-              <select
-                value={config.owner.color}
-                onChange={(e) =>
-                  update({
-                    owner: {
-                      ...config.owner,
-                      color: e.target.value as CalendarConfig["owner"]["color"],
-                    },
-                  })
-                }
-              >
-                {(["blue", "pink", "green"] as const).map((color) => (
-                  <option key={color} value={color}>
-                    {t[color]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <ProfileSelect
+              profiles={profiles}
+              value={config.profileId ?? "shared"}
+              locale={locale}
+              onChange={(profileId) => update({ profileId })}
+            />
           </div>
         </section>
         <section className="form-section">

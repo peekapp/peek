@@ -11,6 +11,7 @@ import {
   type CalendarEvent,
 } from "@peek/core/scenarios";
 import type { Locale } from "@peek/core/i18n";
+import { validateProfile } from "@peek/core/profiles";
 import type { Card } from "@peek/core";
 import type { ScreenState } from "@peek/core/state";
 import { encryptSecret, decryptSecret } from "./secrets";
@@ -19,7 +20,7 @@ import {
   validateCalendarUrl,
   type CalendarConnection,
 } from "@peek/core/calendars";
-import { cards, state, scenarios, events, calendars } from "./schema";
+import { cards, state, scenarios, events, calendars, profiles } from "./schema";
 
 export function databasePath() {
   const path = process.env.PEEK_DATABASE_PATH;
@@ -35,6 +36,17 @@ export function openStore(path: string, readonly = false) {
   const sqlite = new Database(path, { readonly, create: !readonly });
   sqlite.exec("PRAGMA busy_timeout = 5000;");
   const db = drizzle(sqlite);
+  function ownerFor(id: unknown) {
+    if (typeof id !== "string") throw new Error("invalid-profile");
+    const profile = db.select().from(profiles).where(eq(profiles.id, id)).get();
+    if (!profile) throw new Error("invalid-profile");
+    return {
+      profileId: profile.id,
+      name: profile.name,
+      color: profile.color,
+      system: profile.system,
+    };
+  }
   function installDemo(input: Card[], now: number) {
     for (const kind of ["meeting", "deadline"] as const) {
       const definition = kind === "meeting" ? "meetings" : "deadlines";
@@ -43,6 +55,7 @@ export function openStore(path: string, readonly = false) {
         name: definition === "meetings" ? "Meetings" : "Deadlines",
         definition,
         sourceId: id,
+        profileId: "shared",
         enabled: true,
         filterText: "",
         ...definitions[definition].defaults,
@@ -86,7 +99,7 @@ export function openStore(path: string, readonly = false) {
               user_version: number;
             }
           ).user_version;
-          if (version > 4)
+          if (version > 5)
             throw new Error("Database schema is newer than this application");
           if (version === 0)
             sqlite.exec(`
@@ -124,8 +137,128 @@ export function openStore(path: string, readonly = false) {
             sqlite.exec(
               `ALTER TABLE calendars ADD COLUMN checked_at INTEGER; PRAGMA user_version = 4;`,
             );
+          if (version < 5) {
+            sqlite.exec(`CREATE TABLE profiles (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, system INTEGER NOT NULL);
+              INSERT INTO profiles VALUES ('shared', 'Shared', 'blue', 1);`);
+            const imported = new Map<string, string>();
+            function importOwner(owner: Card["owner"]) {
+              if (["Общее", "Shared"].includes(owner.name)) return "shared";
+              const key = JSON.stringify([owner.name, owner.color]);
+              if (imported.has(key)) return imported.get(key)!;
+              const id = `profile-${crypto.randomUUID()}`;
+              db.insert(profiles)
+                .values({
+                  id,
+                  name: owner.name,
+                  color: owner.color,
+                  system: false,
+                })
+                .run();
+              imported.set(key, id);
+              return id;
+            }
+            for (const row of db.select().from(calendars).all()) {
+              const profileId = importOwner(row.config.owner);
+              db.update(calendars)
+                .set({ config: { ...row.config, profileId } })
+                .where(eq(calendars.id, row.id))
+                .run();
+            }
+            for (const row of db.select().from(events).all())
+              importOwner(row.payload.owner);
+            for (const row of db.select().from(cards).all())
+              importOwner(row.payload.owner);
+            for (const row of db.select().from(scenarios).all()) {
+              const source = db
+                .select()
+                .from(calendars)
+                .where(eq(calendars.id, row.config.sourceId))
+                .get();
+              const owners = [
+                ...new Set(
+                  db
+                    .select()
+                    .from(events)
+                    .all()
+                    .filter((e) => e.payload.sourceId === row.config.sourceId)
+                    .map((e) => importOwner(e.payload.owner)),
+                ),
+              ];
+              db.update(scenarios)
+                .set({
+                  config: {
+                    ...row.config,
+                    profileId:
+                      source?.config.profileId ??
+                      (owners.length === 1 ? owners[0] : "shared"),
+                  },
+                })
+                .where(eq(scenarios.id, row.id))
+                .run();
+            }
+            sqlite.exec("PRAGMA user_version = 5;");
+          }
         })
         .immediate();
+    },
+    listProfiles() {
+      return db
+        .select()
+        .from(profiles)
+        .all()
+        .sort(
+          (a, b) =>
+            Number(b.system) - Number(a.system) || a.name.localeCompare(b.name),
+        );
+    },
+    saveProfile(id: string, input: unknown) {
+      const config = validateProfile(input);
+      if (!/^profile-[a-zA-Z0-9-]{1,80}$/.test(id))
+        throw new Error("invalid-profile");
+      db.transaction(
+        (tx) => {
+          tx.insert(profiles)
+            .values({ id, ...config, system: false })
+            .onConflictDoUpdate({ target: profiles.id, set: config })
+            .run();
+          tx.update(state)
+            .set({ revision: sql`${state.revision} + 1` })
+            .where(eq(state.id, 1))
+            .run();
+        },
+        { behavior: "immediate" },
+      );
+    },
+    deleteProfile(id: string) {
+      db.transaction(
+        (tx) => {
+          const profile = tx
+            .select()
+            .from(profiles)
+            .where(eq(profiles.id, id))
+            .get();
+          if (!profile || profile.system) throw new Error("invalid-profile");
+          if (
+            tx
+              .select()
+              .from(calendars)
+              .all()
+              .some((c) => c.config.profileId === id) ||
+            tx
+              .select()
+              .from(scenarios)
+              .all()
+              .some((s) => s.config.profileId === id)
+          )
+            throw new Error("profile-in-use");
+          tx.delete(profiles).where(eq(profiles.id, id)).run();
+          tx.update(state)
+            .set({ revision: sql`${state.revision} + 1` })
+            .where(eq(state.id, 1))
+            .run();
+        },
+        { behavior: "immediate" },
+      );
     },
     snapshot(now = Date.now()): ScreenState {
       return db.transaction((tx) => {
@@ -136,7 +269,18 @@ export function openStore(path: string, readonly = false) {
             .select()
             .from(cards)
             .all()
-            .map((row) => row.payload),
+            .map((row) => {
+              const scenario = row.scenarioId
+                ? tx
+                    .select()
+                    .from(scenarios)
+                    .where(eq(scenarios.id, row.scenarioId))
+                    .get()
+                : undefined;
+              return scenario?.config.profileId
+                ? { ...row.payload, owner: ownerFor(scenario.config.profileId) }
+                : row.payload;
+            }),
           revision: meta.revision,
           heartbeat: meta.heartbeat,
           serverTime: now,
@@ -186,6 +330,7 @@ export function openStore(path: string, readonly = false) {
         .all()
         .map((c) => ({
           ...c.config,
+          owner: ownerFor(c.config.profileId ?? "shared"),
           id: c.id,
           version: c.version,
           lastSuccess: c.lastSuccess,
@@ -197,7 +342,10 @@ export function openStore(path: string, readonly = false) {
         }));
     },
     saveCalendar(id: string, input: unknown, url?: unknown, now = Date.now()) {
-      const config = validateCalendar(input);
+      const value = input as { profileId?: unknown; owner?: unknown };
+      const profileId = value?.profileId ?? "shared";
+      const owner = ownerFor(profileId);
+      const config = validateCalendar({ ...value, profileId, owner });
       const existing = db
         .select()
         .from(calendars)
@@ -215,6 +363,7 @@ export function openStore(path: string, readonly = false) {
       if (!secret) throw new Error("invalid-url");
       db.transaction(
         (tx) => {
+          ownerFor(config.profileId);
           tx.insert(calendars)
             .values({
               id,
@@ -300,7 +449,14 @@ export function openStore(path: string, readonly = false) {
         .select()
         .from(calendars)
         .where(lte(calendars.nextSync, now))
-        .all();
+        .all()
+        .map((row) => ({
+          ...row,
+          config: {
+            ...row.config,
+            owner: ownerFor(row.config.profileId ?? "shared"),
+          },
+        }));
     },
     calendarUrl(secret: string) {
       return decryptSecret(secret, path);
@@ -399,6 +555,8 @@ export function openStore(path: string, readonly = false) {
     },
     saveScenario(id: string, input: unknown, now = Date.now()) {
       const config = validateConfig(input);
+      config.profileId ??= "shared";
+      ownerFor(config.profileId);
       if (
         !["demo-meetings", "demo-deadlines"].includes(config.sourceId) &&
         !db
@@ -410,6 +568,7 @@ export function openStore(path: string, readonly = false) {
         throw new Error("invalid");
       db.transaction(
         (tx) => {
+          ownerFor(config.profileId);
           tx.insert(scenarios)
             .values({ id, config, nextRunAt: config.enabled ? now : null })
             .onConflictDoUpdate({
@@ -517,7 +676,10 @@ export function openStore(path: string, readonly = false) {
                 tx.insert(cards)
                   .values({
                     id: card.id,
-                    payload: card,
+                    payload: {
+                      ...card,
+                      owner: ownerFor(row.config.profileId ?? "shared"),
+                    },
                     expiresAt: card.expiresAt,
                     scenarioId: id,
                   })

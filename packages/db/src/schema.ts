@@ -43,3 +43,10 @@ export const calendars = sqliteTable("calendars", {
   etag: text("etag"),
   modified: text("modified"),
 });
+
+export const profiles = sqliteTable("profiles", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  color: text("color").$type<"blue" | "pink" | "green">().notNull(),
+  system: integer("system", { mode: "boolean" }).notNull(),
+});

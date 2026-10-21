@@ -13,6 +13,8 @@ export async function mutate(
 }
 export function errorText(code: string, locale: Locale) {
   const t = messages(locale);
+  if (code === "profile-in-use") return t.profileInUse;
+  if (code === "invalid-profile") return t.invalidProfile;
   return code === "invalid"
     ? t.invalid
     : code === "invalid-calendar"

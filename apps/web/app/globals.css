@@ -800,3 +800,9 @@ select:focus-visible {
 .connection-card:focus-within {
   border-color: #a4b7db;
 }
+.settings-tabs {
+  overflow-x: auto;
+}
+.settings-tabs a {
+  flex-shrink: 0;
+}

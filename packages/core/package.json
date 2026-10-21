@@ -10,6 +10,7 @@
     "./i18n": "./src/i18n.ts",
     "./scenarios": "./src/scenarios.ts",
     "./calendars": "./src/calendars.ts",
-    "./registry": "./src/registry.ts"
+    "./registry": "./src/registry.ts",
+    "./profiles": "./src/profiles.ts"
   }
 }

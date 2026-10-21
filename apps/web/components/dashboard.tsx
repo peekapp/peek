@@ -14,11 +14,17 @@ import Link from "next/link";
 import { messages } from "@peek/core/i18n";
 import { relativeEventTime, formatTime } from "@peek/core/time";
 
-function Owner({ owner }: { owner: CardOwner }) {
+function Owner({
+  owner,
+  sharedLabel,
+}: {
+  owner: CardOwner;
+  sharedLabel: string;
+}) {
   return (
     <span className={`owner owner--${owner.color}`}>
       <i aria-hidden="true" />
-      {owner.name}
+      {owner.system ? sharedLabel : owner.name}
     </span>
   );
 }
@@ -120,7 +126,7 @@ export function Dashboard({
         >
           <article className="hero" key={primary.id}>
             <div className="hero-meta">
-              <Owner owner={primary.owner} />
+              <Owner owner={primary.owner} sharedLabel={t.sharedProfile} />
               <time
                 className="meeting-time"
                 dateTime={new Date(primary.targetAt).toISOString()}
@@ -149,7 +155,7 @@ export function Dashboard({
                   key={card.id}
                 >
                   <div className="event-meta">
-                    <Owner owner={card.owner} />
+                    <Owner owner={card.owner} sharedLabel={t.sharedProfile} />
                     <time
                       className="due"
                       dateTime={new Date(card.targetAt).toISOString()}

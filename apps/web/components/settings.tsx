@@ -1,4 +1,6 @@
 "use client";
+import { profileName, type Profile } from "@peek/core/profiles";
+import { ProfileEditor } from "./settings/profile-editor";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
@@ -11,6 +13,7 @@ import { ConnectionCheck } from "./settings/connection-check";
 import { integrationDefinitions, type Connection } from "@peek/core/registry";
 import { mutate } from "./settings/api";
 type Data = {
+  profiles: Profile[];
   scenarios: Scenario[];
   connections: Connection[];
   locale: Locale;
@@ -26,7 +29,7 @@ export function Settings({
     [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(false);
   const t = messages(locale),
-    tab = path[0] ?? "general",
+    tab = path[0] ?? "scenarios",
     item = path[1];
   async function refresh() {
     try {
@@ -55,6 +58,11 @@ export function Settings({
       : id === "demo-deadlines"
         ? t.demoDeadlines
         : t.sourceMissing);
+  const ownerName = (id?: string) => {
+    const p = data?.profiles.find((p) => p.id === (id ?? "shared"));
+    return p ? profileName(p, locale) : t.profileMissing;
+  };
+  const profile = data?.profiles.find((p) => p.id === item);
   const scenario = data?.scenarios.find((s) => s.id === item),
     calendar = data?.connections.find((c) => c.id === item);
   return (
@@ -70,20 +78,22 @@ export function Settings({
         <h1>{t.settings}</h1>
       </div>
       <nav className="settings-tabs" aria-label={t.settings}>
-        {(["general", "connections", "scenarios"] as const).map((key) => (
-          <Link
-            key={key}
-            href={`/settings/${key}`}
-            aria-current={tab === key ? "page" : undefined}
-          >
-            {t[key]}
-            {key === "scenarios" && data ? (
-              <span>{data.scenarios.length}</span>
-            ) : key === "connections" && data ? (
-              <span>{data.connections.length}</span>
-            ) : null}
-          </Link>
-        ))}
+        {(["scenarios", "connections", "profiles", "general"] as const).map(
+          (key) => (
+            <Link
+              key={key}
+              href={`/settings/${key}`}
+              aria-current={tab === key ? "page" : undefined}
+            >
+              {t[key]}
+              {key === "scenarios" && data ? (
+                <span>{data.scenarios.length}</span>
+              ) : key === "connections" && data ? (
+                <span>{data.connections.length}</span>
+              ) : null}
+            </Link>
+          ),
+        )}
       </nav>
       {error ? (
         <div role="alert" className="system-warning">
@@ -121,6 +131,58 @@ export function Settings({
           </>
         ) : !data ? (
           <p>{t.loading}</p>
+        ) : tab === "profiles" ? (
+          item ? (
+            profile || item === "new" ? (
+              <ProfileEditor
+                key={item}
+                profile={profile}
+                locale={locale}
+                refresh={refresh}
+              />
+            ) : (
+              <p>{t.notFound}</p>
+            )
+          ) : (
+            <>
+              <div className="section-intro">
+                <div>
+                  <h2>{t.profiles}</h2>
+                  <p>{t.profilesDescription}</p>
+                </div>
+                <Link className="button" href="/settings/profiles/new">
+                  + {t.addProfile}
+                </Link>
+              </div>
+              <div className="settings-card-grid">
+                {data.profiles.map((p) => (
+                  <Link
+                    className="settings-card"
+                    key={p.id}
+                    href={`/settings/profiles/${p.id}`}
+                  >
+                    <div className={`owner owner--${p.color}`}>
+                      <i aria-hidden="true" />
+                      {p.system ? t.systemProfile : t.profiles}
+                    </div>
+                    <h3>{profileName(p, locale)}</h3>
+                    <div className="card-source">
+                      {t.connections}:{" "}
+                      {
+                        data.connections.filter((c) => c.profileId === p.id)
+                          .length
+                      }{" "}
+                      · {t.scenarios}:{" "}
+                      {
+                        data.scenarios.filter((s) => s.profileId === p.id)
+                          .length
+                      }
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )
         ) : tab === "scenarios" && item ? (
           scenario || item === "new-meetings" || item === "new-deadlines" ? (
             <ScenarioEditor
@@ -131,6 +193,7 @@ export function Settings({
                 (item === "new-meetings" ? "meetings" : "deadlines")
               }
               locale={locale}
+              profiles={data.profiles}
               calendars={data.connections}
               refresh={refresh}
             />
@@ -142,6 +205,7 @@ export function Settings({
             <CalendarEditor
               key={item}
               calendar={calendar}
+              profiles={data.profiles}
               locale={locale}
               refresh={refresh}
             />
@@ -179,7 +243,9 @@ export function Settings({
                     </span>
                   </div>
                   <h3>{s.name}</h3>
-                  <p>{t[s.definition]}</p>
+                  <p>
+                    {t[s.definition]} · {ownerName(s.profileId)}
+                  </p>
                   <div className="card-source">{sourceName(s.sourceId)}</div>
                   <div className="card-bottom">
                     <span>
@@ -237,7 +303,7 @@ export function Settings({
                         (d) => d.id === c.integrationId,
                       )?.name
                     }{" "}
-                    · {c.owner.name}
+                    · {ownerName(c.profileId)}
                   </p>
                   <div className="card-source">
                     {c.eventCount} {t.eventCount.toLowerCase()}

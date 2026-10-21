@@ -1,4 +1,6 @@
 "use client";
+import type { Profile } from "@peek/core/profiles";
+import { ProfileSelect } from "./profile-select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -17,12 +19,14 @@ export function ScenarioEditor({
   definition,
   locale,
   calendars,
+  profiles,
   refresh,
 }: {
   scenario?: Scenario;
   definition: "meetings" | "deadlines";
   locale: Locale;
   calendars: CalendarConnection[];
+  profiles: Profile[];
   refresh: () => Promise<void>;
 }) {
   const t = messages(locale),
@@ -30,6 +34,7 @@ export function ScenarioEditor({
   const [config, setConfig] = useState<ScenarioConfig>(
     scenario ?? {
       name: "",
+      profileId: "shared",
       definition,
       enabled: true,
       sourceId: calendars[0]?.id ?? `demo-${definition}`,
@@ -112,6 +117,12 @@ export function ScenarioEditor({
                 <option value="demo-deadlines">{t.demoDeadlines}</option>
               </select>
             </label>
+            <ProfileSelect
+              profiles={profiles}
+              value={config.profileId ?? "shared"}
+              locale={locale}
+              onChange={(profileId) => update({ profileId })}
+            />
             <label className="span-two">
               {t.filterText}
               <input

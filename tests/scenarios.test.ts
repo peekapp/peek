@@ -127,7 +127,12 @@ it("migrates v1 data without resetting times and resumes persisted schedules aft
     store.migrate();
     store.migrate();
     assert.equal(store.listScenarios().length, 2);
-    assert.deepEqual(store.snapshot().cards, input);
+    assert.deepEqual(
+      store.snapshot().cards.map(({ owner, ...card }) => card),
+      input.map(({ owner, ...card }) => card),
+    );
+    assert.equal(store.snapshot().cards[0].owner.name, input[0].owner.name);
+    assert.equal(store.listProfiles().filter((p) => p.system).length, 1);
     store.runDue(Date.now());
     const schedules = store.listScenarios();
     store.close();

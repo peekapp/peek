@@ -1,5 +1,10 @@
 import { messages, type Locale } from "./i18n";
-export type Owner = { name: string; color: "blue" | "pink" | "green" };
+export type Owner = {
+  profileId?: string;
+  system?: boolean;
+  name: string;
+  color: "blue" | "pink" | "green";
+};
 
 /** UTC milliseconds. Visibility is [visibleFrom, expiresAt). */
 export type Card = {

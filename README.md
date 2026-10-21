@@ -116,7 +116,7 @@ A distribution license has not been selected yet.
 
 ## Scenario settings
 
-Open **Settings** from the screen footer. **General** contains language preferences; **Connections** lists configured integration instances; **Scenarios** shows compact cards. Open a card to edit that scenario on its own page. Each tab and detail page has its own URL. A single **Create scenario** button opens the available scenario definitions in a dialog. **Add connection** similarly selects an integration definition; iCalendar is currently the only supported integration.
+Open **Settings** from the screen footer. **Scenarios** is the first and default tab, followed by **Connections**, **Profiles**, and **General** (language preferences). Open a card to edit that scenario on its own page. Each tab and detail page has its own URL. A single **Create scenario** button opens the available scenario definitions in a dialog. **Add connection** similarly selects an integration definition; iCalendar is currently the only supported integration.
 
 - Create multiple Meetings or Deadlines instances and give each a name.
 - Bind an instance to a connected ICS calendar or a saved demo source. Sources are shared; each scenario receives only its bound source events.
@@ -131,11 +131,19 @@ Settings also switches the installation's screen language between English (defau
 
 The build-time definitions in `packages/core/src/registry.ts` distinguish integration types, configured connections, scenario types, and scenario instances. ICS persistence is still handled by its specific storage adapter; the full extension SDK and generic settings renderer remain planned.
 
+## Profiles and ownership
+
+Create people in **Settings → Profiles**, with a name and color. The built-in **Shared** profile is localized and cannot be renamed or deleted. Profiles organize ownership, not accounts or access permissions.
+
+Select a profile in each connection and scenario. A scenario can explicitly use a connection owned by another profile; its output cards display the scenario owner. Renaming or recoloring a profile updates connected screens immediately without fetching the calendar again. Referenced profiles cannot be deleted; reassign or remove their connections and scenarios first.
+
+Migration preserves schedules and encrypted URLs, deduplicates legacy owners by name and color, and assigns calendar scenarios their connection owner. Demo scenarios with one owner retain it; mixed-owner demo scenarios use Shared. Legacy Shared/Общее owners map to the system profile. New demo scenarios use Shared.
+
 ## Connect an ICS calendar
 
 1. Open **Settings → Connections → Add connection → iCalendar**.
 2. Paste the calendar provider's **HTTPS ICS subscription URL**. A public sharing-page URL will not work. Private subscription links containing a token are supported; HTTP Basic credentials in the URL are not.
-3. Give the connection a name, owner, profile color, and timezone. The timezone applies to floating event times and date-only events. The default refresh interval is 60 seconds.
+3. Give the connection a name, select an owner profile, and set its timezone. The timezone applies to floating event times and date-only events. The default refresh interval is 60 seconds.
 4. Save. The worker schedules an initial download. Open the connection to inspect its status, last successful sync, and event count, or use **Sync now**.
 5. Open **Scenarios → Create scenario**, choose Meetings or Deadlines, and select that calendar as the source. The same connection can serve multiple scenarios without duplicate network downloads.
 

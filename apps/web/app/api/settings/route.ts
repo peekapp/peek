@@ -29,6 +29,7 @@ export function GET(request: Request) {
     try {
       return Response.json(
         {
+          profiles: store.listProfiles(),
           scenarios: store.listScenarios(),
           calendars: store.listCalendars(),
           connections: store
@@ -72,7 +73,20 @@ export async function POST(request: Request) {
         throw new Error("invalid-calendar");
       let createdId: string | undefined;
       let checkedAt: number | null | undefined;
-      if (body.action === "calendar-save") {
+      if (
+        ["calendar-save", "save"].includes(body.action) &&
+        typeof body.config?.profileId !== "string"
+      )
+        throw new Error("invalid-profile");
+      if (body.action === "profile-save") {
+        createdId = body.id ?? `profile-${crypto.randomUUID()}`;
+        store.saveProfile(createdId!, body.config);
+      } else if (
+        body.action === "profile-delete" &&
+        typeof body.id === "string"
+      ) {
+        store.deleteProfile(body.id);
+      } else if (body.action === "calendar-save") {
         createdId = body.id ?? `cal-${crypto.randomUUID()}`;
         store.saveCalendar(createdId!, body.config, body.url);
       } else if (
@@ -104,6 +118,8 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const known = [
+      "invalid-profile",
+      "profile-in-use",
       "invalid",
       "invalid-calendar",
       "invalid-url",
