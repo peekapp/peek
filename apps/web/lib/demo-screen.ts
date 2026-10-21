@@ -1,41 +1,54 @@
-// Fixed snapshot for visual development. Not synchronized calendar data.
-export type ScreenEvent = {
-  id: string;
-  title: string;
-  owner: { name: string; color: "blue" | "pink" | "green" };
-  due: string;
-  remaining?: string;
-};
+import type { Card } from "./cards";
 
-export const demoScreen = {
-  date: "Ср, 21 октября",
-  time: "14:29",
-  meeting: {
-    title: "Обсуждение дизайна",
-    owner: { name: "Тим", color: "blue" as const },
-    time: "14:30 — 15:00",
-    countdown: "00:48",
-    location: "Google Meet",
-  },
-  events: [
+const minute = 60_000;
+const hour = 60 * minute;
+const day = 24 * hour;
+
+/** One demo session per page load. Renders never reset event times. */
+export function createDemoCards(now: number): Card[] {
+  const meeting = now + 48_000;
+  return [
     {
-      id: "coursework",
-      title: "Отправить курсовую",
-      owner: { name: "Аня", color: "pink" },
-      due: "Сегодня, 23:59",
-      remaining: "9 ч 30 мин",
-    },
-    {
-      id: "internet",
-      title: "Оплатить интернет",
-      owner: { name: "Общее", color: "green" },
-      due: "Завтра",
-    },
-    {
-      id: "design",
-      title: "Передать макеты",
+      id: "design-meeting",
+      kind: "meeting",
+      title: "Обсуждение дизайна",
       owner: { name: "Тим", color: "blue" },
-      due: "23 октября",
+      location: "Google Meet",
+      targetAt: meeting,
+      visibleFrom: meeting - 10 * minute,
+      urgentAt: meeting - minute,
+      expiresAt: meeting + 5 * minute,
+      priority: 2,
+      urgentPriority: 3,
     },
-  ] satisfies ScreenEvent[],
-};
+    ...[
+      {
+        id: "coursework",
+        title: "Отправить курсовую",
+        owner: { name: "Аня", color: "pink" } as const,
+        offset: 9.5 * hour,
+      },
+      {
+        id: "internet",
+        title: "Оплатить интернет",
+        owner: { name: "Общее", color: "green" } as const,
+        offset: 30 * hour,
+      },
+      {
+        id: "design",
+        title: "Передать макеты",
+        owner: { name: "Тим", color: "blue" } as const,
+        offset: 2 * day,
+      },
+    ].map(({ offset, ...data }): Card => ({
+      ...data,
+      kind: "deadline",
+      targetAt: now + offset,
+      visibleFrom: now + offset - 7 * day,
+      urgentAt: now + offset - day,
+      expiresAt: now + offset + day,
+      priority: 1,
+      urgentPriority: 2,
+    })),
+  ];
+}

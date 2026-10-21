@@ -1,6 +1,35 @@
-import { demoScreen, type ScreenEvent } from "../lib/demo-screen";
+"use client";
 
-function Owner({ owner }: { owner: ScreenEvent["owner"] }) {
+import { useEffect, useState } from "react";
+import {
+  activeCards,
+  countdown,
+  priorityAt,
+  type Card,
+  type Owner as CardOwner,
+} from "../lib/cards";
+
+const timeZone = "Europe/Moscow";
+const clockFormat = new Intl.DateTimeFormat("ru-RU", {
+  timeZone,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const dateFormat = new Intl.DateTimeFormat("ru-RU", {
+  timeZone,
+  weekday: "short",
+  day: "numeric",
+  month: "long",
+});
+const eventFormat = new Intl.DateTimeFormat("ru-RU", {
+  timeZone,
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function Owner({ owner }: { owner: CardOwner }) {
   return (
     <span className={`owner owner--${owner.color}`}>
       <i aria-hidden="true" />
@@ -9,63 +38,102 @@ function Owner({ owner }: { owner: ScreenEvent["owner"] }) {
   );
 }
 
-export function Dashboard() {
-  const { meeting, events } = demoScreen;
-  const [minutes, seconds] = meeting.countdown.split(":");
+export function Dashboard({
+  cards,
+  initialNow,
+}: {
+  cards: Card[];
+  initialNow: number;
+}) {
+  const [now, setNow] = useState(initialNow);
+  useEffect(() => {
+    // Read the clock rather than subtracting ticks: background tabs can pause timers.
+    const update = () => setNow(Date.now());
+    update();
+    const interval = window.setInterval(update, 1000);
+    document.addEventListener("visibilitychange", update);
+    window.addEventListener("pageshow", update);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", update);
+      window.removeEventListener("pageshow", update);
+    };
+  }, []);
+
+  const [primary, ...secondary] = activeCards(cards, now);
+  const timer = primary ? countdown(primary, now) : null;
 
   return (
     <main className="dashboard">
       <header className="screen-header">
         <div className="brand">
-          {/* Local vector: no image transformation is needed. */}
           <img src="/peek-mark.svg" alt="" width={28} height={33} />
           <span>peek</span>
         </div>
         <div className="clock">
-          <span>{demoScreen.date}</span>
-          <strong>{demoScreen.time}</strong>
+          <span>{dateFormat.format(now).toLowerCase()}</span>
+          <strong>{clockFormat.format(now)}</strong>
         </div>
       </header>
-      <section className="feed" aria-label="Актуальные события">
-        <article className="hero">
-          <div className="hero-meta">
-            <Owner owner={meeting.owner} />
-            <span className="meeting-time">{meeting.time}</span>
-          </div>
-          <div className="timer">
-            <span>До встречи</span>
-            <strong>
-              {minutes}
-              <span>:</span>
-              {seconds}
-            </strong>
-          </div>
-          <div className="hero-title">
-            <h1>{meeting.title}</h1>
-            <span className="source">{meeting.location}</span>
-          </div>
-        </article>
-        <div className="secondary">
-          {events.map((event) => (
-            <article
-              className={`event${event.remaining ? " event--today" : ""}`}
-              key={event.id}
+      {primary && timer ? (
+        <section
+          className={`feed${secondary.length === 0 ? " feed--single" : ""}`}
+          aria-label="Актуальные события"
+        >
+          <article className="hero" key={primary.id}>
+            <div className="hero-meta">
+              <Owner owner={primary.owner} />
+              <time
+                className="meeting-time"
+                dateTime={new Date(primary.targetAt).toISOString()}
+              >
+                {eventFormat.format(primary.targetAt)}
+              </time>
+            </div>
+            <div
+              className={`timer${primary.kind === "deadline" || now >= primary.targetAt ? " timer--text" : ""}`}
             >
-              <div className="event-meta">
-                <Owner owner={event.owner} />
-                <span className="due">{event.due}</span>
-              </div>
-              <h2>{event.title}</h2>
-              {event.remaining ? (
-                <span className="remaining">{event.remaining}</span>
+              <span>{timer.label}</span>
+              <strong>{timer.value}</strong>
+            </div>
+            <div className="hero-title">
+              <h1>{primary.title}</h1>
+              {primary.location ? (
+                <span className="source">{primary.location}</span>
               ) : null}
-            </article>
-          ))}
-        </div>
-      </section>
-      <footer className="screen-footer">
-        Демо · время и события зафиксированы
-      </footer>
+            </div>
+          </article>
+          {secondary.length > 0 ? (
+            <div className="secondary">
+              {secondary.map((card) => (
+                <article
+                  className={`event${priorityAt(card, now) > card.priority ? " event--today" : ""}`}
+                  key={card.id}
+                >
+                  <div className="event-meta">
+                    <Owner owner={card.owner} />
+                    <time
+                      className="due"
+                      dateTime={new Date(card.targetAt).toISOString()}
+                    >
+                      {eventFormat.format(card.targetAt)}
+                    </time>
+                  </div>
+                  <h2>{card.title}</h2>
+                  <span className="remaining">
+                    {countdown(card, now).value}
+                  </span>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : (
+        <section className="empty-state">
+          <h1>Всё спокойно</h1>
+        </section>
+      )}
+      <footer className="screen-footer">Демо-события · Москва</footer>
     </main>
   );
 }
