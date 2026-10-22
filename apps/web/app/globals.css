@@ -1894,7 +1894,7 @@ body {
     padding: 8px 3px;
   }
   .scenario-library-nav [data-slot="badge"] {
-    display: none;
+    margin-left: 0;
   }
   .scenario-library-content {
     height: min(460px, 55dvh);

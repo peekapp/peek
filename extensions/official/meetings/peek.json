@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "sdk": "^0.1.0",
+  "id": "peek/meetings",
+  "version": "0.1.0",
+  "kind": "scenario",
+  "name": "Meetings",
+  "description": "Show upcoming meetings from selected calendars.",
+  "author": "Peek",
+  "entry": "index.mjs",
+  "settings": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "leadMinutes": {
+        "type": "integer",
+        "title": "Show in advance (minutes)",
+        "default": 10,
+        "minimum": 0,
+        "maximum": 129600
+      },
+      "urgentMinutes": {
+        "type": "integer",
+        "title": "Mark urgent (minutes)",
+        "default": 1,
+        "minimum": 0,
+        "maximum": 129600
+      },
+      "retainMinutes": {
+        "type": "integer",
+        "title": "Keep after start (minutes)",
+        "default": 5,
+        "minimum": 0,
+        "maximum": 1440
+      },
+      "filterText": {
+        "type": "string",
+        "title": "Title contains",
+        "default": "",
+        "maxLength": 200
+      }
+    },
+    "required": ["leadMinutes", "urgentMinutes", "retainMinutes", "filterText"]
+  },
+  "permissions": {},
+  "inputs": {
+    "events": {
+      "contract": "peek/calendar-events",
+      "version": "^1.0.0",
+      "multiple": true
+    }
+  }
+}

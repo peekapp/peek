@@ -1,5 +1,5 @@
 "use client";
-import { IntegrationIcon } from "./integration-icon";
+import type { Status } from "./extensions";
 import { Card, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import Link from "next/link";
 import { useState } from "react";
@@ -15,39 +15,35 @@ import {
   DialogClose,
 } from "../ui/dialog";
 import { messages, type Locale } from "@peek/core/i18n";
-import {
-  integrationDefinitions,
-  scenarioDefinitions,
-} from "@peek/core/registry";
-
 export function DefinitionPicker({
   kind,
   locale,
+  packages,
 }: {
-  kind: "scenario" | "connection";
+  kind: "scenario" | "integration";
+  packages: Status["packages"];
   locale: Locale;
 }) {
   const [open, setOpen] = useState(false);
   const t = messages(locale);
-  const choices =
-    kind === "scenario"
-      ? scenarioDefinitions.map((d) => ({
-          id: d.id,
-          title: t[d.nameKey],
-          description: t[d.descriptionKey],
-          href: `/settings/scenarios/new-${d.id}`,
-        }))
-      : integrationDefinitions.map((d) => ({
-          id: d.id,
-          title: d.name,
-          description: t[d.descriptionKey],
-          href: `/settings/connections/new-${d.id}`,
-        }));
+  const choices = packages
+    .filter((p) => p.manifest.kind === kind)
+    .map(({ manifest: m }) => ({
+      id: m.id,
+      title: m.name,
+      description: m.description,
+      href: `/settings/connections/new?package=${encodeURIComponent(m.id)}`,
+    }));
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button">
-          + {kind === "scenario" ? t.createScenario : t.addConnection}
+          +{" "}
+          {kind === "scenario"
+            ? locale === "ru"
+              ? "Добавить сценарий"
+              : "Add scenario"
+            : t.addConnection}
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -72,16 +68,26 @@ export function DefinitionPicker({
           </Button>
         </DialogClose>
         {kind === "scenario" ? (
-          <ScenarioLibrary locale={locale} onSelect={() => setOpen(false)} />
+          <ScenarioLibrary
+            packages={packages}
+            locale={locale}
+            onSelect={() => setOpen(false)}
+          />
         ) : (
           <div className="picker-options">
+            {!choices.length ? (
+              <p>
+                {locale === "ru"
+                  ? "Нет доступных подключений."
+                  : "No connections available."}
+              </p>
+            ) : null}
             {choices.map((choice) => (
               <Card variant="choice" asChild key={choice.id}>
                 <Link href={choice.href} onClick={() => setOpen(false)}>
                   <CardHeader>
                     <CardTitle asChild>
                       <strong className="flex items-center gap-3">
-                        <IntegrationIcon integrationId={choice.id} />
                         {choice.title}
                       </strong>
                     </CardTitle>

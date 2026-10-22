@@ -1,3 +1,4 @@
+import { openExtensions } from "@peek/extensions/store";
 import { databasePath, openStore, installationTimeZone } from "@peek/db";
 export const dynamic = "force-dynamic";
 import { settingsRequestAllowed } from "../../../lib/request-access";
@@ -6,23 +7,28 @@ export function GET(request: Request) {
     return new Response(null, { status: 403 });
   try {
     const store = openStore(databasePath(), true);
+    let extensions: ReturnType<typeof openExtensions> | undefined;
     try {
+      extensions = openExtensions(databasePath());
+      const instances = extensions.instances();
       return Response.json(
         {
           timeZone: installationTimeZone(),
           screens: store.listScreens(),
           profiles: store.listProfiles(),
-          scenarios: store.listScenarios(),
-          calendars: store.listCalendars(),
-          connections: store
-            .listCalendars()
-            .map((c) => ({ ...c, integrationId: "ical" })),
+          scenarios: instances
+            .filter((i) => i.kind === "scenario")
+            .map((i) => ({ id: i.id, profileId: i.profile_id })),
+          connections: instances
+            .filter((i) => i.kind === "integration")
+            .map((i) => ({ id: i.id, profileId: i.profile_id })),
           locale: store.snapshot().locale,
           theme: store.snapshot().theme,
         },
         { headers: { "Cache-Control": "no-store" } },
       );
     } finally {
+      extensions?.close();
       store.close();
     }
   } catch {
@@ -44,24 +50,10 @@ export async function POST(request: Request) {
   }
   if (!body || typeof body !== "object")
     return Response.json({ error: "invalid" }, { status: 400 });
-  if (body.action === "connection-check") body.action = "calendar-sync";
   try {
     const store = openStore(databasePath());
     try {
-      if (
-        body.action?.startsWith("calendar-") &&
-        body.id !== undefined &&
-        (typeof body.id !== "string" ||
-          !/^cal-[a-zA-Z0-9-]{1,80}$/.test(body.id))
-      )
-        throw new Error("invalid-calendar");
       let createdId: string | undefined;
-      let checkedAt: number | null | undefined;
-      if (
-        ["calendar-save", "save"].includes(body.action) &&
-        typeof body.config?.profileId !== "string"
-      )
-        throw new Error("invalid-profile");
       if (body.action === "screen-save") {
         createdId = body.id;
         store.saveScreen(createdId!, body.config, body.previousId ?? null);
@@ -78,37 +70,10 @@ export async function POST(request: Request) {
         typeof body.id === "string"
       ) {
         store.deleteProfile(body.id);
-      } else if (body.action === "calendar-save") {
-        createdId = body.id ?? `cal-${crypto.randomUUID()}`;
-        store.saveCalendar(
-          createdId!,
-          { ...body.config, timeZone: installationTimeZone() },
-          body.url,
-        );
-      } else if (
-        body.action === "calendar-delete" &&
-        typeof body.id === "string"
-      )
-        store.deleteCalendar(body.id);
-      else if (body.action === "calendar-sync" && typeof body.id === "string") {
-        const connection = store.listCalendars().find((c) => c.id === body.id);
-        if (!connection) throw new Error("invalid-calendar");
-        checkedAt = connection.checkedAt;
-        store.requestSync(body.id);
       } else if (body.action === "theme") store.setTheme(body.theme);
       else if (body.action === "locale") store.setLocale(body.locale);
-      else if (body.action === "save") {
-        if (
-          body.id !== undefined &&
-          (typeof body.id !== "string" || !/^[a-zA-Z0-9-]{1,80}$/.test(body.id))
-        )
-          throw new Error("invalid");
-        createdId = body.id ?? crypto.randomUUID();
-        store.saveScenario(createdId!, body.config);
-      } else if (body.action === "delete" && typeof body.id === "string")
-        store.deleteScenario(body.id);
       else throw new Error("invalid");
-      return Response.json({ ok: true, id: createdId, checkedAt });
+      return Response.json({ ok: true, id: createdId });
     } finally {
       store.close();
     }
@@ -122,10 +87,6 @@ export async function POST(request: Request) {
       "invalid-profile",
       "profile-in-use",
       "invalid",
-      "invalid-calendar",
-      "invalid-url",
-      "calendar-in-use",
-      "encryption-key",
     ];
     return Response.json(
       { error: known.includes(message) ? message : "unavailable" },

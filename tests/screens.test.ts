@@ -1,3 +1,10 @@
+import {
+  officialStore,
+  connection,
+  scenario,
+  publish,
+  evaluate,
+} from "./helpers/official";
 import { it } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -18,6 +25,8 @@ it("persists independent screens and filters by scenario owner, including shared
   const dir = mkdtempSync(join(tmpdir(), "peek-screens-"));
   const path = join(dir, "db.sqlite");
   let store = openStore(path);
+  store.migrate();
+  const extensions = officialStore(path);
   try {
     store.migrate();
     store.migrate();
@@ -25,32 +34,12 @@ it("persists independent screens and filters by scenario owner, including shared
     store.saveProfile("profile-tim", { name: "Tim", color: "blue" });
     store.saveProfile("profile-anna", { name: "Anna", color: "pink" });
     const now = Date.now();
-    store.replaceSource("demo-meetings", [
-      {
-        id: "event",
-        sourceId: "demo-meetings",
-        title: "Test",
-        owner: { name: "Different source owner", color: "pink" },
-        startAt: now + 30000,
-      },
+    const c = connection(extensions);
+    publish(extensions, c, [
+      { id: "event", title: "Test", startAt: now + 30000 },
     ]);
     for (const profileId of ["profile-tim", "profile-anna", "shared"])
-      store.saveScenario(
-        profileId,
-        {
-          name: profileId,
-          definition: "meetings",
-          sourceId: "demo-meetings",
-          profileId,
-          enabled: true,
-          filterText: "",
-          leadMinutes: 10,
-          urgentMinutes: 1,
-          retainMinutes: 5,
-        },
-        now,
-      );
-    store.runDue(now);
+      evaluate(extensions, scenario(extensions, [c], profileId), now);
     store.saveScreen("screen-tv", config);
     store.saveScreen("screen-room", {
       ...config,
@@ -88,7 +77,10 @@ it("persists independent screens and filters by scenario owner, including shared
     assert.equal(store.snapshot(now, "screen-room").cards.length, 0);
     store.deleteScreen("screen-room");
     assert.throws(() => store.snapshot(now, "screen-room"), /screen-not-found/);
-    assert.equal(store.listScenarios().length, 3);
+    assert.equal(
+      extensions.instances().filter((i) => i.kind === "scenario").length,
+      3,
+    );
     assert.equal(store.snapshot(now, "screen-tv").cards.length, 3);
     store.saveProfile("profile-new", { name: "New", color: "blue" });
     store.saveScreen("screen-only", {
@@ -113,6 +105,7 @@ it("persists independent screens and filters by scenario owner, including shared
       false,
     );
   } finally {
+    extensions.close();
     store.close();
     rmSync(dir, { recursive: true });
   }
@@ -141,45 +134,35 @@ it("rejects malformed screen settings and uses the selected display timezone", (
 it("only reports errors from sources used by the selected profiles", () => {
   const dir = mkdtempSync(join(tmpdir(), "peek-screen-errors-"));
   const store = openStore(join(dir, "db.sqlite"));
+  store.migrate();
+  const extensions = officialStore(join(dir, "db.sqlite"));
   try {
     store.migrate();
-    store.saveCalendar(
-      "cal-pending",
-      {
-        name: "Pending",
-        profileId: "shared",
-        timeZone: "UTC",
-        intervalSeconds: 60,
-      },
-      "https://example.com/calendar.ics",
-    );
-    store.saveScenario("pending", {
-      name: "Pending",
-      definition: "meetings",
-      sourceId: "cal-pending",
-      profileId: "shared",
-      enabled: true,
-      filterText: "",
-      leadMinutes: 10,
-      urgentMinutes: 1,
-      retainMinutes: 5,
-    });
-    assert.equal(store.snapshot(Date.now(), "default").calendarErrors, 1);
+    const c = connection(extensions);
+    scenario(extensions, [c]);
+    assert.equal(store.snapshot(Date.now(), "default").integrationErrors, 1);
     store.saveProfile("profile-alone", { name: "Alone", color: "blue" });
     store.saveScreen("screen-empty", {
       ...config,
       allProfiles: false,
       profileIds: ["profile-alone"],
     });
-    assert.equal(store.snapshot(Date.now(), "screen-empty").calendarErrors, 0);
+    assert.equal(
+      store.snapshot(Date.now(), "screen-empty").integrationErrors,
+      0,
+    );
     assert.equal(store.snapshot(Date.now(), "screen-empty").scenarioErrors, 0);
     store.saveScreen("screen-empty", {
       ...config,
       allProfiles: false,
       profileIds: ["shared"],
     });
-    assert.equal(store.snapshot(Date.now(), "screen-empty").calendarErrors, 1);
+    assert.equal(
+      store.snapshot(Date.now(), "screen-empty").integrationErrors,
+      1,
+    );
   } finally {
+    extensions.close();
     store.close();
     rmSync(dir, { recursive: true });
   }
@@ -229,48 +212,6 @@ it("creates unique readable IDs, renames atomically and preserves multilingual n
       );
   } finally {
     store.close();
-  }
-});
-it("migrates legacy IDs without collisions or losing settings", async () => {
-  const { Database } = await import("bun:sqlite");
-  const dir = mkdtempSync(join(tmpdir(), "peek-screen-slugs-"));
-  const path = join(dir, "db.sqlite");
-  let store = openStore(path);
-  try {
-    store.migrate();
-    store.close();
-    const db = new Database(path);
-    db.exec(
-      "ALTER TABLE screen_state DROP COLUMN theme; DELETE FROM screens; PRAGMA user_version = 6;",
-    );
-    for (const [id, name] of [
-      ["screen-home", "Home"],
-      ["screen-random-one", "Family TV"],
-      ["screen-random-two", "Family TV"],
-      ["screen-random-three", "Спальня"],
-    ])
-      db.query("INSERT INTO screens (id, config) VALUES (?, ?)").run(
-        id,
-        JSON.stringify({ ...config, name, scale: 1.4 }),
-      );
-    db.close();
-    store = openStore(path);
-    store.migrate();
-    store.migrate();
-    assert.deepEqual(
-      new Set(store.listScreens().map((s) => s.id)),
-      new Set(["default", "family-tv", "family-tv-2", "screen"]),
-    );
-    assert.equal(
-      store.listScreens().find((s) => s.id === "screen")?.name,
-      "Спальня",
-    );
-    assert.ok(
-      store.listScreens().every((s) => s.scale === 1.4 && !("timeZone" in s)),
-    );
-  } finally {
-    store.close();
-    rmSync(dir, { recursive: true });
   }
 });
 it("uses the server timezone, with environment overrides taking precedence", async () => {

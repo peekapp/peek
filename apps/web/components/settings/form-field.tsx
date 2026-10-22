@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type ReactElement,
 } from "react";
+import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
 import { SettingsSelect } from "./select";
 import { Field, FieldLabel, FieldDescription } from "../ui/field";
@@ -27,6 +28,7 @@ export function SettingsField({
     (child) =>
       isValidElement(child) &&
       (child.type === Input ||
+        child.type === Checkbox ||
         child.type === SettingsSelect ||
         ["input", "select", "textarea"].includes(child.type as string)),
   );
@@ -43,7 +45,14 @@ export function SettingsField({
       .filter(Boolean)
       .join(" ") || undefined;
   return (
-    <Field className={className}>
+    <Field
+      className={className}
+      orientation={
+        isValidElement(control) && control.type === Checkbox
+          ? "horizontal"
+          : "vertical"
+      }
+    >
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       {isValidElement(control)
         ? cloneElement(

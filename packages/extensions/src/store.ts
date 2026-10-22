@@ -51,17 +51,15 @@ export function openExtensions(path: string) {
       .all();
   const instance = (id: string) =>
     db
-      .query<
-        Instance,
-        [string]
-      >("SELECT * FROM extension_instances WHERE id = ?")
+      .query<Instance, [string]>(
+        "SELECT * FROM extension_instances WHERE id = ?",
+      )
       .get(id);
   const getPackage = (id: string) => {
     const row = db
-      .query<
-        Installed,
-        [string]
-      >("SELECT * FROM extension_packages WHERE id = ?")
+      .query<Installed, [string]>(
+        "SELECT * FROM extension_packages WHERE id = ?",
+      )
       .get(id);
     if (!row) throw new Error("package-not-installed");
     return JSON.parse(row.payload) as ExtensionPackage;
@@ -89,24 +87,13 @@ export function openExtensions(path: string) {
     name: string;
     contracts: Record<string, { id: string; version: string }>;
   }[] {
-    const external = instances()
+    return instances()
       .filter((i) => i.kind === "integration")
       .map((i) => ({
         id: i.id,
         name: i.name,
         contracts: getPackage(i.package_id).manifest.provides ?? {},
       }));
-    const calendars = db
-      .query<{ id: string; config: string }, []>(
-        "SELECT id,config FROM calendars",
-      )
-      .all()
-      .map((c) => ({
-        id: c.id,
-        name: JSON.parse(c.config).name,
-        contracts: { events: { id: "peek/calendar-events", version: "1.0.0" } },
-      }));
-    return [...external, ...calendars];
   }
   function validateBindings(m: Manifest, bindings: Record<string, Binding[]>) {
     if (!bindings || typeof bindings !== "object" || Array.isArray(bindings))
@@ -181,10 +168,9 @@ export function openExtensions(path: string) {
       [Date.now() - 3600000, Date.now() - 7 * 86400000],
     );
     const count = db
-      .query<
-        { n: number },
-        []
-      >("SELECT COUNT(*) n FROM extension_operations WHERE status IN ('review','pending')")
+      .query<{ n: number }, []>(
+        "SELECT COUNT(*) n FROM extension_operations WHERE status IN ('review','pending')",
+      )
       .get()!.n;
     if (count >= 10) throw new Error("too-many-pending-installations");
     const id = randomUUID();
@@ -228,6 +214,47 @@ export function openExtensions(path: string) {
     getPackage,
     connections: allConnections,
     stage,
+    provision(packages: ExtensionPackage[]) {
+      // Bundled defaults enter the same installation journal as uploaded packages.
+      // A receipt prevents reinstalling a package the user later removes.
+      return db
+        .transaction(() => {
+          const fresh = packages.filter(
+            (p) =>
+              !db
+                .query("SELECT id FROM extension_defaults WHERE id=?")
+                .get(p.manifest.id),
+          );
+          if (
+            !fresh.length ||
+            db
+              .query(
+                "SELECT id FROM extension_operations WHERE status='pending'",
+              )
+              .get()
+          )
+            return;
+          const missing = fresh.filter(
+            (p) => !installed().some((row) => row.id === p.manifest.id),
+          );
+          if (missing.length) {
+            const op = stage(
+              missing,
+              missing.map((p) => p.manifest.id),
+            );
+            db.run(
+              "UPDATE extension_operations SET status='pending' WHERE id=?",
+              [op.id],
+            );
+          }
+          for (const p of fresh)
+            db.run("INSERT INTO extension_defaults VALUES (?, ?)", [
+              p.manifest.id,
+              packageDigest(p),
+            ]);
+        })
+        .immediate();
+    },
     recover() {
       db.run(
         "UPDATE extension_instances SET generation=generation+1,next_run_at=? WHERE kind='integration' AND enabled=1",
@@ -236,15 +263,20 @@ export function openExtensions(path: string) {
     },
     status() {
       const runtime = db
-        .query<
-          { heartbeat: number; error: string | null },
-          []
-        >("SELECT * FROM extension_runtime WHERE id=1")
+        .query<{ heartbeat: number; error: string | null }, []>(
+          "SELECT * FROM extension_runtime WHERE id=1",
+        )
         .get();
       return {
         packages: installed().map((r) => ({
           manifest: JSON.parse(r.payload).manifest,
           explicit: !!r.explicit,
+          official:
+            (
+              db
+                .query("SELECT digest FROM extension_defaults WHERE id=?")
+                .get(r.id) as { digest: string } | null
+            )?.digest === packageDigest(JSON.parse(r.payload)),
           sha256: packageDigest(JSON.parse(r.payload)),
           unused:
             !instances().some((i) => i.package_id === r.id) &&
@@ -262,10 +294,9 @@ export function openExtensions(path: string) {
         })),
         connections: allConnections(),
         operations: db
-          .query<
-            Operation,
-            []
-          >("SELECT id,kind,status,'{}' as payload,created_at,error FROM extension_operations ORDER BY created_at DESC LIMIT 20")
+          .query<Operation, []>(
+            "SELECT id,kind,status,'{}' as payload,created_at,error FROM extension_operations ORDER BY created_at DESC LIMIT 20",
+          )
           .all(),
         runtime: {
           ready:
@@ -294,10 +325,9 @@ export function openExtensions(path: string) {
     },
     pending() {
       return db
-        .query<
-          Operation,
-          []
-        >("SELECT * FROM extension_operations WHERE status='pending' ORDER BY created_at LIMIT 1")
+        .query<Operation, []>(
+          "SELECT * FROM extension_operations WHERE status='pending' ORDER BY created_at LIMIT 1",
+        )
         .get();
     },
     fail(id: string, error: string) {
@@ -414,10 +444,9 @@ export function openExtensions(path: string) {
     rollback() {
       db.transaction(() => {
         const row = db
-          .query<
-            { payload: string },
-            []
-          >("SELECT payload FROM extension_history WHERE id=1")
+          .query<{ payload: string }, []>(
+            "SELECT payload FROM extension_history WHERE id=1",
+          )
           .get();
         if (!row) throw new Error("no-rollback");
         const old = JSON.parse(row.payload) as {
@@ -501,10 +530,14 @@ export function openExtensions(path: string) {
           boundedJson(secrets, LIMITS.state);
           if (p.manifest.kind === "scenario" && Object.keys(secrets).length)
             throw new Error("scenario-secrets-forbidden");
+          if (Object.keys(secrets).length) {
+            const encrypted = instances().find((i) => i.secret)?.secret;
+            if (encrypted) decryptSecret(encrypted, path);
+          }
           const id = old?.id ?? `ext-${randomUUID()}`;
           db.run(
             `INSERT INTO extension_instances VALUES (?,?,?,?,?,?,?,?,?,?,?, ?,NULL,NULL,'{}')
-          ON CONFLICT(id) DO UPDATE SET name=excluded.name,profile_id=excluded.profile_id,settings=excluded.settings,secret=excluded.secret,bindings=excluded.bindings,enabled=excluded.enabled,generation=excluded.generation,next_run_at=excluded.next_run_at,last_error=NULL,snapshots='{}'`,
+          ON CONFLICT(id) DO UPDATE SET name=excluded.name,profile_id=excluded.profile_id,settings=excluded.settings,secret=excluded.secret,bindings=excluded.bindings,enabled=excluded.enabled,generation=excluded.generation,next_run_at=excluded.next_run_at,last_error=NULL,state=excluded.state,snapshots='{}'`,
             [
               id,
               input.packageId,
@@ -518,7 +551,9 @@ export function openExtensions(path: string) {
               JSON.stringify(input.bindings ?? {}),
               input.enabled ? 1 : 0,
               (old?.generation ?? 0) + 1,
-              old?.state ?? "null",
+              p.manifest.kind === "integration"
+                ? "null"
+                : (old?.state ?? "null"),
               input.enabled ? Date.now() : null,
             ],
           );
@@ -543,6 +578,13 @@ export function openExtensions(path: string) {
           return id;
         })
         .immediate();
+    },
+    requestRun(id: string) {
+      const result = db.run(
+        "UPDATE extension_instances SET generation=generation+1,next_run_at=?,last_error=NULL WHERE id=? AND enabled=1",
+        [Date.now(), id],
+      );
+      if (!result.changes) throw new Error("instance-not-found-or-disabled");
     },
     removeInstance(id: string) {
       db.transaction(() => {
@@ -591,31 +633,7 @@ export function openExtensions(path: string) {
             const snap = JSON.parse(c.snapshots)[b.dataset];
             return snap ? [{ connectionId: c.id, ...snap }] : [];
           }
-          const calendar = db
-            .query<
-              { last_success: number | null },
-              [string]
-            >("SELECT last_success FROM calendars WHERE id=?")
-            .get(b.connectionId);
-          if (!calendar?.last_success) return [];
-          const data = db
-            .query<{ payload: string }, [string]>(
-              "SELECT payload FROM events WHERE json_extract(payload,'$.sourceId')=? LIMIT 10001",
-            )
-            .all(b.connectionId)
-            .map((e) => JSON.parse(e.payload))
-            .filter((e) => e.sourceId === b.connectionId);
-          inputBytes += Buffer.byteLength(JSON.stringify(data));
-          if (inputBytes > LIMITS.message) throw new Error("inputs-too-large");
-          return [
-            {
-              connectionId: b.connectionId,
-              contract: "peek/calendar-events",
-              version: "1.0.0",
-              updatedAt: calendar.last_success,
-              data,
-            },
-          ];
+          return [];
         });
       return {
         settings: JSON.parse(i.settings),
@@ -633,18 +651,16 @@ export function openExtensions(path: string) {
     },
     due(now = Date.now()) {
       return db
-        .query<
-          Instance,
-          [number]
-        >("SELECT * FROM extension_instances WHERE enabled=1 AND next_run_at<=? ORDER BY next_run_at")
+        .query<Instance, [number]>(
+          "SELECT * FROM extension_instances WHERE enabled=1 AND next_run_at<=? ORDER BY next_run_at",
+        )
         .all(now);
     },
     executionStatus(id: string) {
       return db
-        .query<
-          { enabled: number; generation: number },
-          [string]
-        >("SELECT enabled,generation FROM extension_instances WHERE id=?")
+        .query<{ enabled: number; generation: number }, [string]>(
+          "SELECT enabled,generation FROM extension_instances WHERE id=?",
+        )
         .get(id);
     },
     retry(i: Instance, error: string) {

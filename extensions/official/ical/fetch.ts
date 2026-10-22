@@ -2,7 +2,7 @@ import { lookup } from "node:dns/promises";
 import { request } from "node:https";
 import { isIP } from "node:net";
 import ipaddr from "ipaddr.js";
-import { validateCalendarUrl } from "@peek/core/calendars";
+import { validateCalendarUrl } from "./settings";
 export const MAX_BYTES = 10 * 1024 * 1024;
 export function publicAddress(address: string) {
   try {
@@ -111,8 +111,13 @@ export async function fetchCalendar(
   url: string,
   headers: Record<string, string> = {},
   transport = hop,
+  abort?: AbortSignal,
 ): Promise<Download> {
-  const signal = AbortSignal.timeout(15000);
+  const signal = AbortSignal.any([
+    AbortSignal.timeout(15000),
+    ...(abort ? [abort] : []),
+  ]);
+  signal.throwIfAborted();
   // DNS resolution is also covered by this deadline.
   async function download() {
     let target = validateCalendarUrl(url);

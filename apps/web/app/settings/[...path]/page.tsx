@@ -1,15 +1,15 @@
 import { Settings } from "../../../components/settings";
 import { readState } from "../../../lib/server-state";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 export default async function SettingsSection({
   params,
+  searchParams,
 }: {
   params: Promise<{ path: string[] }>;
+  searchParams: Promise<{ package?: string | string[] }>;
 }) {
   const { path } = await params;
-  if (path[0] === "calendars")
-    redirect(`/settings/connections${path[1] ? `/${path[1]}` : ""}`);
   if (
     !["general", "connections", "scenarios", "profiles", "screens"].includes(
       path[0],
@@ -22,5 +22,12 @@ export default async function SettingsSection({
   try {
     locale = readState().locale ?? "en";
   } catch {}
-  return <Settings path={path} initialLocale={locale} />;
+  const query = await searchParams;
+  return (
+    <Settings
+      path={path}
+      initialLocale={locale}
+      packageId={typeof query.package === "string" ? query.package : undefined}
+    />
+  );
 }

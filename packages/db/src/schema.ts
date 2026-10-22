@@ -16,36 +16,6 @@ export const state = sqliteTable("screen_state", {
   demoSeeded: integer("demo_seeded", { mode: "boolean" }).notNull(),
 });
 
-import type { ScenarioConfig, CalendarEvent } from "@peek/core/scenarios";
-export const scenarios = sqliteTable("scenarios", {
-  id: text("id").primaryKey(),
-  config: text("config", { mode: "json" }).$type<ScenarioConfig>().notNull(),
-  nextRunAt: integer("next_run_at"),
-  lastRunAt: integer("last_run_at"),
-  lastError: text("last_error"),
-});
-export const events = sqliteTable("events", {
-  id: text("id").primaryKey(),
-  payload: text("payload", { mode: "json" }).$type<CalendarEvent>().notNull(),
-});
-
-import type { CalendarConfig } from "@peek/core/calendars";
-export const calendars = sqliteTable("calendars", {
-  id: text("id").primaryKey(),
-  config: text("config", { mode: "json" }).$type<CalendarConfig>().notNull(),
-  secret: text("secret").notNull(),
-  version: integer("version").notNull(),
-  lastSuccess: integer("last_success"),
-  checkedAt: integer("checked_at"),
-  nextSync: integer("next_sync").notNull(),
-  error: text("error"),
-  failures: integer("failures").notNull(),
-  cache: text("cache"),
-  eventCount: integer("event_count").notNull(),
-  etag: text("etag"),
-  modified: text("modified"),
-});
-
 export const profiles = sqliteTable("profiles", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

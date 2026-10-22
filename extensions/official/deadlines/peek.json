@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "sdk": "^0.1.0",
+  "id": "peek/deadlines",
+  "version": "0.1.0",
+  "kind": "scenario",
+  "name": "Deadlines",
+  "description": "Show deadlines from selected calendars, including all-day events.",
+  "author": "Peek",
+  "entry": "index.mjs",
+  "settings": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "leadMinutes": {
+        "type": "integer",
+        "title": "Show in advance (minutes)",
+        "default": 10080,
+        "minimum": 0,
+        "maximum": 129600
+      },
+      "urgentMinutes": {
+        "type": "integer",
+        "title": "Mark urgent (minutes)",
+        "default": 1440,
+        "minimum": 0,
+        "maximum": 129600
+      },
+      "retainMinutes": {
+        "type": "integer",
+        "title": "Keep after start (minutes)",
+        "default": 1440,
+        "minimum": 0,
+        "maximum": 1440
+      },
+      "filterText": {
+        "type": "string",
+        "title": "Title contains",
+        "default": "",
+        "maxLength": 200
+      }
+    },
+    "required": ["leadMinutes", "urgentMinutes", "retainMinutes", "filterText"]
+  },
+  "permissions": {},
+  "inputs": {
+    "events": {
+      "contract": "peek/calendar-events",
+      "version": "^1.0.0",
+      "multiple": true
+    }
+  }
+}

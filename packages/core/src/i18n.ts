@@ -22,8 +22,10 @@ export const en = {
   allProfilesHint: "Includes profiles you create later.",
   noScreenProfiles: "No profiles selected. This screen will show no cards.",
   appTheme: "App theme",
-  appThemeHint: "Used in settings and on screens that follow the app theme. Changes are saved automatically.",
-  screenThemeHint: "Follow the app theme or choose a separate theme for this screen.",
+  appThemeHint:
+    "Used in settings and on screens that follow the app theme. Changes are saved automatically.",
+  screenThemeHint:
+    "Follow the app theme or choose a separate theme for this screen.",
   appearance: "Appearance",
   screenTheme: "Theme",
   night: "Night",
@@ -150,8 +152,8 @@ export const en = {
   invalidFeed: "The response is not a supported ICS calendar.",
   keyError:
     "The encryption key is missing or invalid. Restore the key before continuing.",
-  calendarWarning:
-    "Calendar updates need attention. Open Connections in Settings.",
+  integrationWarning:
+    "Connection updates need attention. Open Connections in Settings.",
   confirmCalendarDelete: "Disconnect this calendar?",
   preview: "Preview",
   purple: "Purple",
@@ -177,7 +179,8 @@ export const en = {
   enabled: "Enabled",
   source: "Source",
   sources: "Sources",
-  sourcesHint: "Select one or more calendars. Each connection syncs once for all scenarios.",
+  sourcesHint:
+    "Select one or more calendars. Each connection syncs once for all scenarios.",
   selectSource: "Select at least one source.",
   demoMeetings: "Demo meetings",
   demoDeadlines: "Demo deadlines",
@@ -247,8 +250,10 @@ export const ru: Record<keyof typeof en, string> = {
   allProfilesHint: "Включая профили, которые вы создадите позже.",
   noScreenProfiles: "Профили не выбраны. На этом экране не будет карточек.",
   appTheme: "Тема приложения",
-  appThemeHint: "Для настроек и экранов с темой «Как в приложении». Изменения сохраняются автоматически.",
-  screenThemeHint: "Используйте тему приложения или выберите отдельную тему для этого экрана.",
+  appThemeHint:
+    "Для настроек и экранов с темой «Как в приложении». Изменения сохраняются автоматически.",
+  screenThemeHint:
+    "Используйте тему приложения или выберите отдельную тему для этого экрана.",
   appearance: "Оформление",
   screenTheme: "Тема",
   night: "Ночь",
@@ -375,8 +380,8 @@ export const ru: Record<keyof typeof en, string> = {
   invalidFeed: "Ответ не является поддерживаемым ICS-календарём.",
   keyError:
     "Ключ шифрования отсутствует или неверен. Восстановите ключ для продолжения.",
-  calendarWarning:
-    "Ошибка обновления календаря. Откройте вкладку «Подключения» в настройках.",
+  integrationWarning:
+    "Ошибка обновления подключения. Откройте вкладку «Подключения» в настройках.",
   confirmCalendarDelete: "Отключить этот календарь?",
   preview: "Предпросмотр",
   purple: "Фиолетовый",
@@ -402,7 +407,8 @@ export const ru: Record<keyof typeof en, string> = {
   enabled: "Включён",
   source: "Источник",
   sources: "Источники",
-  sourcesHint: "Выберите один или несколько календарей. Каждое подключение синхронизируется один раз для всех сценариев.",
+  sourcesHint:
+    "Выберите один или несколько календарей. Каждое подключение синхронизируется один раз для всех сценариев.",
   selectSource: "Выберите хотя бы один источник.",
   demoMeetings: "Тестовые встречи",
   demoDeadlines: "Тестовые дедлайны",

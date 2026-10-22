@@ -1,23 +1,12 @@
 "use client";
-import { ScenarioIntegrations } from "./settings/scenario-integrations";
-import { IntegrationIcon } from "./settings/integration-icon";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "./ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import {
   NavigationMenu,
   NavigationMenuList,
   NavigationMenuItem,
   NavigationMenuLink,
 } from "./ui/navigation-menu";
-import { Badge } from "./ui/badge";
 import { Alert, AlertDescription } from "./ui/alert";
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "./ui/empty";
 import { Button } from "./ui/button";
 import { useAppTheme } from "./theme";
 import { ThemeSelect } from "./settings/theme-select";
@@ -25,7 +14,6 @@ import type { Theme } from "@peek/core/themes";
 import { SettingsSelect } from "./settings/select";
 import { SelectItem } from "./ui/select";
 import { Brand } from "./brand";
-import { useInstallationTimeZone } from "./time-zone";
 import type { Screen } from "@peek/core/screens";
 import { ScreenEditor, ScreenList } from "./settings/screen-editor";
 import { profileName, type Profile } from "@peek/core/profiles";
@@ -34,28 +22,24 @@ import { profileColors } from "@peek/core/colors";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
-import type { Scenario } from "@peek/core/scenarios";
-import { relativeEventTime } from "@peek/core/time";
-import { ScenarioEditor } from "./settings/scenario-editor";
-import { CalendarEditor } from "./settings/calendar-editor";
-import { DefinitionPicker } from "./settings/definition-picker";
-import { ConnectionCheck } from "./settings/connection-check";
-import { integrationDefinitions, type Connection } from "@peek/core/registry";
+import { Extensions } from "./settings/extensions";
 import { mutate } from "./settings/api";
 type Data = {
   theme: Theme;
   screens: Screen[];
   profiles: Profile[];
-  scenarios: Scenario[];
-  connections: Connection[];
+  scenarios: { id: string; profileId: string }[];
+  connections: { id: string; profileId: string }[];
   locale: Locale;
 };
 export function Settings({
   initialLocale = "en",
   path = [],
+  packageId,
 }: {
   initialLocale?: Locale;
   path?: string[];
+  packageId?: string;
 }) {
   const [locale, setLocale] = useState<Locale>(initialLocale),
     [data, setData] = useState<Data | null>(null),
@@ -63,7 +47,6 @@ export function Settings({
   const { theme, setTheme } = useAppTheme();
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeStatus, setThemeStatus] = useState<"saved" | "error" | "">("");
-  const timeZone = useInstallationTimeZone();
   const t = messages(locale),
     tab = path[0] ?? "screens",
     item = path[1];
@@ -88,15 +71,7 @@ export function Settings({
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
-  const sourceName = (id: string) =>
-    data?.connections.find((c) => c.id === id)?.name ?? t.sourceMissing;
-  const ownerName = (id?: string) => {
-    const p = data?.profiles.find((p) => p.id === (id ?? "shared"));
-    return p ? profileName(p, locale) : t.profileMissing;
-  };
   const profile = data?.profiles.find((p) => p.id === item);
-  const scenario = data?.scenarios.find((s) => s.id === item),
-    calendar = data?.connections.find((c) => c.id === item);
   return (
     <main className="settings-page">
       <header className="settings-header">
@@ -294,205 +269,15 @@ export function Settings({
               </div>
             </>
           )
-        ) : tab === "scenarios" && item ? (
-          scenario || item === "new-meetings" || item === "new-deadlines" ? (
-            <ScenarioEditor
-              key={item}
-              scenario={scenario}
-              definition={
-                scenario?.definition ??
-                (item === "new-meetings" ? "meetings" : "deadlines")
-              }
-              locale={locale}
-              profiles={data.profiles}
-              calendars={data.connections}
-              refresh={refresh}
-            />
-          ) : (
-            <p>{t.notFound}</p>
-          )
-        ) : tab === "connections" && item ? (
-          calendar || item === "new" || item === "new-ical" ? (
-            <CalendarEditor
-              key={item}
-              calendar={calendar}
-              profiles={data.profiles}
-              locale={locale}
-              refresh={refresh}
-            />
-          ) : (
-            <p>{t.notFound}</p>
-          )
-        ) : tab === "scenarios" ? (
-          <>
-            <div className="section-intro">
-              <div>
-                <h2>{t.scenarios}</h2>
-                <p>{t.scenariosDescription}</p>
-              </div>
-              <DefinitionPicker kind="scenario" locale={locale} />
-            </div>
-            <div className="settings-card-grid">
-              {data.scenarios.map((s) => (
-                <Card variant="settings" asChild key={s.id}>
-                  <Link href={`/settings/scenarios/${s.id}`}>
-                    <CardHeader>
-                      <div className="card-top">
-                        <span className="type-icon">
-                          {s.definition === "meetings" ? "◷" : "▤"}
-                        </span>
-                        <Badge
-                          variant={
-                            s.lastError
-                              ? "error"
-                              : s.enabled
-                                ? "success"
-                                : "inactive"
-                          }
-                        >
-                          {s.lastError
-                            ? t.needsAttention
-                            : s.enabled
-                              ? t.active
-                              : t.disabled}
-                        </Badge>
-                      </div>
-                      <CardTitle asChild>
-                        <h3 className="flex flex-wrap items-center gap-2">
-                          {s.name}
-                          <ScenarioIntegrations
-                            integrationIds={data.connections
-                              .filter((connection) =>
-                                s.sourceIds.includes(connection.id),
-                              )
-                              .map((connection) => connection.integrationId)}
-                          />
-                        </h3>
-                      </CardTitle>
-                      <CardDescription asChild>
-                        <p>
-                          {t[s.definition]} · {ownerName(s.profileId)}
-                        </p>
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="card-source">
-                      {s.sourceIds.map(sourceName).join(" · ")}
-                    </CardContent>
-                    <CardFooter className="card-bottom">
-                      <span>
-                        {s.enabled && s.nextRunAt !== null
-                          ? `${t.nextRun}: ${relativeEventTime(s.nextRunAt, Date.now(), locale, timeZone)}`
-                          : s.enabled
-                            ? t.waiting
-                            : t.disabled}
-                      </span>
-                      <span aria-hidden="true">›</span>
-                    </CardFooter>
-                  </Link>
-                </Card>
-              ))}
-            </div>
-            {!data.scenarios.length ? (
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyTitle>{t.emptyScenarios}</EmptyTitle>
-                  <EmptyDescription>{t.scenarioEmptyHint}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : null}
-          </>
-        ) : tab === "connections" ? (
-          <>
-            <div className="section-intro">
-              <div>
-                <h2>{t.connections}</h2>
-                <p>{t.connectionsDescription}</p>
-              </div>
-              <DefinitionPicker kind="connection" locale={locale} />
-            </div>
-            <div className="settings-card-grid">
-              {data.connections.map((c) => (
-                <Card variant="settings" className="connection-card" key={c.id}>
-                  <CardHeader>
-                    <div className="card-top">
-                      <span className="type-icon">
-                        <IntegrationIcon integrationId={c.integrationId} />
-                      </span>
-                      <Badge
-                        variant={
-                          c.error
-                            ? "error"
-                            : c.lastSuccess === null
-                              ? "inactive"
-                              : Date.now() - c.lastSuccess >
-                                  c.intervalSeconds * 2000 + 30000
-                                ? "warning"
-                                : "success"
-                        }
-                      >
-                        {c.error
-                          ? t.needsAttention
-                          : c.lastSuccess === null
-                            ? t.pending
-                            : Date.now() - c.lastSuccess >
-                                c.intervalSeconds * 2000 + 30000
-                              ? t.stale
-                              : t.connected}
-                      </Badge>
-                    </div>
-                    <CardTitle asChild>
-                      <h3>
-                        <Link href={`/settings/connections/${c.id}`}>
-                          {c.name}
-                        </Link>
-                      </h3>
-                    </CardTitle>
-                    <CardDescription asChild>
-                      <p>
-                        {
-                          integrationDefinitions.find(
-                            (d) => d.id === c.integrationId,
-                          )?.name
-                        }{" "}
-                        · {ownerName(c.profileId)}
-                      </p>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="card-source">
-                    {c.eventCount} {t.eventCount.toLowerCase()}
-                  </CardContent>
-                  <CardFooter className="card-bottom">
-                    <span>
-                      {t.lastSync}:{" "}
-                      {c.lastSuccess === null
-                        ? t.never
-                        : relativeEventTime(
-                            c.lastSuccess,
-                            Date.now(),
-                            locale,
-                            timeZone,
-                          )}
-                    </span>
-                    <span aria-hidden="true">›</span>
-                  </CardFooter>
-                  <ConnectionCheck
-                    key={`${c.id}:${c.version}`}
-                    connection={c}
-                    locale={locale}
-                    refresh={refresh}
-                  />
-                </Card>
-              ))}
-            </div>
-            {!data.connections.length ? (
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyTitle>{t.calendarEmpty}</EmptyTitle>
-                  <EmptyDescription>{t.calendarEmptyHint}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            ) : null}
-          </>
+        ) : tab === "scenarios" || tab === "connections" ? (
+          <Extensions
+            key={`${tab}/${item ?? ""}/${packageId ?? ""}`}
+            itemId={item}
+            packageId={packageId}
+            locale={locale}
+            kind={tab === "scenarios" ? "scenario" : "integration"}
+            embedded
+          />
         ) : null}
       </div>
     </main>

@@ -8,11 +8,13 @@ COPY apps/web/package.json apps/web/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/db/package.json packages/db/package.json
-COPY packages/ical/package.json packages/ical/package.json
 COPY packages/sdk/package.json packages/sdk/package.json
 COPY packages/cli/package.json packages/cli/package.json
 COPY packages/extensions/package.json packages/extensions/package.json
 COPY apps/extension-runner/package.json apps/extension-runner/package.json
+COPY extensions/official/ical/package.json extensions/official/ical/package.json
+COPY extensions/official/meetings/package.json extensions/official/meetings/package.json
+COPY extensions/official/deadlines/package.json extensions/official/deadlines/package.json
 RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build
@@ -26,6 +28,7 @@ COPY --from=build --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=build --chown=bun:bun /app/apps ./apps
 COPY --from=build --chown=bun:bun /app/packages ./packages
 COPY --from=build --chown=bun:bun /app/scripts ./scripts
+COPY --from=build --chown=bun:bun /app/extensions ./extensions
 USER bun
 EXPOSE 3000
 CMD ["bun", "run", "--cwd", "apps/web", "start:container"]

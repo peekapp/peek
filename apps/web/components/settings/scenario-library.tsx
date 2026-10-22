@@ -12,11 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { messages, type Locale } from "@peek/core/i18n";
-import { ScenarioIntegrations } from "./scenario-integrations";
-import {
-  integrationDefinitions,
-  scenarioDefinitions,
-} from "@peek/core/registry";
+import type { Status } from "./extensions";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
@@ -28,18 +24,46 @@ import {
   EmptyDescription,
 } from "../ui/empty";
 
-type Definition = (typeof scenarioDefinitions)[number];
-const icons = { meetings: CalendarClock, deadlines: Flag };
-const favoritesKey = "peek:scenario-favorites:v1";
+type Definition = { id: string; title: string; description: string };
+const icons: Record<string, typeof CalendarClock> = {
+  "peek/meetings": CalendarClock,
+  "peek/deadlines": Flag,
+};
+const favoritesKey = "peek:scenario-favorites:v2";
 
 export function ScenarioLibrary({
   locale,
   onSelect,
+  packages,
 }: {
   locale: Locale;
+  packages: Status["packages"];
   onSelect: () => void;
 }) {
   const t = messages(locale);
+  const describe = ({
+    manifest: m,
+  }: Status["packages"][number]): Definition => ({
+    id: m.id,
+    title:
+      m.id === "peek/meetings"
+        ? t.meetings
+        : m.id === "peek/deadlines"
+          ? t.deadlines
+          : m.name,
+    description:
+      m.id === "peek/meetings"
+        ? t.meetingsDescription
+        : m.id === "peek/deadlines"
+          ? t.deadlinesDescription
+          : m.description,
+  });
+  const scenarioDefinitions = packages
+    .filter((p) => p.official && p.manifest.kind === "scenario")
+    .map(describe);
+  const downloaded = packages
+    .filter((p) => !p.official && p.manifest.kind === "scenario")
+    .map(describe);
   const [tab, setTab] = useState("builtin");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [saveError, setSaveError] = useState(false);
@@ -50,11 +74,7 @@ export function ScenarioLibrary({
       );
       if (Array.isArray(saved))
         setFavorites(
-          saved.filter(
-            (id): id is string =>
-              typeof id === "string" &&
-              scenarioDefinitions.some((d) => d.id === id),
-          ),
+          saved.filter((id): id is string => typeof id === "string"),
         );
     } catch {
       /* An unavailable or old cache should not block the catalog. */
@@ -75,13 +95,13 @@ export function ScenarioLibrary({
   }
 
   function renderScenario(definition: Definition) {
-    const Icon = icons[definition.id];
+    const Icon = icons[definition.id] ?? Library;
     const favorite = favorites.includes(definition.id);
     return (
       <div className="scenario-library-item" key={definition.id}>
         <Link
           className="scenario-library-link"
-          href={`/settings/scenarios/new-${definition.id}`}
+          href={`/settings/scenarios/new?package=${encodeURIComponent(definition.id)}`}
           onClick={onSelect}
         >
           <span className="scenario-library-icon">
@@ -89,20 +109,9 @@ export function ScenarioLibrary({
           </span>
           <span className="scenario-library-copy">
             <strong className="flex flex-wrap items-center gap-2">
-              {t[definition.nameKey]}
-              <ScenarioIntegrations
-                integrationIds={integrationDefinitions
-                  .filter((integration) =>
-                    definition.requires.every((capability) =>
-                      integration.capabilities.some(
-                        (supported) => supported === capability,
-                      ),
-                    ),
-                  )
-                  .map((integration) => integration.id)}
-              />
+              {definition.title}
             </strong>
-            <span>{t[definition.descriptionKey]}</span>
+            <span>{definition.description}</span>
           </span>
           <ChevronRight className="scenario-library-arrow" aria-hidden="true" />
         </Link>
@@ -112,7 +121,7 @@ export function ScenarioLibrary({
           size="icon-sm"
           className="scenario-library-favorite"
           aria-pressed={favorite}
-          aria-label={`${favorite ? t.removeScenarioFavorite : t.addScenarioFavorite}: ${t[definition.nameKey]}`}
+          aria-label={`${favorite ? t.removeScenarioFavorite : t.addScenarioFavorite}: ${definition.title}`}
           title={favorite ? t.removeScenarioFavorite : t.addScenarioFavorite}
           onClick={() => toggleFavorite(definition.id)}
         >
@@ -158,7 +167,7 @@ export function ScenarioLibrary({
               <Star aria-hidden="true" />
               {t.favoriteScenarios}
             </h3>
-            {favorites.length ? (
+            {scenarioDefinitions.some((d) => favorites.includes(d.id)) ? (
               scenarioDefinitions
                 .filter((d) => favorites.includes(d.id))
                 .map(renderScenario)
@@ -199,18 +208,22 @@ export function ScenarioLibrary({
           value="downloaded"
           className="scenario-library-content scenario-library-empty"
         >
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Download aria-hidden="true" />
-              </EmptyMedia>
-              <EmptyTitle>{t.noDownloadedScenarios}</EmptyTitle>
-              <EmptyDescription>{t.downloadedScenariosHint}</EmptyDescription>
-            </EmptyHeader>
-            <Button variant="outline" onClick={() => setTab("builtin")}>
-              {t.browseBuiltinScenarios}
-            </Button>
-          </Empty>
+          {downloaded.length ? (
+            downloaded.map(renderScenario)
+          ) : (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Download aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>{t.noDownloadedScenarios}</EmptyTitle>
+                <EmptyDescription>{t.downloadedScenariosHint}</EmptyDescription>
+              </EmptyHeader>
+              <Button variant="outline" onClick={() => setTab("builtin")}>
+                {t.browseBuiltinScenarios}
+              </Button>
+            </Empty>
+          )}
         </TabsContent>
         <TabsContent
           value="community"

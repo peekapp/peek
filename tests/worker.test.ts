@@ -11,12 +11,7 @@ it("runs as a separate process and preserves cards across worker restart", async
   const path = join(dir, "state.sqlite");
   const store = openStore(path);
   const input = createDemoCards(Date.now());
-  const expected = input.map((card) => ({
-    ...card,
-    owner: { name: "Shared", color: "blue", profileId: "shared", system: true },
-    sourceId: card.kind === "meeting" ? "demo-meetings" : "demo-deadlines",
-    id: `${card.kind === "meeting" ? "demo-meetings:demo-meetings" : "demo-deadlines:demo-deadlines"}:${card.id}`,
-  }));
+  const expected = input;
   store.migrate();
   store.seedDemo(input);
   let child: ReturnType<typeof Bun.spawn> | undefined;

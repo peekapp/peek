@@ -22,17 +22,27 @@ if (process.argv[2] === "create") {
     id,
     config: { name: "Persistence check", color: "purple" },
   });
-  // A secret ensures the key file is exercised by the persistence check too.
-  await request("/api/settings", {
-    action: "calendar-save",
-    id: "cal-compose-smoke",
-    config: {
-      name: "Smoke",
+  const deadline = Date.now() + 40000;
+  while (
+    !(await request("/api/extensions")).packages.some(
+      (p: { manifest: { id: string } }) => p.manifest.id === "peek/ical",
+    )
+  ) {
+    if (Date.now() > deadline)
+      throw new Error("Official packages not installed");
+    await Bun.sleep(250);
+  }
+  await request("/api/extensions", {
+    action: "save",
+    instance: {
+      packageId: "peek/ical",
+      name: "Compose smoke",
       profileId: id,
-      timeZone: "UTC",
-      intervalSeconds: 60,
+      settings: { timeZone: "UTC", intervalSeconds: 60 },
+      secrets: { url: "https://example.com/private.ics" },
+      bindings: {},
+      enabled: false,
     },
-    url: "https://127.0.0.1/test.ics",
   });
 } else {
   const state = await request("/api/screen");
@@ -45,19 +55,28 @@ if (process.argv[2] === "create") {
     )
   )
     throw new Error("Profile lost after restart");
-  await request("/api/settings", {
-    action: "calendar-save",
-    id: "cal-compose-smoke",
-    config: {
-      name: "Smoke",
+  const status = await request("/api/extensions");
+  const instance = status.instances.find(
+    (i: { name: string }) => i.name === "Compose smoke",
+  );
+  if (!instance || !instance.hasSecret)
+    throw new Error("Connection lost after restart");
+  // Saving without secrets decrypts the saved credentials, including after restore.
+  await request("/api/extensions", {
+    action: "save",
+    instance: {
+      id: instance.id,
+      packageId: instance.package_id,
+      name: instance.name,
       profileId: id,
-      timeZone: "UTC",
-      intervalSeconds: 60,
+      settings: instance.settings,
+      bindings: {},
+      enabled: false,
     },
   });
-  await request("/api/settings", {
-    action: "calendar-delete",
-    id: "cal-compose-smoke",
+  await request("/api/extensions", {
+    action: "delete-instance",
+    id: instance.id,
   });
   await request("/api/settings", { action: "profile-delete", id });
 }

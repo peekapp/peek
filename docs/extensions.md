@@ -12,21 +12,31 @@ libraries. A package is never imported into the web or main worker process.
 The manifest, settings UI, data schemas, version constraints and lifecycle form
 the common platform interface. Integration authors define new data contracts.
 
-The existing Meetings/Deadlines handlers and iCalendar synchronization use the
-public SDK definitions through compatibility adapters. Their stable IDs, settings,
-secrets, scheduling and existing Settings APIs are retained. Existing iCalendar
-connections expose `peek/calendar-events@1.0.0` to external scenarios. Built-ins
-remain trusted application code; only external packages require the new runner.
-Database migration v10 adds extension tables without rewriting existing records.
+Official iCalendar, Meetings and Deadlines live in `extensions/official/` as standalone
+workspace packages. They depend on the public SDK and ordinary npm libraries, not
+on Peek's database, core or worker. `bun run official:build` builds them with the
+public CLI and bundles them into `extensions/dist/official.peek`.
+
+Migration queues the bundled defaults once; the runner activates them through the
+same installation transaction as an uploaded package. All instances live in
+`extension_instances`, all inputs are connection snapshots, and all execution uses
+containers. The web process and screen worker never import extension handlers.
+MVP schema v11 resets older databases instead of adapting their legacy records.
+
+An installation receipt stores each bundled package's content digest. Only an
+installed package matching that digest receives the Official badge. Author metadata
+and package IDs cannot grant it. Removed defaults stay removed across restarts;
+updates use the normal explicit upload/review/migration/rollback flow. Application
+rebuilds do not silently upgrade installed packages.
 
 ## Run locally
 
 ```sh
 bun install --frozen-lockfile
-bun run extensions:build
+bun run official:build
 bun run db:migrate
 bun run extensions:images
-# Run alongside the normal web app and worker:
+# Required alongside the web app and screen worker:
 bun run extensions:runner
 ```
 
@@ -37,10 +47,11 @@ The runner reports unavailable and refuses execution if these checks fail.
 With Compose:
 
 ```sh
-bun run extensions:images
-docker compose --profile extensions up --build --wait
+docker compose up --build --wait
 ```
 
+Compose builds both runtime images automatically; the image preparation services
+exit successfully. The runner is required for official and external packages.
 Only `extension-runner` receives the Docker socket. It shares the database volume
 with Peek but never mounts it into extension containers. Set `PEEK_DOCKER_SOCKET`
 when the host socket differs from `/var/run/docker.sock`. Set a unique

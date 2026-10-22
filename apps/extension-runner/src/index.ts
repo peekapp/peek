@@ -1,3 +1,4 @@
+import { provisionOfficial } from "./provision";
 import { databasePath, openStore } from "@peek/db";
 import { openExtensions } from "@peek/extensions/store";
 import { readiness, runContainer, cleanup, type Run } from "./docker";
@@ -25,6 +26,7 @@ async function tick() {
         running.delete(id);
       }
     }
+    provisionOfficial(store);
     const op = store.pending();
     if (op) {
       try {

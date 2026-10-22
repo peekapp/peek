@@ -39,7 +39,6 @@ import {
   NavigationMenuItem,
   NavigationMenuLink,
 } from "./ui/navigation-menu";
-import { DefinitionPicker } from "./settings/definition-picker";
 import { DeleteButton } from "./settings/delete-button";
 
 const variants = [
@@ -333,7 +332,7 @@ export function DesignSystem() {
           </EmptyHeader>
         </Empty>
         <div className="flex flex-wrap gap-4">
-          <DefinitionPicker kind="scenario" locale="ru" />
+          <Button>Создать сценарий</Button>
           <DeleteButton
             locale="ru"
             description="Пример подтверждения. Данные приложения не будут удалены."

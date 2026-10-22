@@ -13,6 +13,7 @@
     "apps/worker/**/*.ts",
     "tests/**/*.ts",
     "scripts/**/*.ts",
-    "apps/extension-runner/**/*.ts"
+    "apps/extension-runner/**/*.ts",
+    "extensions/official/**/*.ts"
   ]
 }

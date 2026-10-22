@@ -1,7 +1,7 @@
 import * as ical from "node-ical";
 import { DateTime } from "luxon";
-import type { CalendarConfig } from "@peek/core/calendars";
-import type { CalendarEvent } from "@peek/core/scenarios";
+
+import type { CalendarEvent } from "../calendar";
 const text = (value: unknown): string =>
   typeof value === "string"
     ? value
@@ -10,8 +10,7 @@ const text = (value: unknown): string =>
       : "";
 export function parseCalendar(
   body: string,
-  sourceId: string,
-  config: CalendarConfig,
+  config: { timeZone: string },
   now: number,
 ): CalendarEvent[] {
   if (
@@ -23,9 +22,11 @@ export function parseCalendar(
   const output = new Map<string, CalendarEvent>();
   for (const base of Object.values(parsed)) {
     if (!base || base.type !== "VEVENT") continue;
-    if (!base.start || !base.uid || base.uid.length > 2048) throw new Error("invalid-calendar");
+    if (!base.start || !base.uid || base.uid.length > 2048)
+      throw new Error("invalid-calendar");
     if (base.status === "CANCELLED") continue;
-    if (base.rrule && /FREQ=SECONDLY/i.test(base.rrule.toString())) throw new Error("invalid-calendar");
+    if (base.rrule && /FREQ=SECONDLY/i.test(base.rrule.toString()))
+      throw new Error("invalid-calendar");
     const instances = ical.expandRecurringEvent(base, {
       from: new Date(now - 2 * 86400000),
       to: new Date(now + 90 * 86400000),
@@ -51,14 +52,12 @@ export function parseCalendar(
       if (!Number.isFinite(deadlineAt)) throw new Error("invalid-calendar");
       output.set(id, {
         id,
-        sourceId,
-        title: text(instance.summary).slice(0,1000) || "(Untitled)",
-        owner: config.owner,
+        title: text(instance.summary).slice(0, 1000) || "(Untitled)",
         startAt,
         endAt,
         allDay,
         deadlineAt,
-        location: text(instance.event.location).slice(0,1000) || undefined,
+        location: text(instance.event.location).slice(0, 1000) || undefined,
       });
       if (output.size > 10000) throw new Error("too-many-events");
     }

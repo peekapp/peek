@@ -1,50 +1,113 @@
 # Peek
 
-A self-hosted, glanceable screen for meetings and deadlines. Designed for a second monitor, tablet, or TV: configure it once, then let relevant events appear and disappear automatically.
+A self-hosted, glanceable screen for meetings and deadlines. Configure a second monitor, tablet, or TV once, then let relevant cards appear and disappear automatically.
 
-## Current stage
+Peek is an MVP for a **trusted home network without accounts or pairing**. Anyone who can reach it can view screens and change settings. Public deployment is outside this MVP's scope.
 
-The **Night** interface runs on Next.js, React, and TypeScript. A separate Bun worker maintains a local SQLite database through Drizzle ORM. The web process reads consistent snapshots and streams updates to the screen over Server-Sent Events (SSE).
+## Architecture
 
-Implemented:
+All integrations and scenarios are SDK packages. The official `peek/ical`, `peek/meetings`, and `peek/deadlines` packages ship with the application and use the same installation journal, manifests, settings forms, storage, scheduling, validation, and isolated Docker runner as external packages. Neither the web process nor the screen worker imports their handlers.
 
-- Persistent cards, versioned schema migration, WAL mode, and transactional updates.
-- A worker heartbeat every five seconds and automatic removal of expired cards.
-- Priority-based ordering, a large primary card, live countdowns, and an empty state.
-- Distinct warnings for lost server connection, unavailable storage, and a stopped worker.
-- English and Russian interface dictionaries with a persistent language selection. Event titles and profile names support Unicode.
-- ICS calendar connections with encrypted subscription URLs, conditional requests, recurring event expansion, and failure recovery.
-- Tabbed Settings with scenario summaries, profiles, and dedicated editors.
-- Twelve profile colors with visual swatches and a live preview.
-- Docker Compose for web, worker, migrations, health checks, and persistent storage.
-- Editable Meetings/Deadlines scenarios with persistent configuration, source bindings, next-run times, retries, and execution status.
-- Relative event labels: time only today, Tomorrow/Завтра, nearby weekdays, then calendar dates.
+```text
+apps/web/               Next.js screen, Settings, state/SSE endpoints
+apps/worker/            Screen heartbeat, card expiry, migration and demo commands
+apps/extension-runner/  Shared container execution and package migrations
+packages/sdk/           Public integration/scenario contracts
+packages/cli/           Public check/pack/bundle/preview commands
+packages/extensions/    Package installation, instance storage, validation
+packages/core/          Cards, profiles, screens, i18n and time rules
+packages/db/            SQLite/Drizzle screen storage and schema
+extensions/official/   iCalendar, Meetings and Deadlines source packages
+extensions/dist/       Generated .peek packages and official bundle
+```
 
-Peek runs in a **trusted home network without accounts or pairing**. Anyone who can reach it can view screens and change settings. Docker Compose and `bun start` listen on all interfaces; `bun dev` remains loopback-only. Public deployment is outside this MVP’s scope.
+The web process reads consistent SQLite snapshots and streams them over SSE. Settings writes configuration in short transactions. The runner evaluates due scenarios and starts integrations; the screen worker expires cards and writes a heartbeat every five seconds. Only one web process, one screen worker, and one runner per installation are supported.
+
+**MVP schema v11 intentionally resets older databases.** Existing connections, scenarios, packages, cards, profiles and screen settings are discarded. There are no legacy calendar/scenario tables or compatibility adapters. Re-running migration on v11 preserves data.
 
 ## Docker Compose
 
-With Docker Engine and Docker Compose running, start from the repository root:
+With a Linux Docker Engine (or Docker Desktop) and Compose running:
 
 ```sh
 docker compose up --build --wait
 ```
 
-Open [localhost:3000](http://localhost:3000). If a local development instance already uses port 3000, run `PEEK_PORT=3100 docker compose up --build --wait` and open port 3100 instead. Compose creates a separate named volume; it does not import your local `data/` directory or add demo events.
+Open [localhost:3000](http://localhost:3000). Set `PEEK_PORT=3100` if port 3000 is occupied. Compose builds the application and both extension runtime images, initializes the database, and starts web, worker and runner. The image preparation services exit successfully after building; this is expected. Official packages activate through the runner's installation queue.
 
-The same image runs web, worker, and the one-off migration service. Web starts after migration completion and a healthy worker heartbeat. Both long-lived services restart automatically and run as the unprivileged `bun` user. Images use the pinned Bun 1.4.2 runtime. The database and its encryption key share the persistent `peek-data` volume. The Next.js server listens on all interfaces inside its container, and the host port defaults to `0.0.0.0`. Set `PEEK_BIND_ADDRESS=127.0.0.1` for host-only access or set it to a specific LAN interface address.
+Only the runner receives the Docker socket. Set `PEEK_DOCKER_SOCKET` if it is not `/var/run/docker.sock`. Use a distinct `COMPOSE_PROJECT_NAME` for each installation sharing an engine; it also namespaces extension cleanup. The `peek-data` volume stores SQLite and its encryption key. Local `data/` is not imported.
+
+Web listens on all interfaces. Set `PEEK_BIND_ADDRESS=127.0.0.1` for host-only access, or use a specific LAN address. On another device open `http://<server-lan-ip>:3000/screens/default`. For a custom hostname set `PEEK_ALLOWED_HOSTS=peek.home,peek.local`. Settings writes require a matching browser Origin; these checks do not authenticate users.
 
 ```sh
 docker compose ps
-docker compose logs --tail=100 web worker
-docker compose down             # Stop; keep data
+docker compose logs --tail=100 web worker extension-runner
+docker compose down  # Stop all processes; keep data
 ```
 
-To update, back up first, stop the existing services, pull the code, and run `docker compose up --build --wait`. Do not run `docker compose down --volumes` unless you intend to delete the installation's database and encryption key. Docker does not automatically restart an unhealthy but still-running process; inspect health status and logs when a service is unhealthy.
+## Local development
 
-### Backup and restore
+Requirements: Bun **1.4.2**, Node.js **24**, a running Linux Docker engine with resource limits and seccomp, and a local filesystem for SQLite.
 
-Stop both services before copying SQLite and its encryption key. The archive contains the complete data volume, including any WAL/SHM files:
+```sh
+bun install --frozen-lockfile
+bun run official:build
+bun run extensions:images
+bun run db:migrate
+bun run db:seed  # Optional: insert static demo cards once
+```
+
+Run each service in its own terminal:
+
+```sh
+bun worker
+bun run extensions:runner
+bun dev
+```
+
+`bun dev` is loopback-only. `bun run build` builds the official packages and web app; `bun start` starts the production web server. Keep both worker and runner running. A stopped runner prevents all integrations and scenarios, including official ones, from executing. Settings shows its availability and instance errors.
+
+The default database is `data/peek.sqlite`. To use another location, set the same absolute `PEEK_DATABASE_PATH` in all terminals. Demo seeding is opt-in and idempotent: it creates one meeting and three deadlines, without creating connections or scenarios. Expired demo cards are never reseeded automatically.
+
+## Connections and scenarios
+
+1. In **Settings → Connections**, choose **Add connection** on iCalendar.
+2. Enter a name, profile, time zone, refresh interval and the provider's **HTTPS ICS subscription URL**. A calendar sharing web page is not an ICS feed. Token-bearing subscription URLs are supported.
+3. Save and inspect the last successful run or error. **Run now** queues an immediate attempt; it does not claim the connection succeeded.
+4. In **Settings → Scenarios**, create Meetings or Deadlines and select one or more connections. Multiple scenarios share snapshots without downloading the same calendar separately.
+
+The same forms also support installed external packages. **Settings → Extensions** manages uploads, HTTPS release links, permission review, package removal and rollback. The **Official** badge matches the exact package content supplied with this installation; an uploaded package's author or ID alone cannot confer that status.
+
+Bundled defaults are installed once. Removing an unused official package does not cause it to reappear on restart. Package updates are explicit: upload the newly built `.peek` archive and use the normal migration/rollback path. Rebuilding the application does not silently update installed packages.
+
+Scenarios configure visibility lead time, urgency and retention in minutes, and an optional case-insensitive title filter. Lead time must exceed urgency; retention is at most 24 hours. Meetings omit all-day events and expire at the earlier of meeting end and configured retention. Deadlines use the event's start time, or the end of its start date for all-day events.
+
+Each scenario replaces only its own cards and persists its next-run timestamp atomically. Event identity includes the connection, so identical provider IDs in different calendars remain distinct. Input publications and configuration changes schedule re-evaluation. Disabling or deleting a scenario removes its cards. Failed executions retain prior cards until expiry and retry after 60 seconds. Stale results from edited or deleted instances are rejected.
+
+### iCalendar behavior
+
+- Public HTTPS, port 443, up to four redirects. DNS answers are validated at each hop and the TLS connection is pinned to a public address. Private/loopback/reserved addresses, URL credentials and interactive login are unsupported.
+- Fifteen-second fetch deadline and 10 MiB response limit. Every run downloads and re-expands the feed; no full-feed cache is stored in the SDK's bounded instance state.
+- `node-ical` and Luxon run inside the connection's Node container. RRULE, EXDATE, RECURRENCE-ID, TZID, cancellation, floating dates and DST are supported. Each connection selects its time zone; explicit event TZID values take precedence.
+- Expansion covers two days in the past and 90 days ahead, with at most 10,000 occurrences. Secondly recurrence is rejected. Titles and locations are capped at 1,000 characters.
+- Successful snapshots remove missing/cancelled events. Failed runs retain the previous snapshot. Editing a connection clears its state and snapshot before a fresh run.
+- The common runner supports eight active integrations and four scenarios concurrently. See [extension limits](docs/extensions.md) for publication, card and resource limits.
+
+Subscription URLs are encrypted and never returned by the API. When editing, keep credential replacement unchecked to retain the saved URL. A connection referenced by a scenario cannot be deleted.
+
+## Profiles, screens and appearance
+
+Profiles provide a name and one of twelve colors. **Shared** is a localized system profile. A scenario may select another profile's connection; its cards belong to the scenario's profile. Renames and color changes reach screens without re-fetching sources. Referenced profiles cannot be deleted.
+
+Create independent displays in **Settings → Screens**. Each has an editable, unique URL ID such as `family-tv`, a display name, appearance and scale. IDs accept 1–64 lowercase Latin letters, digits and single hyphens; `new` is reserved. The default screen is `/screens/default`.
+
+Choose **All profiles**, or select specific profiles including Shared. An empty selection produces an empty display. Source warnings follow the selected scenarios' bindings. Saved changes arrive over SSE; deleting a screen invalidates its URL. Screen selection is organizational, not access control.
+
+General settings control the app theme and English/Russian interface language. User content is not translated. Screen clocks use `PEEK_TIMEZONE`, then `TZ`, then the server timezone. Set these consistently for web and worker, for example `PEEK_TIMEZONE=Europe/Moscow docker compose up --build --wait`. iCalendar's time zone is a separate package setting for interpreting floating event times.
+
+## Backup and restore
+
+Stop **all three processes** before copying SQLite and its key. Compose's volume contains the full installation:
 
 ```sh
 docker compose down
@@ -52,229 +115,26 @@ docker compose run --rm --no-deps -T migrate tar -C /data -czf - . > peek-backup
 docker compose up --wait
 ```
 
-Keep the archive private: it contains both encrypted subscription secrets and their decryption key. Restore into a new Compose project/volume, with the original installation stopped so the port is free:
+Keep the archive private: it contains encrypted credentials and their decryption key. Restore with the original installation stopped:
 
 ```sh
-docker compose down
 docker compose -p peek-restored run --rm --no-deps -T migrate tar -C /data -xzf - < peek-backup.tar.gz
-docker compose -p peek-restored up --wait
+COMPOSE_PROJECT_NAME=peek-restored docker compose up --build --wait
 ```
 
-Continue using `-p peek-restored` for that installation. Its volume is separate from the original. GitHub CI checks a clean container startup, persistence across recreation, and restoration into a new volume, including the ability to decrypt a saved connection.
+Continue using the restored project's name. Without the original `secret.key`, credentials cannot be decrypted. Alternatively configure the same base64-encoded 32-byte `PEEK_ENCRYPTION_KEY` in every process. Never replace the key for an existing database. `docker compose down --volumes` deletes installation data.
 
-### Open from another device
-
-On the same home network, open `http://<server-lan-ip>:3000`, or a saved screen URL such as `http://<server-lan-ip>:3000/screens/default`. No account or pairing code is required. Use `PEEK_PORT` if you choose a different Compose port.
-
-Settings accepts loopback, private IPv4 addresses, IPv6 ULA addresses, and the server’s own interface addresses/hostname. For a custom DNS name, set `PEEK_ALLOWED_HOSTS=peek.home,peek.local` in Compose’s `.env` (hostnames only, no scheme or port). Names are matched exactly, without wildcards. Changing requests must include a matching browser Origin; forwarded Host headers do not override this check. These checks do not authenticate users or replace the trusted-network assumption.
-
-## Requirements
-
-- Bun **1.4.2** (required at runtime, including for Next.js, because storage uses `bun:sqlite`).
-- Node.js **24** for development tooling and CI.
-- A local filesystem for SQLite; network-mounted database files are not supported.
-
-## Quick start
-
-From the repository root:
-
-```sh
-bun install --frozen-lockfile
-bun run db:migrate
-bun run db:seed          # Optional: insert demo events once
-```
-
-Start the worker in one terminal:
-
-```sh
-bun worker
-```
-
-Start the web app in another:
-
-```sh
-bun dev
-```
-
-Open [localhost:3000](http://localhost:3000). For a production build of this local milestone:
-
-```sh
-bun run build
-bun start
-```
-
-Keep the worker running in either mode. It applies pending migrations at startup, writes a heartbeat, then evaluates due scenarios and removes expired cards every five seconds. A due job may therefore start up to five seconds after its scheduled time. SIGINT/SIGTERM marks it stopped before closing the database. An abrupt exit is detected after 30 seconds without a heartbeat. Restart it with `bun worker`; it resumes from stored data.
-
-## Persistent data and demo events
-
-The default database is `data/peek.sqlite` at the repository root. It and its WAL/SHM companions are ignored by Git. Run the commands above from the repository root so both processes resolve the same location.
-
-To use another location, set an **absolute** path in both terminals, before running migrations, seed, worker, or web commands:
-
-```sh
-export PEEK_DATABASE_PATH=/absolute/path/to/peek.sqlite
-```
-
-The seed command creates two default scenarios, a meeting 48 seconds in the future and three deadlines. Schema migration v2 converts existing card fixtures into scenario source events without resetting their times. It is explicitly opt-in and idempotent: reloading the browser, restarting either process, or running the command again does not reset event times or recreate expired events. The seed marker persists even after all cards expire. To try a fresh demo without deleting existing data, point both processes at a new database path and run the setup commands there.
-
-By default, meetings expire five minutes after their start. Deadlines become urgent 24 hours before their target and remain visible as **Overdue** for 24 hours afterwards. The screen also filters expired cards locally if the connection is down. UTC timestamps are stored; the server uses its system timezone unless overridden by `PEEK_TIMEZONE` or `TZ`, with formatting in the selected interface language.
-
-ICS calendars are synchronized independently of scenarios. Russian demo titles and profile names are intentional sample content, not interface translations.
-
-## Development checks
+## Checks and SDK development
 
 ```sh
 bun run test
-bun typecheck
+bun run typecheck
 bun run build
+bun run extensions:images
+PEEK_TEST_DOCKER=1 bun test tests/extensions-docker.test.ts
+bun run extensions:npm-smoke
 ```
 
-GitHub Actions runs all three checks. Tests cover timing boundaries, ordering, transaction rollback, migration idempotency, persistence across database reopening, repeated seeding, expiry cleanup, worker health, ICS recurrence/DST/exceptions, all-day/floating times, URL restrictions, encrypted secret storage, 304 responses, and stale in-flight sync results.
+Tests cover scheduling boundaries, bindings, profile ownership, persistence, destructive MVP reset, encrypted secrets, stale publications, package provenance, recurrence/DST and container execution. The official Docker integration test uses a deterministic transport fixture; it exercises the bundled parser and both official scenarios without contacting a calendar account. CI also checks Compose startup, restart and backup restoration.
 
-## Architecture
-
-```text
-apps/web/         Next.js screen, local Settings, state/SSE endpoints
-apps/worker/      Independent Bun worker, migration and seed commands
-packages/core/    Cards, scenario definitions/handlers, i18n, time rules
-packages/db/      Drizzle schema, encrypted secrets, SQLite persistence
-packages/ical/    HTTPS fetching, isolated ICS parsing, synchronization
-assets/brand/     Original brand assets
-docs/             Product plan and design decisions
-tests/            Core and persistence tests
-```
-
-The worker executes scenarios. Screen requests use read-only connections; Settings writes configuration in short transactions and queues execution for the worker. Web requests never seed, migrate, or run scenarios. `/api/screen` returns a full snapshot. `/api/screen/events` shares one polling loop per web process across connected screens, delivering full snapshots and server time every second. Revisions prevent older snapshots from replacing newer state. Subscriptions and timers are released on disconnect.
-
-Only one worker and one web process per installation are supported. The worker handles due scenarios, card expiry, and health. The `/api/settings` endpoint accepts trusted-LAN or configured Host names and requires same-origin browser requests for changes. Settings are shared by everyone who can reach the installation.
-
-## Backup and restore
-
-Stop **both** processes before copying the database directory, including any `-wal` and `-shm` files. Restore the files together, preserving their names, then restart the worker and web process with the same database path. Do not replace a live database. Also back up `secret.key` next to the database (or the separately supplied `PEEK_ENCRYPTION_KEY`). Without the original key, saved subscription URLs and cached feeds cannot be decrypted. Keep the key backup separate from shared database backups.
-
-## Repository scope and next steps
-
-`peekapp/peek` contains the application, worker, and shared packages. Future standalone extensions, the project website, or documentation hosting can live in separate repositories in the organization.
-
-Implemented: multiple calendar connections per scenario, integration-owned image icons, and trusted home LAN access without accounts or screen pairing. Final acceptance and the day-long soak test remain; external extensions are available through the SDK and optional isolated runner. The current registry contains two trusted local scenario handlers; external packages use the public SDK and separate container execution.
-
-The detailed [MVP plan](docs/mvp-plan.md), [design decisions](docs/design.md), and [future ideas](docs/future-ideas.md) are currently maintained in Russian. The application and this README default to English.
-
-A distribution license has not been selected yet.
-
-## Scenario settings
-
-Open **Settings** from the screen footer. **Scenarios** is the first and default tab, followed by **Connections**, **Profiles**, **Screens**, and **General** (language preferences). Open a card to edit that scenario on its own page. Each tab and detail page has its own URL. A single **Create scenario** button opens the available scenario definitions in a dialog. **Add connection** similarly selects an integration definition; iCalendar is currently the only supported integration.
-
-- Create multiple Meetings or Deadlines instances and give each a name.
-- Select one or more ICS calendars using the Sources checkboxes. Owners are shown beside calendars. Sources are shared; each scenario receives only events from its selected sources. At least one source is required.
-- Configure visibility, priority, and retention in minutes. Visibility must begin before priority escalation; the horizon is 90 days and retention is at most 24 hours.
-- Optionally filter titles by case-insensitive text matching. An empty filter includes every event from the selected source.
-- Save to schedule immediate re-evaluation; disable or delete to remove that scenario's cards. The main screen updates over SSE.
-- Inspect last and next execution times. A scenario with no future boundaries waits for a settings or source change. A failed handler retains its last cards until they expire, records an error, and retries after 60 seconds without stopping other scenarios.
-
-Each execution replaces only its own cards and commits the next-run timestamp in the same transaction. Stable IDs combine scenario ID, source ID, and source event ID, so equal event IDs in different calendars remain distinct. Migration v9 converts single-source settings to a one-element list without resetting schedules. Removing a binding immediately removes its cards; other sources continue independently. Missed runs after a restart evaluate current state rather than replaying obsolete cards. Source replacement also schedules its consumers, including when events are cancelled or moved.
-
-Settings also switches the installation's screen language between English (default) and Russian. It applies to connected screens, persists across restarts, and never translates user content. Day comparisons use the display timezone, so a meeting just after midnight is tomorrow even if it is only minutes away.
-
-The build-time definitions in `packages/core/src/registry.ts` distinguish integration types, configured connections, scenario types, and scenario instances. Each integration definition owns a local image asset (`icon.src`), so future integrations can use full-color service logos instead of a fixed icon library. iCalendar has its own SVG, displayed in connection selection, cards, and source checkboxes. ICS persistence retains its compatible storage adapter. External extensions use versioned SDK manifests and generated settings forms; see [Extensions](docs/extensions.md).
-
-## Profiles and ownership
-
-Create people in **Settings → Profiles**, with a name and one of twelve colors. The form shows selectable color swatches and a live name preview. The built-in **Shared** profile is localized and cannot be renamed or deleted. Profiles organize ownership, not accounts or access permissions.
-
-Select a profile in each connection and scenario. A scenario can explicitly use a connection owned by another profile; its output cards display the scenario owner. Renaming or recoloring a profile updates connected screens immediately without fetching the calendar again. Referenced profiles cannot be deleted; reassign or remove their connections, scenarios, and screen selections first.
-
-Migration preserves schedules and encrypted URLs, deduplicates legacy owners by name and color, and assigns calendar scenarios their connection owner. Demo scenarios with one owner retain it; mixed-owner demo scenarios use Shared. Legacy Shared/Общее owners map to the system profile. New demo scenarios use Shared.
-
-## Connect an ICS calendar
-
-1. Open **Settings → Connections → Add connection → iCalendar**.
-2. Paste the calendar provider's **HTTPS ICS subscription URL**. A public sharing-page URL will not work. Private subscription links containing a token are supported; HTTP Basic credentials in the URL are not.
-3. Give the connection a name, select an owner profile. The installation timezone applies to floating event times and date-only events. The default refresh interval is 60 seconds.
-4. Save. The worker schedules an initial download. Open the connection to inspect its status, last successful sync, and event count, or use **Sync now**.
-5. Open **Scenarios → Create scenario**, choose Meetings or Deadlines, and select that calendar and any other desired calendars under Sources. The same connection can serve multiple scenarios without duplicate network downloads.
-
-Use **Check connection** on a connection card or its editor to request a worker sync and wait for its result. This verifies both fetching and parsing; successful checks also refresh the stored events. If the worker is unavailable or busy, the UI reports that no result arrived instead of claiming success.
-
-The subscription URL is never returned by the settings API. On edit, leave the password-style URL field blank to keep it. Changing connection settings queues a fresh download and clears the previous source snapshot; changing only scenario settings does not download the source again. A calendar cannot be deleted while a scenario references it.
-
-### Sync behavior
-
-- Public HTTPS only, standard port 443, up to four redirects. DNS results are checked at every hop and the TLS connection is pinned to a validated address. Private, loopback, link-local, multicast, and reserved addresses are rejected; local calendar servers are not supported yet.
-- A 15-second network deadline and a 10 MiB response limit. Uncompressed HTTP responses are requested; unsupported content encodings are rejected.
-- ETag / Last-Modified conditional requests. Cached feed content is encrypted and re-expanded even after a 304 response, so the rolling future window continues to advance.
-- `node-ical` handles RRULE, EXDATE, RECURRENCE-ID, TZID and cancellations. Parsing runs in a separate Bun process with the installation timezone and a ten-second deadline. The output is limited to 10,000 occurrences; secondly recurrence rules are rejected. Titles and locations are capped at 1,000 characters.
-- The expansion window covers two days in the past (including yesterday's all-day deadline retention) and 90 days ahead. All-day events are omitted from Meetings; their deadline is the end of their start date in the relevant timezone. Timed deadlines use the start time.
-- A failed fetch or parse retains the last successful events, marks the connection unhealthy, and backs off from one minute to a maximum of 15 minutes. The screen warns when any calendar has errors or stale data. A successful full snapshot removes cancelled or missing events.
-- Up to three connections sync concurrently, independently of the five-second worker heartbeat. Configuration versions prevent an old in-flight response from overwriting edited or deleted connections.
-
-For floating times, configure the installation's timezone through the environment. Embedded timezone definitions are resolved by the parser; unsupported/custom timezone behavior should be checked against the calendar provider. Calendars requiring interactive login, custom request headers, or OAuth are not supported by the ICS connector.
-
-### Encryption key
-
-On the first calendar save, Peek creates a 32-byte `secret.key` beside the database with owner-only permissions. Both local processes read this file. Alternatively, set `PEEK_ENCRYPTION_KEY` to the same base64-encoded 32-byte key in both processes before saving any calendar. Changing or losing the key prevents decryption; restore the original key, do not generate a replacement for an existing database.
-
-### Network diagnostics
-
-If a public hostname resolves to a reserved address (for example, a synthetic `240.x.x.x` address supplied by a DNS proxy), Peek reports a blocked address. Configure the installation's DNS/network to return real public addresses. The app does not bypass address validation to accommodate such a proxy.
-
-## Screens
-
-Open **Settings → Screens** to create a display for a TV, a room, or another device.
-Each screen has a unique, editable ID such as `family-tv`, used in `/screens/family-tv`,
-and a separate display name in any language. IDs accept 1–64 lowercase Latin
-letters, digits, and single hyphens; `new` is reserved. Duplicates are rejected.
-Changing an ID changes its link. The standard screen is **Default**, at
-`/screens/default`. Existing screen names and appearance are preserved during
-migration, while generated IDs are replaced with readable unique IDs.
-
-Choose Night/Day appearance and 80–140% scale. Copy the link or open it from the editor.
-
-Choose **All profiles** for a family display; this includes profiles created later.
-For a personal display, turn that off and select specific profiles. **Shared** is
-an explicit selection. Selecting no profiles produces an empty screen. Cards are
-filtered on the server by the scenario owner's profile, regardless of who owns
-the calendar connection. Source warnings cover the selected scenarios' sources.
-
-Saved changes reach open screens over SSE without a reload. Deleting a screen
-invalidates its link and clears its open displays; profiles, scenarios, and source
-data remain. Migration creates a Default screen matching the previous display.
-The root URL opens Default when present, otherwise the first saved screen, or Screens settings when none remain.
-
-Screen selection organizes what is displayed; it is not an access-control boundary.
-The MVP supports a trusted home LAN without authentication or device pairing.
-Open the screen’s URL directly from a device on that network.
-
-### Installation timezone
-
-Timezone is an installation setting, with no timezone controls or labels in the UI.
-Peek uses `PEEK_TIMEZONE`, then `TZ`, then the server operating system's timezone.
-Web and worker must receive the same environment. This controls screen clocks,
-relative dates, and calendar floating/all-day times; explicit calendar TZID values
-remain authoritative. Old per-screen and per-calendar choices no longer override
-this installation setting.
-
-Compose forwards both variables to all services. For example:
-
-```sh
-PEEK_TIMEZONE=Europe/Moscow docker compose up --build --wait
-```
-
-Alternatively, put `PEEK_TIMEZONE=Europe/Moscow` in Compose's `.env` file. A container
-uses its own system timezone (usually UTC), not automatically the host's timezone;
-set the variable when you want a specific timezone. Invalid timezone values fail
-with a configuration error. Restart web and worker after changing the environment;
-calendar data is reinterpreted at the next synchronization.
-
-## Extension SDK
-
-Use **Settings → Extensions** to install `.peek` packages or HTTPS release URLs,
-review dependencies and permissions, and configure custom connections/scenarios.
-External code requires the optional Docker extension runner. Existing calendar
-connections and built-in scenarios continue to work without it.
-
-SDK/CLI development, deployment, security boundaries, examples, update/rollback
-behavior and npm release setup are documented in [Extensions](docs/extensions.md).
-The npm packages are prepared locally; publishing requires ownership of the npm
-scope and trusted publishing setup. Public marketplace/moderation is a later phase.
+See [Extensions](docs/extensions.md) for the public SDK, manifests, package lifecycle and npm releases. The [MVP plan](docs/mvp-plan.md), [design decisions](docs/design.md), and [future ideas](docs/future-ideas.md) contain the product background. A distribution license has not been selected yet.

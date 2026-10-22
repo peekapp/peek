@@ -1,0 +1,91 @@
+{
+  "format": 1,
+  "sdk": "^0.1.0",
+  "id": "peek/ical",
+  "version": "0.1.0",
+  "kind": "integration",
+  "name": "iCalendar",
+  "description": "Read events from a private HTTPS calendar feed.",
+  "author": "Peek",
+  "entry": "index.mjs",
+  "settings": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "timeZone": {
+        "type": "string",
+        "title": "Time zone",
+        "default": "UTC",
+        "minLength": 1,
+        "maxLength": 100
+      },
+      "intervalSeconds": {
+        "type": "integer",
+        "title": "Refresh interval (seconds)",
+        "default": 300,
+        "minimum": 60,
+        "maximum": 86400
+      }
+    },
+    "required": ["timeZone", "intervalSeconds"]
+  },
+  "permissions": {
+    "internet": true
+  },
+  "secrets": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "title": "Calendar URL (HTTPS)",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    },
+    "required": ["url"],
+    "additionalProperties": false
+  },
+  "provides": {
+    "events": {
+      "id": "peek/calendar-events",
+      "version": "1.0.0",
+      "schema": {
+        "type": "array",
+        "maxItems": 10000,
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2200
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "startAt": {
+              "type": "integer"
+            },
+            "endAt": {
+              "type": "integer"
+            },
+            "deadlineAt": {
+              "type": "integer"
+            },
+            "allDay": {
+              "type": "boolean"
+            },
+            "location": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": ["id", "title", "startAt"],
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}

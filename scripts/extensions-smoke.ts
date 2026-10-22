@@ -84,7 +84,11 @@ if (process.argv[2] !== "verify") {
   assert.equal(r.status, 200);
   const review = await r.json();
   await request({ action: "confirm", id: review.id });
-  await until(async () => (await status()).packages.length === 2);
+  await until(async () =>
+    (await status()).packages.some(
+      (p: { manifest: { id: string } }) => p.manifest.id === "ci/cards",
+    ),
+  );
   const c = await request({
     action: "save",
     instance: {

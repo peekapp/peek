@@ -1,0 +1,15 @@
+{
+  "name": "@peekapp/ical",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@peekapp/sdk": "workspace:*",
+    "node-ical": "0.27.3",
+    "luxon": "3.7.2",
+    "ipaddr.js": "2.5.0"
+  },
+  "devDependencies": {
+    "@types/luxon": "3.7.6"
+  }
+}

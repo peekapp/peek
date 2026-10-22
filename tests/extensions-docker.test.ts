@@ -141,7 +141,7 @@ check(
       const preview = store.stage([source, scenario], ["test/cards"]);
       store.confirm(preview.id);
       child = start();
-      await until(() => store.installed().length === 2);
+      await until(() => store.installed().some((p) => p.id === "test/cards"));
       const connection = store.save({
         packageId: "test/source",
         name: "Source",
@@ -180,4 +180,93 @@ check(
     }
   },
   60000,
+);
+
+check(
+  "Docker: bundled iCalendar parses floating/DST events and both official scenarios publish through the common store",
+  async () => {
+    const { readFileSync, mkdtempSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { openStore } = await import("../packages/db/src");
+    const { officialStore, connection, scenario, packages } =
+      await import("./helpers/official");
+    const dir = mkdtempSync(join(tmpdir(), "peek-official-docker-")),
+      path = join(dir, "db.sqlite");
+    const main = openStore(path);
+    main.migrate();
+    const store = officialStore(path);
+    const now = Date.UTC(2026, 9, 25, 5, 55);
+    try {
+      const c = connection(store);
+      const integration = structuredClone(
+        packages.find((p) => p.manifest.id === "peek/ical")!,
+      );
+      const body = readFileSync("tests/fixtures/calendar.ics", "utf8");
+      // Deterministic transport fixture only: the CLI-produced SDK implementation
+      // and its bundled node-ical/Luxon code below are unchanged. No public service
+      // or calendar account is needed for this runtime regression test.
+      integration.manifest.permissions = {};
+      integration.files["index.mjs"] =
+        `
+import __https from 'node:https';
+import __dns from 'node:dns/promises';
+import {syncBuiltinESMExports as __sync} from 'node:module';
+import {Readable as __Readable} from 'node:stream';
+import {EventEmitter as __Emitter} from 'node:events';
+__dns.lookup = async () => [{address:'1.1.1.1',family:4}];
+__https.request = (url, options, callback) => {
+  const req = new __Emitter();
+  req.end = () => queueMicrotask(() => {
+    const res = __Readable.from([Buffer.from(${JSON.stringify(body)})]);
+    res.statusCode=200;res.headers={};callback(res);
+  });
+  return req;
+};
+__sync();
+` + integration.files["index.mjs"];
+      const i = store.instance(c)!;
+      const run = await runContainer(
+        integration,
+        { ...store.context(i), now },
+        (result) => store.publish(i, result),
+      );
+      await run.done;
+      const events = JSON.parse(store.instance(c)!.snapshots).events.data;
+      expect(
+        events.find((e: { id: string }) => e.id.startsWith("floating:"))
+          .startAt,
+      ).toBe(Date.UTC(2026, 9, 25, 6));
+      expect(
+        events.find((e: { allDay?: boolean }) => e.allDay).deadlineAt,
+      ).toBe(Date.UTC(2026, 9, 25, 21) - 1);
+      expect(JSON.parse(store.instance(c)!.state)).toBeNull();
+      for (const kind of ["meetings", "deadlines"]) {
+        const id = scenario(store, [c], "shared", kind),
+          instance = store.instance(id)!;
+        const task = await runContainer(
+          store.getPackage(instance.package_id),
+          { ...store.context(instance), now },
+          (result) => store.publish(instance, result),
+        );
+        await task.done;
+        expect(store.instance(id)!.last_error).toBeNull();
+        expect(store.instance(id)!.last_success).not.toBeNull();
+      }
+      expect(main.snapshot().cards.some((c) => c.kind === "meeting")).toBe(
+        true,
+      );
+      expect(main.snapshot().cards.some((c) => c.kind === "deadline")).toBe(
+        true,
+      );
+      expect(
+        main.snapshot().cards.every((c) => c.owner.profileId === "shared"),
+      ).toBe(true);
+    } finally {
+      store.close();
+      main.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+  30000,
 );

@@ -117,8 +117,8 @@ export function Dashboard({
         ? t.storage
         : connection === "connected" && !workerHealthy(snapshot.heartbeat, now)
           ? t.worker
-          : snapshot.calendarErrors
-            ? t.calendarWarning
+          : snapshot.integrationErrors
+            ? t.integrationWarning
             : snapshot.scenarioErrors
               ? t.scenarioWarning
               : null;

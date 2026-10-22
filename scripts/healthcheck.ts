@@ -1,3 +1,4 @@
+import { openExtensions } from "../packages/extensions/src/store";
 import { databasePath, openStore } from "../packages/db/src";
 import { workerHealthy } from "../packages/core/src/state";
 try {
@@ -9,6 +10,13 @@ try {
     const state = await response.json();
     if (!Array.isArray(state.cards) || typeof state.revision !== "number")
       throw new Error();
+  } else if (process.argv[2] === "runner") {
+    const store = openExtensions(databasePath());
+    try {
+      if (!store.status().runtime.ready) throw new Error();
+    } finally {
+      store.close();
+    }
   } else if (process.argv[2] === "worker") {
     const store = openStore(databasePath(), true);
     try {

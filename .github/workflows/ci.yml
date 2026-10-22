@@ -40,6 +40,7 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: docker compose config --quiet
+      - run: bun run extensions:images
       - run: docker compose up --build --wait --wait-timeout 180
       - run: bun scripts/compose-smoke.ts create
       - run: docker compose down
@@ -48,7 +49,7 @@ jobs:
       - run: bun scripts/compose-smoke.ts verify
       - run: docker compose down
       - run: docker compose -p peek-ci-restored run --rm --no-deps -T migrate tar -C /data -xzf - < /tmp/peek-backup.tar.gz
-      - run: docker compose -p peek-ci-restored up --wait --wait-timeout 180
+      - run: docker compose -p peek-ci-restored up --build --wait --wait-timeout 180
       - run: bun scripts/compose-smoke.ts verify
       - if: failure()
         run: |
@@ -68,15 +69,18 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile
-      - run: bun run sdk:build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: bun run official:build
       - run: bun run extensions:images
       - run: PEEK_TEST_DOCKER=1 bun test tests/extensions-docker.test.ts
-      - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci --profile extensions up --build --wait --wait-timeout 180
+      - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci up --build --wait --wait-timeout 180
       - run: bun scripts/extensions-smoke.ts
-      - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci --profile extensions restart
-      - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci --profile extensions up --wait --wait-timeout 180
+      - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci restart
+      - run: PEEK_PORT=3114 docker compose -p peek-extensions-ci up --wait --wait-timeout 180
       - run: bun scripts/extensions-smoke.ts verify
       - if: failure()
-        run: docker compose -p peek-extensions-ci --profile extensions logs --no-color
+        run: docker compose -p peek-extensions-ci logs --no-color
       - if: always()
-        run: docker compose -p peek-extensions-ci --profile extensions down --volumes
+        run: docker compose -p peek-extensions-ci down --volumes
