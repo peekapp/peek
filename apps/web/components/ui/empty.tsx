@@ -2,6 +2,19 @@ import { Slot } from "radix-ui";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+const emptyVariants = cva(
+  "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 text-center",
+  {
+    variants: {
+      variant: {
+        default: "rounded-lg border-dashed p-6 text-balance md:p-12",
+        screen: "group/empty min-h-100",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  },
+);
+
 function Empty({
   className,
   variant = "default",
@@ -10,12 +23,7 @@ function Empty({
   return (
     <div
       data-slot="empty"
-      className={cn(
-        variant === "screen"
-          ? "empty-state"
-          : "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-lg border-dashed p-6 text-center text-balance md:p-12",
-        className,
-      )}
+      className={cn(emptyVariants({ variant }), className)}
       {...props}
     />
   );
@@ -26,7 +34,7 @@ function EmptyHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="empty-header"
       className={cn(
-        "flex max-w-sm flex-col items-center gap-2 text-center",
+        "flex max-w-sm group-has-[h1]/empty:max-w-none flex-col items-center gap-2 text-center",
         className,
       )}
       {...props}
@@ -73,7 +81,10 @@ function EmptyTitle({
   return (
     <Comp
       data-slot="empty-title"
-      className={cn("text-lg font-medium tracking-tight", className)}
+      className={cn(
+        "text-lg font-medium tracking-tight group-has-[h1]/empty:text-display-empty group-has-[h1]/empty:font-normal",
+        className,
+      )}
       {...props}
     />
   );

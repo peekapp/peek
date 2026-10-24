@@ -1,4 +1,4 @@
-import { Extensions } from "../../../components/settings/extensions";
+import { Settings } from "../../../components/settings";
 import { readState } from "../../../lib/server-state";
 export const dynamic = "force-dynamic";
 export default function ExtensionsPage() {
@@ -6,5 +6,5 @@ export default function ExtensionsPage() {
   try {
     locale = readState().locale ?? "en";
   } catch {}
-  return <Extensions locale={locale} />;
+  return <Settings initialLocale={locale} path={["extensions"]} />;
 }

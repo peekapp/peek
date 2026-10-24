@@ -1,10 +1,13 @@
 "use client";
+import { LoadingState, ErrorState } from "./layout";
+import { EditorForm } from "./layout";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DefinitionPicker } from "./definition-picker";
 import type { Json, Manifest, Schema } from "@peekapp/sdk";
 import { Button } from "../ui/button";
+import { Textarea } from "../ui/textarea";
 import { Input } from "../ui/input";
 import { Checkbox } from "../ui/checkbox";
 import { SettingsSelect } from "./select";
@@ -21,7 +24,18 @@ import {
 } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
-import { Brand } from "../brand";
+import {
+  SettingsHeading,
+  SettingsGrid,
+  SettingsCard,
+  SettingsEmpty,
+  EditorHeader,
+  EditorSection,
+  EditorActions,
+} from "./layout";
+import { ProfileLabel } from "../profile-label";
+import type { Profile } from "@peek/core/profiles";
+import { DeleteButton, ConfirmAction } from "./delete-button";
 type Binding = { connectionId: string; dataset: string };
 type Item = {
   id: string;
@@ -140,7 +154,7 @@ function SchemaFields({
                 }
               />
             ) : (
-              <textarea
+              <Textarea
                 defaultValue={JSON.stringify(
                   value[key] ?? s.default ?? null,
                   null,
@@ -167,13 +181,11 @@ function SchemaFields({
 export function Extensions({
   locale,
   kind,
-  embedded = false,
   itemId,
   packageId,
 }: {
   locale: "en" | "ru";
   kind?: "scenario" | "integration";
-  embedded?: boolean;
   itemId?: string;
   packageId?: string;
 }) {
@@ -187,7 +199,7 @@ export function Extensions({
     id: string;
     packages: { manifest: Manifest; sha256: string }[];
   } | null>(null);
-  const [profiles, setProfiles] = useState<{ id: string; name: string }[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const router = useRouter();
   const section = kind === "scenario" ? "scenarios" : "connections";
   const createHref = (m: Manifest) =>
@@ -248,16 +260,13 @@ export function Extensions({
     )?.manifest;
     return (
       <section className="flex flex-col gap-6">
-        <Link href={`/settings/${section}`}>
-          ← {t("Back to list", "Назад к списку")}
-        </Link>
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
         {!data ? (
-          <p>{t("Loading…", "Загрузка…")}</p>
+          <LoadingState>{t("Loading…", "Загрузка…")}</LoadingState>
         ) : !manifest || (itemId !== "new" && !item) ? (
           <p>
             {t(
@@ -283,38 +292,42 @@ export function Extensions({
       </section>
     );
   }
-  const Container = embedded ? "section" : "main";
   return (
-    <Container className={embedded ? "flex flex-col gap-6" : "settings-page"}>
-      {!embedded ? (
-        <header className="settings-header">
-          <Link className="settings-brand" href="/">
-            <Brand />
-          </Link>
-          <Link href="/settings/scenarios">← {t("Settings", "Настройки")}</Link>
-        </header>
-      ) : null}
-      <div className="settings-heading">
-        {embedded ? (
-          <h2>
-            {kind === "scenario"
-              ? t("Scenarios", "Сценарии")
-              : t("Connections", "Подключения")}
-          </h2>
-        ) : (
-          <h1>{t("Extensions", "Расширения")}</h1>
-        )}
-        <p>
-          {t(
-            kind
-              ? "Manage your configured scenarios and connections."
-              : "Choose a package, configure it, and select its connections.",
-            kind
-              ? "Управляйте своими сценариями и подключениями."
-              : "Выберите пакет, настройте его и укажите подключения.",
-          )}
-        </p>
-      </div>
+    <section className="flex flex-col gap-6">
+      <SettingsHeading
+        title={
+          kind === "scenario"
+            ? t("Scenarios", "Сценарии")
+            : kind === "integration"
+              ? t("Connections", "Подключения")
+              : t("Extensions", "Расширения")
+        }
+        description={
+          kind === "scenario"
+            ? t(
+                "Manage the information shown on your screens.",
+                "Управляйте информацией на ваших экранах.",
+              )
+            : kind === "integration"
+              ? t(
+                  "Connect data sources for your scenarios.",
+                  "Подключайте источники данных для сценариев.",
+                )
+              : t(
+                  "Install and manage packages for scenarios and connections.",
+                  "Устанавливайте пакеты сценариев и подключений.",
+                )
+        }
+        action={
+          kind && data ? (
+            <DefinitionPicker
+              kind={kind}
+              locale={locale}
+              packages={data.packages}
+            />
+          ) : null
+        }
+      />
       {error ? (
         <Alert variant="destructive">
           <AlertDescription role="alert">{error}</AlertDescription>
@@ -494,50 +507,71 @@ export function Extensions({
               </AlertDescription>
             </Alert>
           ))}
-        {kind && data ? (
-          <DefinitionPicker
-            kind={kind}
-            locale={locale}
-            packages={data.packages}
-          />
+        {!data && !error ? (
+          <LoadingState>{t("Loading…", "Загрузка…")}</LoadingState>
         ) : null}
         {kind && data && !data.instances.some((i) => i.kind === kind) ? (
-          <p>
-            {kind === "scenario"
-              ? t(
-                  "You have no scenarios yet. Add one from the library.",
-                  "У вас пока нет сценариев. Добавьте первый из каталога.",
-                )
-              : t(
-                  "No connections yet. Add your first connection.",
-                  "Подключений пока нет. Добавьте первое подключение.",
-                )}
-          </p>
+          <SettingsEmpty
+            title={
+              kind === "scenario"
+                ? t("No scenarios yet", "Пока нет сценариев")
+                : t("No connections yet", "Пока нет подключений")
+            }
+            description={t(
+              "Use the add button to choose from the library.",
+              "Нажмите кнопку добавления, чтобы выбрать из каталога.",
+            )}
+          />
         ) : null}
         {!kind ? (
           <>
-            <h2>
-              {kind
-                ? t("Available packages", "Доступные пакеты")
-                : t("Installed packages", "Установленные пакеты")}
-            </h2>
+            <SettingsHeading
+              title={t("Installed packages", "Установленные пакеты")}
+            />
             {data?.packages.length === 0 ? (
-              <p>
-                {t("No packages installed yet.", "Пакеты пока не установлены.")}
-              </p>
+              <SettingsEmpty
+                title={t(
+                  "No packages installed yet.",
+                  "Пакеты пока не установлены.",
+                )}
+              />
             ) : null}
-            {data?.packages
-              .filter((p) => !kind || p.manifest.kind === kind)
-              .map((p) => (
-                <Card key={p.manifest.id}>
-                  <CardHeader>
-                    <CardTitle>{p.manifest.name}</CardTitle>
-                    <CardDescription>
-                      {p.manifest.id} · {p.manifest.version} ·{" "}
-                      {p.manifest.author}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+            <SettingsGrid>
+              {data?.packages
+                .filter((p) => !kind || p.manifest.kind === kind)
+                .map((p) => (
+                  <SettingsCard
+                    key={p.manifest.id}
+                    title={p.manifest.name}
+                    description={`${p.manifest.id} · ${p.manifest.version} · ${p.manifest.author}`}
+                    actions={
+                      <>
+                        <Button variant="outline" asChild>
+                          <Link href={createHref(p.manifest)}>
+                            {p.manifest.kind === "scenario"
+                              ? t("Create scenario", "Создать сценарий")
+                              : t("Add connection", "Добавить подключение")}
+                          </Link>
+                        </Button>
+                        <DeleteButton
+                          locale={locale}
+                          disabled={busy || !p.unused}
+                          description={t(
+                            "Remove this unused package?",
+                            "Удалить этот неиспользуемый пакет?",
+                          )}
+                          onConfirm={() =>
+                            perform(() =>
+                              api({
+                                action: "delete-package",
+                                id: p.manifest.id,
+                              }),
+                            )
+                          }
+                        />
+                      </>
+                    }
+                  >
                     <Badge variant="outline">
                       {p.official
                         ? t("Official", "Официальное")
@@ -552,61 +586,81 @@ export function Extensions({
                         )}
                       </p>
                     ) : null}
-                  </CardContent>
-                  <CardFooter className="flex-wrap gap-2">
-                    <Button asChild>
-                      <Link href={createHref(p.manifest)}>
-                        {p.manifest.kind === "scenario"
-                          ? t("Create scenario", "Создать сценарий")
-                          : t("Add connection", "Добавить подключение")}
-                      </Link>
-                    </Button>
-                    {!kind ? (
-                      <Button
-                        variant="outline"
-                        disabled={busy || !p.unused}
-                        onClick={() =>
-                          void perform(() =>
-                            api({
-                              action: "delete-package",
-                              id: p.manifest.id,
-                            }),
-                          )
-                        }
-                      >
-                        {t("Remove package", "Удалить пакет")}
-                      </Button>
-                    ) : null}
-                  </CardFooter>
-                </Card>
-              ))}
-            <h2>
-              {t(
+                  </SettingsCard>
+                ))}
+            </SettingsGrid>
+            <SettingsHeading
+              title={t(
                 "Configured scenarios and connections",
                 "Настроенные сценарии и подключения",
               )}
-            </h2>
+            />
           </>
         ) : null}
-        {data?.instances
-          .filter((i) => !kind || i.kind === kind)
-          .map((i) => (
-            <Card key={i.id}>
-              <CardHeader>
-                <CardTitle>{i.name}</CardTitle>
-                <CardDescription>
-                  {
-                    data.packages.find((p) => p.manifest.id === i.package_id)
-                      ?.manifest.name
-                  }{" "}
-                  ·{" "}
-                  {i.enabled
-                    ? t("Enabled", "Включено")
-                    : t("Disabled", "Выключено")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p>{profiles.find((p) => p.id === i.profile_id)?.name}</p>
+        <SettingsGrid>
+          {data?.instances
+            .filter((i) => !kind || i.kind === kind)
+            .map((i) => (
+              <SettingsCard
+                key={i.id}
+                title={
+                  <Link
+                    href={`/settings/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
+                  >
+                    {i.name}
+                  </Link>
+                }
+                description={
+                  <>
+                    {
+                      data.packages.find((p) => p.manifest.id === i.package_id)
+                        ?.manifest.name
+                    }{" "}
+                    ·{" "}
+                    {i.enabled
+                      ? t("Enabled", "Включено")
+                      : t("Disabled", "Выключено")}
+                  </>
+                }
+                actions={
+                  <>
+                    <Button variant="outline" asChild>
+                      <Link
+                        href={`/settings/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
+                      >
+                        {t("Edit", "Изменить")}
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      disabled={busy || !i.enabled}
+                      onClick={() =>
+                        void perform(() => api({ action: "run", id: i.id }))
+                      }
+                    >
+                      {t("Run now", "Запустить сейчас")}
+                    </Button>
+                    <DeleteButton
+                      locale={locale}
+                      disabled={busy}
+                      description={t(
+                        "Delete this instance and its local data?",
+                        "Удалить этот экземпляр и его локальные данные?",
+                      )}
+                      onConfirm={() =>
+                        perform(() =>
+                          api({ action: "delete-instance", id: i.id }),
+                        )
+                      }
+                    />
+                  </>
+                }
+              >
+                {profiles
+                  .filter((p) => p.id === i.profile_id)
+                  .map((p) => (
+                    <ProfileLabel key={p.id} profile={p} locale={locale} />
+                  ))}
                 {i.kind === "scenario" ? (
                   <p>
                     {[
@@ -639,70 +693,26 @@ export function Extensions({
                       : t("Waiting for updates", "Ожидание обновлений")}
                   </p>
                 ) : null}
-              </CardContent>
-              <CardFooter className="flex-wrap gap-2">
-                <Button variant="outline" asChild>
-                  <Link
-                    href={`/settings/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
-                  >
-                    {t("Edit", "Изменить")}
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={busy || !i.enabled}
-                  onClick={() =>
-                    void perform(() => api({ action: "run", id: i.id }))
-                  }
-                >
-                  {t("Run now", "Запустить сейчас")}
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => {
-                    if (
-                      confirm(
-                        t(
-                          "Delete this instance and its local data?",
-                          "Удалить этот экземпляр и его локальные данные?",
-                        ),
-                      )
-                    )
-                      void perform(() =>
-                        api({ action: "delete-instance", id: i.id }),
-                      );
-                  }}
-                >
-                  {t("Delete", "Удалить")}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+              </SettingsCard>
+            ))}
+        </SettingsGrid>
         {!kind && data?.canRollback ? (
-          <Button
-            variant="outline"
+          <ConfirmAction
+            locale={locale}
             disabled={busy}
-            onClick={() => {
-              if (
-                confirm(
-                  t(
-                    "Restore the previous package set and its saved settings and state? Later configuration changes will be lost.",
-                    "Восстановить прежний набор пакетов, его настройки и состояние? Последующие изменения настроек будут потеряны.",
-                  ),
-                )
-              )
-                void perform(() => api({ action: "rollback" }));
-            }}
-          >
-            {t(
+            label={t(
               "Restore previous installation",
               "Восстановить предыдущую установку",
             )}
-          </Button>
+            description={t(
+              "Restore the previous package set and its saved settings and state? Later configuration changes will be lost.",
+              "Восстановить прежний набор пакетов, его настройки и состояние? Последующие изменения настроек будут потеряны.",
+            )}
+            onConfirm={() => perform(() => api({ action: "rollback" }))}
+          />
         ) : null}
       </div>
-    </Container>
+    </section>
   );
 }
 function InstanceEditor({
@@ -717,7 +727,7 @@ function InstanceEditor({
   manifest: Manifest;
   item?: Item;
   connections: Status["connections"];
-  profiles: { id: string; name: string }[];
+  profiles: Profile[];
   locale: "en" | "ru";
   cancel: () => void;
   save: (v: unknown) => Promise<void>;
@@ -739,37 +749,38 @@ function InstanceEditor({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {item ? t("Edit", "Изменить") : t("Configure", "Настроить")} {m.name}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form
-          id="extension-instance"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setBusy(true);
-            setError("");
-            try {
-              await save({
-                id: item?.id,
-                packageId: m.id,
-                name,
-                profileId: profile,
-                enabled,
-                settings,
-                bindings,
-                ...(changeSecrets ? { secrets } : {}),
-              });
-            } catch (e) {
-              setError(e instanceof Error ? e.message : String(e));
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
+    <div>
+      <EditorHeader
+        title={item?.name ?? `${t("Configure", "Настроить")} ${m.name}`}
+        description={m.description}
+        backHref={`/settings/${m.kind === "scenario" ? "scenarios" : "connections"}`}
+        backLabel={t("Back to list", "Назад к списку")}
+      />
+      <EditorForm
+        id="extension-instance"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          setError("");
+          try {
+            await save({
+              id: item?.id,
+              packageId: m.id,
+              name,
+              profileId: profile,
+              enabled,
+              settings,
+              bindings,
+              ...(changeSecrets ? { secrets } : {}),
+            });
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <EditorSection>
           <FieldGroup>
             <SettingsField label={t("Name", "Название")}>
               <Input
@@ -783,7 +794,7 @@ function InstanceEditor({
               <SettingsSelect value={profile} onValueChange={setProfile}>
                 {profiles.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.id === "shared" ? t("Shared", "Общее") : p.name}
+                    <ProfileLabel profile={p} locale={locale} />
                   </SelectItem>
                 ))}
               </SettingsSelect>
@@ -871,18 +882,18 @@ function InstanceEditor({
                 )}
               </FieldSet>
             ))}
-            {error ? <p role="alert">{error}</p> : null}
+            {error ? <ErrorState>{error}</ErrorState> : null}
           </FieldGroup>
-        </form>
-      </CardContent>
-      <CardFooter className="flex-wrap gap-2">
-        <Button type="submit" form="extension-instance" disabled={busy}>
-          {t("Save", "Сохранить")}
-        </Button>
-        <Button variant="outline" onClick={cancel}>
-          {t("Cancel", "Отмена")}
-        </Button>
-      </CardFooter>
-    </Card>
+        </EditorSection>
+        <EditorActions>
+          <Button type="submit" form="extension-instance" disabled={busy}>
+            {t("Save", "Сохранить")}
+          </Button>
+          <Button type="button" variant="ghost" onClick={cancel}>
+            {t("Cancel", "Отмена")}
+          </Button>
+        </EditorActions>
+      </EditorForm>
+    </div>
   );
 }

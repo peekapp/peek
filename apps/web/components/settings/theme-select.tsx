@@ -37,14 +37,14 @@ export function ThemeSelect({
     >
       {(inherit ? ["inherit" as const, ...themes] : themes).map((theme) => (
         <SelectItem key={theme} value={theme}>
-          <span className="theme-option">
+          <span className="inline-flex items-center gap-2.5">
             {theme !== "inherit" ? (
               <span
                 aria-hidden="true"
-                className="theme-swatch"
+                className="inline-flex h-4.5 w-6 items-center rounded border border-line bg-background p-0.5"
                 data-theme={theme}
               >
-                <i />
+                <i className="h-2.5 w-2 rounded-sm bg-foreground" />
               </span>
             ) : null}
             {themeName(theme, locale)}

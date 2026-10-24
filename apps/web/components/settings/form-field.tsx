@@ -8,6 +8,7 @@ import {
   type ReactElement,
 } from "react";
 import { Checkbox } from "../ui/checkbox";
+import { Textarea } from "../ui/textarea";
 import { Input } from "../ui/input";
 import { SettingsSelect } from "./select";
 import { Field, FieldLabel, FieldDescription } from "../ui/field";
@@ -28,6 +29,7 @@ export function SettingsField({
     (child) =>
       isValidElement(child) &&
       (child.type === Input ||
+        child.type === Textarea ||
         child.type === Checkbox ||
         child.type === SettingsSelect ||
         ["input", "select", "textarea"].includes(child.type as string)),
@@ -44,16 +46,13 @@ export function SettingsField({
     ]
       .filter(Boolean)
       .join(" ") || undefined;
+  const isCheckbox = isValidElement(control) && control.type === Checkbox;
   return (
     <Field
       className={className}
-      orientation={
-        isValidElement(control) && control.type === Checkbox
-          ? "horizontal"
-          : "vertical"
-      }
+      orientation={isCheckbox ? "horizontal" : "vertical"}
     >
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      {!isCheckbox ? <FieldLabel htmlFor={id}>{label}</FieldLabel> : null}
       {isValidElement(control)
         ? cloneElement(
             control as ReactElement<{
@@ -63,6 +62,7 @@ export function SettingsField({
             { id, "aria-describedby": describedBy },
           )
         : control}
+      {isCheckbox ? <FieldLabel htmlFor={id}>{label}</FieldLabel> : null}
       {hints.length ? (
         <FieldDescription id={`${id}-hint`}>{hints}</FieldDescription>
       ) : null}

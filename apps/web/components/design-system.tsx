@@ -1,4 +1,26 @@
 "use client";
+import {
+  EditorSection,
+  EditorActions,
+  LoadingState,
+  ErrorState,
+  FormFeedback,
+} from "./settings/layout";
+import {
+  EditorGrid,
+  SettingsNavigation,
+  SettingsPage,
+  SettingsTitle,
+  SettingsTopbar,
+} from "./settings/layout";
+import {
+  SettingsHeading,
+  SettingsGrid,
+  SettingsCard,
+  SettingsEmpty,
+  EditorHeader,
+} from "./settings/layout";
+import { ProfileIdentity } from "./profile-label";
 
 import Link from "next/link";
 import { PlusIcon } from "lucide-react";
@@ -23,22 +45,9 @@ import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Separator } from "./ui/separator";
 import { SettingsSelect } from "./settings/select";
 import { SelectItem } from "./ui/select";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "./ui/card";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "./ui/empty";
-import {
-  NavigationMenu,
-  NavigationMenuList,
-  NavigationMenuItem,
-  NavigationMenuLink,
-} from "./ui/navigation-menu";
+import { NavigationMenuItem, NavigationMenuLink } from "./ui/navigation-menu";
 import { DeleteButton } from "./settings/delete-button";
 
 const variants = [
@@ -66,20 +75,23 @@ const roles = [
 /** A read-only catalogue: example actions never mutate application data. */
 export function DesignSystem() {
   return (
-    <main className="settings-page design-system" lang="ru">
-      <header className="settings-header">
+    <SettingsPage lang="ru">
+      <SettingsTopbar>
         <Brand />
         <Link href="/settings">← Настройки</Link>
-      </header>
-      <div className="settings-heading">
-        <h1>Дизайн-система Peek</h1>
-      </div>
+      </SettingsTopbar>
+      <SettingsTitle>Дизайн-система Peek</SettingsTitle>
       <p>
-        Текущий дизайн «Ночь». Компоненты shadcn, состояния и композиции из
+        Текущая тема приложения. Компоненты shadcn, состояния и композиции из
         приложения.
       </p>
-      <section aria-labelledby="colors-title">
-        <h2 id="colors-title">Цветовые роли</h2>
+      <section
+        className="flex flex-col gap-6 py-8"
+        aria-labelledby="colors-title"
+      >
+        <h2 className="text-2xl font-medium tracking-tight" id="colors-title">
+          Цветовые роли
+        </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {roles.map((role) => (
             <ColorPair
@@ -106,11 +118,17 @@ export function DesignSystem() {
         </p>
       </section>
       <Separator />
-      <section aria-labelledby="type-title">
-        <h2 id="type-title">Типографика и размеры</h2>
-        <div className="editor-title">
-          <h1>Основной экран</h1>
-        </div>
+      <section
+        className="flex flex-col gap-6 py-8"
+        aria-labelledby="type-title"
+      >
+        <h2 className="text-2xl font-medium tracking-tight" id="type-title">
+          Типографика и размеры
+        </h2>
+        <SettingsHeading
+          title="Заголовок раздела"
+          description="Одинаковая иерархия на каждой странице настроек."
+        />
         <p>
           Системный sans-serif. Крупные лёгкие цифры, спокойный текст и подписи.
         </p>
@@ -120,8 +138,13 @@ export function DesignSystem() {
         </p>
       </section>
       <Separator />
-      <section aria-labelledby="actions-title">
-        <h2 id="actions-title">Кнопки</h2>
+      <section
+        className="flex flex-col gap-6 py-8"
+        aria-labelledby="actions-title"
+      >
+        <h2 className="text-2xl font-medium tracking-tight" id="actions-title">
+          Кнопки
+        </h2>
         <p>
           Один основной призыв в группе. Цвет задаётся вариантом, а не стилем на
           странице.
@@ -174,9 +197,14 @@ export function DesignSystem() {
         </div>
       </section>
       <Separator />
-      <section aria-labelledby="fields-title">
-        <h2 id="fields-title">Поля и выбор</h2>
-        <FieldGroup className="form-grid">
+      <section
+        className="flex flex-col gap-6 py-8"
+        aria-labelledby="fields-title"
+      >
+        <h2 className="text-2xl font-medium tracking-tight" id="fields-title">
+          Поля и выбор
+        </h2>
+        <EditorGrid>
           <Field>
             <FieldLabel htmlFor="ds-name">Название экрана</FieldLabel>
             <Input id="ds-name" defaultValue="Основной" autoComplete="off" />
@@ -248,71 +276,83 @@ export function DesignSystem() {
               ))}
             </ToggleGroup>
           </Field>
-        </FieldGroup>
+        </EditorGrid>
       </section>
       <Separator />
-      <section aria-labelledby="compositions-title">
-        <h2 id="compositions-title">Навигация и карточки</h2>
-        <NavigationMenu
-          className="settings-tabs"
-          viewport={false}
-          aria-label="Примеры разделов"
+      <section
+        className="flex flex-col gap-6 py-8"
+        aria-labelledby="compositions-title"
+      >
+        <h2
+          className="text-2xl font-medium tracking-tight"
+          id="compositions-title"
         >
-          <NavigationMenuList>
-            {["Экраны", "Сценарии", "Профили"].map((name, i) => (
-              <NavigationMenuItem key={name}>
-                <NavigationMenuLink variant="tab" active={i === 0} asChild>
-                  <a
-                    href="#compositions-title"
-                    aria-current={i === 0 ? "page" : undefined}
-                  >
-                    {name}
-                  </a>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-            ))}
-          </NavigationMenuList>
-        </NavigationMenu>
-        <div className="settings-card-grid">
-          <Card variant="settings">
-            <CardHeader>
-              <div className="card-top">
-                <span className="type-icon" aria-hidden="true">
-                  ◷
-                </span>
-                <Badge variant="success">Включён</Badge>
-              </div>
-              <CardTitle asChild>
-                <h3>Встречи команды</h3>
-              </CardTitle>
-              <CardDescription asChild>
-                <p>Встречи · Общее</p>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="card-source">Рабочий календарь</CardContent>
-            <CardFooter className="card-bottom">
-              <span>Следующий запуск: через минуту</span>
-              <span aria-hidden="true">›</span>
-            </CardFooter>
-          </Card>
-          <Card variant="settings">
-            <CardHeader>
-              <CardTitle asChild>
-                <h3>
-                  Очень длинное название экрана для проверки переноса текста без
-                  переполнения
-                </h3>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="card-source">
-              Название владельца всегда видно текстом, не только цветом.
-            </CardContent>
-          </Card>
-        </div>
+          Навигация и карточки
+        </h2>
+        <SettingsNavigation viewport={false} aria-label="Примеры разделов">
+          {["Экраны", "Сценарии", "Профили"].map((name, i) => (
+            <NavigationMenuItem key={name}>
+              <NavigationMenuLink variant="tab" active={i === 0} asChild>
+                <a
+                  href="#compositions-title"
+                  aria-current={i === 0 ? "page" : undefined}
+                >
+                  {name}
+                </a>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          ))}
+        </SettingsNavigation>
+        <SettingsHeading
+          title="Сценарии"
+          description="Подпись всегда под заголовком, действие справа."
+          action={<Button>+ Добавить сценарий</Button>}
+        />
+        <SettingsGrid>
+          <SettingsCard
+            title="Встречи команды"
+            description="Встречи · Включено"
+            actions={<Button variant="outline">Изменить</Button>}
+          >
+            <ProfileIdentity name="Общее" color="blue" />
+            <p>Рабочий календарь</p>
+          </SettingsCard>
+          <SettingsCard
+            title="Очень длинное название экрана для проверки переноса текста без переполнения"
+            description="Одна композиция для экранов, профилей, сценариев и подключений."
+          >
+            <ProfileIdentity name="Александра" color="pink" />
+          </SettingsCard>
+        </SettingsGrid>
+        <EditorHeader
+          title="Новый профиль"
+          backHref="#compositions-title"
+          backLabel="К списку"
+        />
+        <EditorSection title="Общие секции редактора">
+          <EditorActions>
+            <Button type="button">Сохранить</Button>
+            <Button type="button" variant="ghost">
+              Отмена
+            </Button>
+          </EditorActions>
+          <FormFeedback>Изменения сохранены</FormFeedback>
+        </EditorSection>
+        <LoadingState>Загрузка…</LoadingState>
+        <ErrorState>Не удалось загрузить данные.</ErrorState>
+        <SettingsEmpty
+          title="Пока нет экранов"
+          description="Добавьте экран с помощью кнопки в заголовке раздела."
+        />
       </section>
       <Separator />
-      <section aria-labelledby="feedback-title">
-        <h2 id="feedback-title">Состояния и диалоги</h2>
+      <section
+        className="flex flex-col gap-6 py-8"
+        aria-labelledby="feedback-title"
+      >
+        <h2 className="text-2xl font-medium tracking-tight" id="feedback-title">
+          Состояния и диалоги
+        </h2>
         <Alert variant="warning" role="status">
           <AlertDescription>
             Нет связи с сервером. Показываются последние данные.
@@ -340,6 +380,6 @@ export function DesignSystem() {
           />
         </div>
       </section>
-    </main>
+    </SettingsPage>
   );
 }

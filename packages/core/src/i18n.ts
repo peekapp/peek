@@ -8,7 +8,7 @@ export const en = {
     "Use 1–64 lowercase Latin letters, numbers or hyphens. The ID “new” is reserved.",
   screenIdTaken: "This ID is already used by another screen.",
   screenIdentity: "Name and link",
-  editScreen: "Configure",
+  editScreen: "Edit",
   screens: "Screens",
   screensDescription:
     "A screen for the whole family, or just for you. Each has its own link and appearance.",
@@ -236,7 +236,7 @@ export const ru: Record<keyof typeof en, string> = {
     "Используйте 1–64 строчные латинские буквы, цифры или дефисы. ID «new» зарезервирован.",
   screenIdTaken: "Этот ID уже занят другим экраном.",
   screenIdentity: "Название и ссылка",
-  editScreen: "Настроить",
+  editScreen: "Изменить",
   screens: "Экраны",
   screensDescription:
     "Экран для всей семьи или только для вас. У каждого своя ссылка и оформление.",

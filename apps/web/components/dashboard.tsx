@@ -1,4 +1,6 @@
 "use client";
+import { cva } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Empty, EmptyHeader, EmptyTitle } from "./ui/empty";
 import { resolveTheme } from "@peek/core/themes";
@@ -14,11 +16,30 @@ import {
 
 import { workerHealthy, type ScreenState } from "@peek/core/state";
 
-import { profileColors } from "@peek/core/colors";
+import { ProfileIdentity } from "./profile-label";
 import Link from "next/link";
 import { messages } from "@peek/core/i18n";
 import { relativeEventTime, formatTime } from "@peek/core/time";
 
+const feedVariants = cva("grid flex-1 gap-3 md:gap-7 xl:gap-12", {
+  variants: {
+    single: {
+      true: "grid-cols-1",
+      false: "md:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]",
+    },
+  },
+});
+const timerVariants = cva(
+  "font-light leading-none tracking-tighter tabular-nums text-timer",
+  {
+    variants: {
+      text: {
+        true: "text-display-status wrap-anywhere",
+        false: "text-display-timer md:text-display-timer-wide",
+      },
+    },
+  },
+);
 function Owner({
   owner,
   sharedLabel,
@@ -27,13 +48,10 @@ function Owner({
   sharedLabel: string;
 }) {
   return (
-    <span className={`owner owner--${owner.color}`}>
-      <i
-        aria-hidden="true"
-        style={{ backgroundColor: profileColors[owner.color] }}
-      />
-      {owner.system ? sharedLabel : owner.name}
-    </span>
+    <ProfileIdentity
+      name={owner.system ? sharedLabel : owner.name}
+      color={owner.color}
+    />
   );
 }
 
@@ -128,25 +146,32 @@ export function Dashboard({
 
   return (
     <main
-      className="dashboard"
+      className="flex min-h-svh flex-col bg-background px-4 text-foreground md:px-6 xl:px-10 2xl:px-16"
       data-theme={resolveTheme(screen?.theme, snapshot.theme)}
       style={{
         zoom: screen?.scale ?? 1,
         minHeight: `${100 / (screen?.scale ?? 1)}svh`,
       }}
     >
-      <header className="screen-header">
-        <div className="screen-identity">
+      <header className="flex h-20 shrink-0 items-center justify-between md:h-24 2xl:h-30">
+        <div className="mr-6 flex min-w-0 items-center gap-5">
           <Brand />
           {screen ? (
-            <small className="screen-name" title={screen.name}>
+            <small
+              className="max-w-28 truncate border-l border-line pl-5 text-xs text-muted-foreground md:max-w-56"
+              title={screen.name}
+            >
               {screen.name}
             </small>
           ) : null}
         </div>
-        <div className="clock">
-          <span>{formatTime(now, locale, timeZone).date}</span>
-          <strong>{formatTime(now, locale, timeZone).clock}</strong>
+        <div className="flex shrink-0 items-center gap-4 md:gap-6">
+          <span className="hidden text-xs text-muted-foreground md:inline">
+            {formatTime(now, locale, timeZone).date}
+          </span>
+          <strong className="text-2xl font-normal tabular-nums">
+            {formatTime(now, locale, timeZone).clock}
+          </strong>
         </div>
       </header>
       {warning ? (
@@ -156,54 +181,73 @@ export function Dashboard({
       ) : null}
       {primary && timer ? (
         <section
-          className={`feed${secondary.length === 0 ? " feed--single" : ""}`}
+          className={cn(feedVariants({ single: secondary.length === 0 }))}
           aria-label={t.currentEvents}
         >
-          <article className="hero" key={primary.id}>
-            <div className="hero-meta">
+          <article
+            className="flex min-h-115 min-w-0 flex-col rounded-3xl bg-surface p-6 md:min-h-140 md:p-7 xl:p-9 2xl:min-h-162 2xl:p-12"
+            key={primary.id}
+          >
+            <div className="flex items-center justify-between gap-4 text-xs">
               <Owner owner={primary.owner} sharedLabel={t.sharedProfile} />
               <time
-                className="meeting-time"
+                className="text-xs text-muted-foreground"
                 dateTime={new Date(primary.targetAt).toISOString()}
               >
                 {relativeEventTime(primary.targetAt, now, locale, timeZone)}
               </time>
             </div>
             {primary.kind !== "info" ? (
-              <div
-                className={`timer${primary.kind === "deadline" || now >= primary.targetAt ? " timer--text" : ""}`}
-              >
-                <span>{timer.label}</span>
-                <strong>{timer.value}</strong>
+              <div className="my-auto">
+                <span className="mt-7 mb-2 block text-sm text-muted-foreground">
+                  {timer.label}
+                </span>
+                <strong
+                  className={cn(
+                    timerVariants({
+                      text:
+                        primary.kind === "deadline" || now >= primary.targetAt,
+                    }),
+                  )}
+                >
+                  {timer.value}
+                </strong>
               </div>
             ) : null}
-            <div className="hero-title">
-              <h1>{primary.title}</h1>
+            <div className="md:pt-6">
+              <h1 className="mt-6 mb-4 max-w-96 text-4xl leading-tight font-medium tracking-tighter wrap-anywhere md:text-display-title">
+                {primary.title}
+              </h1>
               {primary.body ? <p>{primary.body}</p> : null}
               {primary.location ? (
-                <span className="source">{primary.location}</span>
+                <span className="text-xs text-muted-foreground">
+                  {primary.location}
+                </span>
               ) : null}
             </div>
           </article>
           {secondary.length > 0 ? (
-            <div className="secondary">
+            <div className="flex min-w-0 flex-col px-1">
               {secondary.map((card) => (
                 <article
-                  className={`event${priorityAt(card, now) > card.priority ? " event--today" : ""}`}
+                  className="group/event min-w-0 flex-1 border-b border-line px-1 py-6 last:border-0 md:px-0 md:py-8"
+                  data-urgent={priorityAt(card, now) > card.priority}
                   key={card.id}
                 >
-                  <div className="event-meta">
+                  <div className="flex items-center justify-between gap-4 text-xs md:flex-col md:items-start xl:flex-row xl:items-center">
                     <Owner owner={card.owner} sharedLabel={t.sharedProfile} />
                     <time
-                      className="due"
+                      className="text-xs text-muted-foreground group-data-[urgent=true]/event:text-due"
                       dateTime={new Date(card.targetAt).toISOString()}
                     >
                       {relativeEventTime(card.targetAt, now, locale, timeZone)}
                     </time>
                   </div>
-                  <h2>{card.title}</h2>
+                  <h2 className="mt-5 mb-2 text-2xl leading-tight font-medium tracking-tight wrap-anywhere md:mt-6 md:mb-4 2xl:text-3xl">
+                    {card.title}
+                  </h2>
                   {card.body ? <p>{card.body}</p> : null}
-                  <span className="remaining">
+                  <span className="text-sm text-due">
                     {countdown(card, now, locale).value}
                   </span>
                 </article>
@@ -226,8 +270,10 @@ export function Dashboard({
           </EmptyHeader>
         </Empty>
       )}
-      <footer className="screen-footer">
-        <Link href="/settings">{t.settings}</Link>
+      <footer className="flex h-12 shrink-0 items-center justify-between text-xs text-muted-foreground">
+        <Link className="py-2.5" href="/settings">
+          {t.settings}
+        </Link>
       </footer>
     </main>
   );

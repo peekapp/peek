@@ -1,11 +1,13 @@
 "use client";
-import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
+import { LoadingState, ErrorState, SettingsEmpty } from "./settings/layout";
 import {
-  NavigationMenu,
-  NavigationMenuList,
-  NavigationMenuItem,
-  NavigationMenuLink,
-} from "./ui/navigation-menu";
+  FormFeedback,
+  SettingsNavigation,
+  SettingsPage,
+  SettingsTitle,
+  SettingsTopbar,
+} from "./settings/layout";
+import { NavigationMenuItem, NavigationMenuLink } from "./ui/navigation-menu";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
 import { useAppTheme } from "./theme";
@@ -16,9 +18,15 @@ import { SelectItem } from "./ui/select";
 import { Brand } from "./brand";
 import type { Screen } from "@peek/core/screens";
 import { ScreenEditor, ScreenList } from "./settings/screen-editor";
-import { profileName, type Profile } from "@peek/core/profiles";
+import { type Profile } from "@peek/core/profiles";
 import { ProfileEditor } from "./settings/profile-editor";
-import { profileColors } from "@peek/core/colors";
+import { ProfileLabel } from "./profile-label";
+import {
+  SettingsHeading,
+  SettingsGrid,
+  SettingsCard,
+  PreferenceRow,
+} from "./settings/layout";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
@@ -73,45 +81,37 @@ export function Settings({
   }, [locale]);
   const profile = data?.profiles.find((p) => p.id === item);
   return (
-    <main className="settings-page">
-      <header className="settings-header">
-        <Link className="settings-brand" href="/">
+    <SettingsPage>
+      <SettingsTopbar>
+        <Link className="text-foreground" href="/">
           <Brand />
         </Link>
         <Link href="/">← {t.screen}</Link>
-      </header>
-      <div className="settings-heading">
-        <h1>{t.settings}</h1>
-      </div>
-      <NavigationMenu
-        className="settings-tabs"
-        aria-label={t.settings}
-        viewport={false}
-      >
-        <NavigationMenuList>
-          {(
-            [
-              "screens",
-              "scenarios",
-              "connections",
-              "profiles",
-              "general",
-              "extensions",
-            ] as const
-          ).map((key) => (
-            <NavigationMenuItem key={key}>
-              <NavigationMenuLink asChild variant="tab" active={tab === key}>
-                <Link
-                  href={`/settings/${key}`}
-                  aria-current={tab === key ? "page" : undefined}
-                >
-                  {t[key]}
-                </Link>
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-          ))}
-        </NavigationMenuList>
-      </NavigationMenu>
+      </SettingsTopbar>
+      <SettingsTitle>{t.settings}</SettingsTitle>
+      <SettingsNavigation aria-label={t.settings} viewport={false}>
+        {(
+          [
+            "screens",
+            "scenarios",
+            "connections",
+            "profiles",
+            "general",
+            "extensions",
+          ] as const
+        ).map((key) => (
+          <NavigationMenuItem key={key}>
+            <NavigationMenuLink asChild variant="tab" active={tab === key}>
+              <Link
+                href={`/settings/${key}`}
+                aria-current={tab === key ? "page" : undefined}
+              >
+                {t[key]}
+              </Link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
+        ))}
+      </SettingsNavigation>
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>
@@ -122,19 +122,15 @@ export function Settings({
           </AlertDescription>
         </Alert>
       ) : null}
-      <div className="settings-content">
+      <div className="pt-8">
         {tab === "general" ? (
           <>
-            <div className="section-intro">
-              <h2>{t.general}</h2>
-              <p>{t.generalDescription}</p>
-            </div>
-            <div className="preference-row">
-              <div>
-                <h3>{t.appTheme}</h3>
-                <p>{t.appThemeHint}</p>
-              </div>
-              <div className="theme-preference-control">
+            <SettingsHeading
+              title={t.general}
+              description={t.generalDescription}
+            />
+            <PreferenceRow title={t.appTheme} description={t.appThemeHint}>
+              <div className="w-56 max-w-full shrink-0">
                 <ThemeSelect
                   value={theme}
                   locale={locale}
@@ -154,7 +150,7 @@ export function Settings({
                     }
                   }}
                 />
-                <p role="status" className="form-feedback">
+                <FormFeedback role="status">
                   {themeBusy
                     ? t.saving
                     : themeStatus === "saved"
@@ -162,14 +158,10 @@ export function Settings({
                       : themeStatus === "error"
                         ? t.loadError
                         : ""}
-                </p>
+                </FormFeedback>
               </div>
-            </div>
-            <div className="preference-row">
-              <div>
-                <h3>{t.language}</h3>
-                <p>{t.languageHint}</p>
-              </div>
+            </PreferenceRow>
+            <PreferenceRow title={t.language} description={t.languageHint}>
               <SettingsSelect
                 className="w-[170px] shrink-0"
                 aria-label={t.language}
@@ -186,10 +178,12 @@ export function Settings({
                 <SelectItem value="en">English</SelectItem>
                 <SelectItem value="ru">Русский</SelectItem>
               </SettingsSelect>
-            </div>
+            </PreferenceRow>
           </>
         ) : !data ? (
-          <p>{t.loading}</p>
+          error ? null : (
+            <LoadingState>{t.loading}</LoadingState>
+          )
         ) : tab === "screens" ? (
           item ? (
             item === "new" || data.screens.some((s) => s.id === item) ? (
@@ -201,7 +195,7 @@ export function Settings({
                 refresh={refresh}
               />
             ) : (
-              <p>{t.notFound}</p>
+              <SettingsEmpty title={t.notFound} />
             )
           ) : (
             <ScreenList
@@ -220,55 +214,56 @@ export function Settings({
                 refresh={refresh}
               />
             ) : (
-              <p>{t.notFound}</p>
+              <SettingsEmpty title={t.notFound} />
             )
           ) : (
             <>
-              <div className="section-intro">
-                <div>
-                  <h2>{t.profiles}</h2>
-                  <p>{t.profilesDescription}</p>
-                </div>
-                <Button asChild>
-                  <Link href="/settings/profiles/new">+ {t.addProfile}</Link>
-                </Button>
-              </div>
-              <div className="settings-card-grid">
+              <SettingsHeading
+                title={t.profiles}
+                description={t.profilesDescription}
+                action={
+                  <Button asChild>
+                    <Link href="/settings/profiles/new">+ {t.addProfile}</Link>
+                  </Button>
+                }
+              />
+              <SettingsGrid>
                 {data.profiles.map((p) => (
-                  <Card variant="settings" asChild key={p.id}>
-                    <Link href={`/settings/profiles/${p.id}`}>
-                      <CardHeader>
-                        <div className={`owner owner--${p.color}`}>
-                          <i
-                            aria-hidden="true"
-                            style={{
-                              backgroundColor: profileColors[p.color],
-                            }}
-                          />
-                          {p.system ? t.systemProfile : t.profiles}
-                        </div>
-                        <CardTitle asChild>
-                          <h3>{profileName(p, locale)}</h3>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="card-source">
-                        {t.connections}:{" "}
-                        {
-                          data.connections.filter((c) => c.profileId === p.id)
-                            .length
-                        }{" "}
-                        · {t.scenarios}:{" "}
-                        {
-                          data.scenarios.filter((s) => s.profileId === p.id)
-                            .length
-                        }
-                      </CardContent>
-                    </Link>
-                  </Card>
+                  <SettingsCard
+                    key={p.id}
+                    title={
+                      <Link href={`/settings/profiles/${p.id}`}>
+                        <ProfileLabel profile={p} locale={locale} />
+                      </Link>
+                    }
+                    description={p.system ? t.systemProfile : t.profiles}
+                    actions={
+                      <Button variant="outline" asChild>
+                        <Link href={`/settings/profiles/${p.id}`}>
+                          {locale === "ru" ? "Изменить" : "Edit"}
+                        </Link>
+                      </Button>
+                    }
+                  >
+                    <div className="text-sm text-detail wrap-anywhere">
+                      {t.connections}:{" "}
+                      {
+                        data.connections.filter((c) => c.profileId === p.id)
+                          .length
+                      }{" "}
+                      · {t.scenarios}:{" "}
+                      {
+                        data.scenarios.filter((s) => s.profileId === p.id)
+                          .length
+                      }
+                    </div>
+                  </SettingsCard>
                 ))}
-              </div>
+              </SettingsGrid>
             </>
           )
+        ) : tab === "extensions" ? (
+          <Extensions locale={locale} />
         ) : tab === "scenarios" || tab === "connections" ? (
           <Extensions
             key={`${tab}/${item ?? ""}/${packageId ?? ""}`}
@@ -276,10 +271,9 @@ export function Settings({
             packageId={packageId}
             locale={locale}
             kind={tab === "scenarios" ? "scenario" : "integration"}
-            embedded
           />
         ) : null}
       </div>
-    </main>
+    </SettingsPage>
   );
 }

@@ -1,4 +1,7 @@
 "use client";
+import { EditorForm, FormFeedback } from "./layout";
+import { EditorHeader, EditorSection, EditorActions } from "./layout";
+import { ProfileLabel, ProfileIdentity } from "../profile-label";
 import { Label } from "../ui/label";
 import { DeleteButton } from "./delete-button";
 import { Button } from "../ui/button";
@@ -10,7 +13,7 @@ import { profileColors, type ProfileColor } from "@peek/core/colors";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { profileName, type Profile } from "@peek/core/profiles";
+import { type Profile } from "@peek/core/profiles";
 import { messages, type Locale } from "@peek/core/i18n";
 import { mutate, errorText } from "./api";
 export function ProfileEditor({
@@ -31,17 +34,21 @@ export function ProfileEditor({
   const [status, setStatus] = useState("");
   return (
     <>
-      <Link className="back-link" href="/settings/profiles">
-        ← {t.backToProfiles}
-      </Link>
-      <div className="editor-title">
-        <h1>{profile ? profileName(profile, locale) : t.addProfile}</h1>
-      </div>
+      <EditorHeader
+        title={
+          profile ? (
+            <ProfileLabel profile={profile} locale={locale} />
+          ) : (
+            t.addProfile
+          )
+        }
+        backHref="/settings/profiles"
+        backLabel={t.backToProfiles}
+      />
       {profile?.system ? (
         <p>{t.systemProfile}</p>
       ) : (
-        <form
-          className="detail-form"
+        <EditorForm
           onSubmit={async (e) => {
             e.preventDefault();
             setStatus("saving");
@@ -59,8 +66,8 @@ export function ProfileEditor({
             }
           }}
         >
-          <section className="form-section">
-            <FieldGroup className="form-grid">
+          <EditorSection>
+            <FieldGroup>
               <SettingsField label={t.profileName}>
                 <Input
                   required
@@ -72,10 +79,10 @@ export function ProfileEditor({
                   }}
                 />
               </SettingsField>
-              <FieldSet className="profile-color-field">
+              <FieldSet className="min-w-0">
                 <FieldLegend variant="label">{t.ownerColor}</FieldLegend>
                 <RadioGroup
-                  className="color-swatches"
+                  className="flex flex-wrap gap-2"
                   name="profile-color"
                   aria-label={t.ownerColor}
                   value={color}
@@ -88,36 +95,44 @@ export function ProfileEditor({
                     Object.entries(profileColors) as [ProfileColor, string][]
                   ).map(([value, hex]) => (
                     <Label
-                      className="color-swatch"
+                      className="relative block size-10 cursor-pointer"
                       key={value}
                       title={t[value]}
                     >
                       <RadioGroupItem
-                        className="color-swatch-control"
+                        className="peer absolute inset-0 size-10 cursor-pointer opacity-0"
                         value={value}
                         aria-label={t[value]}
                       />
-                      <span style={{ backgroundColor: hex }} aria-hidden="true">
+                      <span
+                        className="m-1 grid size-8 place-items-center rounded-full text-xl text-background peer-data-[state=checked]:outline peer-data-[state=checked]:outline-foreground peer-data-[state=checked]:outline-offset-3 peer-focus-visible:outline-3 peer-focus-visible:outline-foreground peer-focus-visible:outline-offset-3"
+                        style={{ backgroundColor: hex }}
+                        aria-hidden="true"
+                      >
                         {color === value ? "✓" : ""}
                       </span>
                     </Label>
                   ))}
                 </RadioGroup>
               </FieldSet>
-              <div className="profile-preview span-two" aria-label={t.preview}>
-                <span className="preview-label">{t.preview}</span>
-                <span className="owner">
-                  <i
-                    style={{ backgroundColor: profileColors[color] }}
-                    aria-hidden="true"
-                  />
-                  {name.trim() || t.profileName}
+              <div
+                className="flex flex-wrap items-center gap-5 rounded-xl border border-line bg-background p-6 sm:col-span-2"
+                aria-label={t.preview}
+              >
+                <span className="text-sm text-muted-foreground">
+                  {t.preview}
                 </span>
-                <span className="preview-color-name">{t[color]}</span>
+                <ProfileIdentity
+                  name={name.trim() || t.profileName}
+                  color={color}
+                />
+                <span className="ml-auto text-sm text-muted-foreground">
+                  {t[color]}
+                </span>
               </div>
             </FieldGroup>
-          </section>
-          <div className="form-actions">
+          </EditorSection>
+          <EditorActions>
             <Button disabled={status === "saving"}>
               {status === "saving" ? t.saving : t.save}
             </Button>
@@ -140,15 +155,15 @@ export function ProfileEditor({
                 }}
               />
             ) : null}
-          </div>
-          <p role="status" className="form-feedback">
+          </EditorActions>
+          <FormFeedback role="status">
             {status === "saved"
               ? t.saved
               : status && status !== "saving"
                 ? errorText(status, locale)
                 : ""}
-          </p>
-        </form>
+          </FormFeedback>
+        </EditorForm>
       )}
     </>
   );

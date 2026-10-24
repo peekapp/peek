@@ -1,8 +1,9 @@
+import { ProfileLabel } from "../profile-label";
 import { SettingsSelect } from "./select";
 import { SelectItem } from "../ui/select";
 import { SettingsField } from "./form-field";
 import Link from "next/link";
-import { profileName, type Profile } from "@peek/core/profiles";
+import { type Profile } from "@peek/core/profiles";
 import { messages, type Locale } from "@peek/core/i18n";
 export function ProfileSelect({
   profiles,
@@ -31,7 +32,7 @@ export function ProfileSelect({
         ) : null}
         {profiles.map((p) => (
           <SelectItem value={p.id} key={p.id}>
-            {profileName(p, locale)}
+            <ProfileLabel profile={p} locale={locale} />
           </SelectItem>
         ))}
       </SettingsSelect>

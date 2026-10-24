@@ -1,13 +1,12 @@
 "use client";
+import { EditorForm, FormFeedback } from "./layout";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardContent,
-  CardFooter,
 } from "../ui/card";
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "../ui/empty";
 import { resolveTheme } from "@peek/core/themes";
 import { useAppTheme } from "../theme";
 import { ThemeSelect } from "./theme-select";
@@ -30,8 +29,17 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { suggestScreenId } from "@peek/core/screens";
 import type { Screen, ScreenConfig } from "@peek/core/screens";
-import { profileName, type Profile } from "@peek/core/profiles";
-import { profileColors } from "@peek/core/colors";
+import { type Profile } from "@peek/core/profiles";
+import { ProfileLabel } from "../profile-label";
+import {
+  SettingsHeading,
+  SettingsGrid,
+  SettingsCard,
+  SettingsEmpty,
+  EditorHeader,
+  EditorSection,
+  EditorActions,
+} from "./layout";
 import { messages, type Locale } from "@peek/core/i18n";
 import { errorText, mutate } from "./api";
 
@@ -46,24 +54,29 @@ function ScreenPreview({
   const { theme } = useAppTheme();
   return (
     <div
-      className="screen-preview"
+      className="min-w-0 rounded-xl bg-background p-4 text-foreground"
       data-theme={resolveTheme(config.theme, theme)}
       aria-label={t.preview}
     >
-      <div className="screen-preview-heading">
-        <span>{config.name || t.screenName}</span>
+      <div className="mb-4 flex justify-between gap-3 text-xs">
+        <span className="truncate">{config.name || t.screenName}</span>
         <span>12:45</span>
       </div>
-      <div className="screen-preview-feed" aria-hidden="true">
-        <div>
-          <span>peek</span>
-          <strong style={{ fontSize: `${32 * config.scale}px` }}>10:00</strong>
-          <i />
+      <div className="grid h-36 grid-cols-[1.6fr_1fr] gap-4" aria-hidden="true">
+        <div className="flex min-w-0 flex-col items-start justify-between rounded-lg bg-surface p-4">
+          <span className="text-xs">peek</span>
+          <strong
+            className="font-light leading-none tracking-tighter"
+            style={{ fontSize: `${32 * config.scale}px` }}
+          >
+            10:00
+          </strong>
+          <i className="block h-1.5 w-3/4 rounded bg-muted-foreground opacity-45" />
         </div>
-        <aside>
-          <i />
-          <i />
-          <i />
+        <aside className="flex flex-col justify-around">
+          <i className="block h-1.5 w-3/4 rounded bg-muted-foreground opacity-45" />
+          <i className="block h-1.5 w-3/4 rounded bg-muted-foreground opacity-45" />
+          <i className="block h-1.5 w-3/4 rounded bg-muted-foreground opacity-45" />
         </aside>
       </div>
     </div>
@@ -81,70 +94,69 @@ export function ScreenList({
   const t = messages(locale);
   return (
     <>
-      <div className="section-intro">
-        <div>
-          <h2>{t.screens}</h2>
-          <p>{t.screensDescription}</p>
-        </div>
-        <Button asChild>
-          <Link href="/settings/screens/new">+ {t.addScreen}</Link>
-        </Button>
-      </div>
-      <div className="screens-grid">
+      <SettingsHeading
+        title={t.screens}
+        description={t.screensDescription}
+        action={
+          <Button asChild>
+            <Link href="/settings/screens/new">+ {t.addScreen}</Link>
+          </Button>
+        }
+      />
+      <SettingsGrid>
         {screens.map((screen) => (
-          <Card variant="screen" key={screen.id}>
-            <Link
-              href={`/settings/screens/${screen.id}`}
-              aria-label={screen.name}
-            >
-              <ScreenPreview config={screen} locale={locale} />
-            </Link>
-            <div className="screen-tile-body">
-              <CardHeader>
-                <div className="screen-tile-title">
-                  <CardTitle asChild>
-                    <h3>
-                      <Link href={`/settings/screens/${screen.id}`}>
-                        {screen.name}
-                      </Link>
-                    </h3>
-                  </CardTitle>
-                  <code>/{screen.id}</code>
-                </div>
-              </CardHeader>
-              <CardDescription asChild>
-                <p>
-                  {screen.allProfiles
-                    ? t.allProfiles
-                    : profiles
-                        .filter((p) => screen.profileIds.includes(p.id))
-                        .map((p) => profileName(p, locale))
-                        .join(", ") || t.noScreenProfiles}
-                </p>
-              </CardDescription>
-              <CardFooter className="card-bottom">
-                <Link href={`/settings/screens/${screen.id}`}>
-                  {t.editScreen}
-                </Link>
-                <Link
-                  href={`/screens/${screen.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {t.openScreen} ↗
-                </Link>
-              </CardFooter>
+          <SettingsCard
+            key={screen.id}
+            title={
+              <Link href={`/settings/screens/${screen.id}`}>{screen.name}</Link>
+            }
+            description={<code>/{screen.id}</code>}
+            preview={
+              <Link
+                href={`/settings/screens/${screen.id}`}
+                aria-label={screen.name}
+              >
+                <ScreenPreview config={screen} locale={locale} />
+              </Link>
+            }
+            actions={
+              <>
+                <Button variant="outline" asChild>
+                  <Link href={`/settings/screens/${screen.id}`}>
+                    {t.editScreen}
+                  </Link>
+                </Button>
+                <Button variant="ghost" asChild>
+                  <Link
+                    href={`/screens/${screen.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {t.openScreen} ↗
+                  </Link>
+                </Button>
+              </>
+            }
+          >
+            <div className="flex flex-wrap gap-3">
+              {screen.allProfiles
+                ? t.allProfiles
+                : screen.profileIds.length
+                  ? profiles
+                      .filter((p) => screen.profileIds.includes(p.id))
+                      .map((p) => (
+                        <ProfileLabel key={p.id} profile={p} locale={locale} />
+                      ))
+                  : t.noScreenProfiles}
             </div>
-          </Card>
+          </SettingsCard>
         ))}
-      </div>
+      </SettingsGrid>
       {!screens.length ? (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>{t.emptyScreens}</EmptyTitle>
-            <EmptyDescription>{t.screensDescription}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <SettingsEmpty
+          title={t.emptyScreens}
+          description={t.screensDescription}
+        />
       ) : null}
     </>
   );
@@ -182,29 +194,34 @@ export function ScreenEditor({
     setConfig((c) => ({ ...c, ...value }));
     setStatus("");
   };
+  const selectedProfiles = profiles.filter((profile) =>
+    config.profileIds.includes(profile.id),
+  );
   const busy = status === "saving";
   const invalidId = ["invalid-screen-id", "screen-id-taken"].includes(status);
   const link = `${origin}/screens/${screen?.id ?? id}`;
   return (
-    <div className="screen-editor">
-      <Link className="back-link" href="/settings/screens">
-        ← {t.backToScreens}
-      </Link>
-      <div className="editor-title">
-        <h1>{screen?.name ?? t.addScreen}</h1>
-        {screen ? (
-          <Button variant="outline" asChild>
-            <Link
-              href={`/screens/${screen.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t.openScreen} ↗
-            </Link>
-          </Button>
-        ) : null}
-      </div>
-      <form
+    <div className="min-w-0">
+      <EditorHeader
+        title={screen?.name ?? t.addScreen}
+        backHref="/settings/screens"
+        backLabel={t.backToScreens}
+        action={
+          screen ? (
+            <Button variant="outline" asChild>
+              <Link
+                href={`/screens/${screen.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t.openScreen} ↗
+              </Link>
+            </Button>
+          ) : null
+        }
+      />
+      <EditorForm
+        layout="preview"
         onSubmit={async (e) => {
           e.preventDefault();
           setStatus("saving");
@@ -224,10 +241,9 @@ export function ScreenEditor({
           }
         }}
       >
-        <div className="screen-editor-layout">
-          <div className="screen-editor-fields">
-            <section className="screen-form-section">
-              <h2>{t.screenIdentity}</h2>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-16">
+          <div className="flex min-w-0 flex-col gap-8">
+            <EditorSection title={t.screenIdentity}>
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="screen-name">{t.screenName}</FieldLabel>
@@ -269,8 +285,8 @@ export function ScreenEditor({
                   ) : null}
                 </Field>
               </FieldGroup>
-            </section>
-            <section className="screen-form-section">
+            </EditorSection>
+            <EditorSection>
               <FieldSet>
                 <FieldLegend>{t.profiles}</FieldLegend>
                 <FieldDescription>{t.screenProfilesHint}</FieldDescription>
@@ -289,7 +305,7 @@ export function ScreenEditor({
                     <FieldDescription>{t.allProfilesHint}</FieldDescription>
                   </FieldContent>
                 </Field>
-                <FieldGroup className="screen-profile-grid">
+                <FieldGroup className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   {profiles.map((profile) => (
                     <Field
                       key={profile.id}
@@ -315,14 +331,7 @@ export function ScreenEditor({
                         }
                       />
                       <FieldLabel htmlFor={`screen-${profile.id}`}>
-                        <span className="owner">
-                          <i
-                            style={{
-                              backgroundColor: profileColors[profile.color],
-                            }}
-                          />
-                          {profileName(profile, locale)}
-                        </span>
+                        <ProfileLabel profile={profile} locale={locale} />
                       </FieldLabel>
                     </Field>
                   ))}
@@ -331,9 +340,8 @@ export function ScreenEditor({
                   <FieldDescription>{t.noScreenProfiles}</FieldDescription>
                 ) : null}
               </FieldSet>
-            </section>
-            <section className="screen-form-section">
-              <h2>{t.appearance}</h2>
+            </EditorSection>
+            <EditorSection title={t.appearance}>
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="screen-theme">
@@ -371,30 +379,35 @@ export function ScreenEditor({
                   </ToggleGroup>
                 </Field>
               </FieldGroup>
-            </section>
+            </EditorSection>
           </div>
-          <aside className="screen-editor-aside">
+          <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-6">
             <Card variant="preview">
               <CardHeader>
                 <CardTitle asChild>
-                  <h2>{t.preview}</h2>
+                  <h3>{t.preview}</h3>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ScreenPreview config={config} locale={locale} />
               </CardContent>
               <CardDescription asChild>
-                <p>
+                <p className="flex flex-wrap gap-3">
                   {config.allProfiles
                     ? t.allProfiles
-                    : profiles
-                        .filter((p) => config.profileIds.includes(p.id))
-                        .map((p) => profileName(p, locale))
-                        .join(", ") || t.noScreenProfiles}
+                    : selectedProfiles.length
+                      ? selectedProfiles.map((profile) => (
+                          <ProfileLabel
+                            key={profile.id}
+                            profile={profile}
+                            locale={locale}
+                          />
+                        ))
+                      : t.noScreenProfiles}
                 </p>
               </CardDescription>
             </Card>
-            <div className="screen-link-panel">
+            <div className="flex flex-col gap-3 text-xs text-muted-foreground">
               <Field>
                 <FieldLabel htmlFor="screen-link">{t.screenLink}</FieldLabel>
                 <Input
@@ -424,7 +437,7 @@ export function ScreenEditor({
             </div>
           </aside>
         </div>
-        <div className="form-actions">
+        <EditorActions>
           <Button disabled={busy}>{busy ? t.saving : t.save}</Button>
           <Button variant="ghost" asChild>
             <Link href="/settings/screens">{t.cancel}</Link>
@@ -446,15 +459,15 @@ export function ScreenEditor({
               }}
             />
           ) : null}
-        </div>
-        <p role="status" className="form-feedback">
+        </EditorActions>
+        <FormFeedback role="status">
           {status === "saved"
             ? t.saved
             : status && !busy
               ? errorText(status, locale)
               : ""}
-        </p>
-      </form>
+        </FormFeedback>
+      </EditorForm>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { cn } from "@/lib/utils";
 import type { Status } from "./extensions";
 import { Card, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import Link from "next/link";
@@ -47,11 +48,13 @@ export function DefinitionPicker({
         </Button>
       </DialogTrigger>
       <DialogContent
-        className={kind === "scenario" ? "scenario-library-dialog" : undefined}
+        variant={kind === "scenario" ? "catalog" : "default"}
         showCloseButton={false}
         aria-describedby={undefined}
       >
-        <DialogHeader>
+        <DialogHeader
+          className={cn(kind === "scenario" && "px-5 text-left sm:px-7")}
+        >
           <DialogTitle>
             {kind === "scenario" ? t.scenarioLibrary : t.chooseIntegration}
           </DialogTitle>
@@ -74,7 +77,7 @@ export function DefinitionPicker({
             onSelect={() => setOpen(false)}
           />
         ) : (
-          <div className="picker-options">
+          <div className="grid gap-3">
             {!choices.length ? (
               <p>
                 {locale === "ru"
@@ -95,7 +98,10 @@ export function DefinitionPicker({
                       <span>{choice.description}</span>
                     </CardDescription>
                   </CardHeader>
-                  <span className="picker-arrow" aria-hidden="true">
+                  <span
+                    className="absolute right-4 top-6 text-2xl text-choice-foreground"
+                    aria-hidden="true"
+                  >
                     ›
                   </span>
                 </Link>

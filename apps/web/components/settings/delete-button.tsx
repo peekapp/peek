@@ -15,13 +15,15 @@ import {
   AlertDialogAction,
 } from "../ui/alert-dialog";
 
-export function DeleteButton({
+export function ConfirmAction({
   locale,
+  label,
   description,
   disabled,
   onConfirm,
 }: {
   locale: Locale;
+  label?: string;
   description: string;
   disabled?: boolean;
   onConfirm: () => Promise<void>;
@@ -43,12 +45,12 @@ export function DeleteButton({
           className="ml-auto"
           disabled={disabled || pending}
         >
-          {t.remove}
+          {label ?? t.remove}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{t.remove}</AlertDialogTitle>
+          <AlertDialogTitle>{label ?? t.remove}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -67,10 +69,12 @@ export function DeleteButton({
               }
             }}
           >
-            {t.remove}
+            {label ?? t.remove}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
+
+export const DeleteButton = ConfirmAction;

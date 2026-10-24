@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+import { cva } from "class-variance-authority";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -24,6 +26,47 @@ import {
   EmptyDescription,
 } from "../ui/empty";
 
+const catalogPanelVariants = cva(
+  "overflow-y-auto p-4 sm:px-7 sm:py-6 h-[min(460px,55dvh)] sm:h-[min(510px,65dvh)] [scrollbar-gutter:stable]",
+  {
+    variants: {
+      empty: {
+        true: "data-[state=active]:flex data-[state=active]:items-center",
+        false: "",
+      },
+    },
+  },
+);
+function CatalogPanel({
+  empty = false,
+  className,
+  ...props
+}: React.ComponentProps<typeof TabsContent> & { empty?: boolean }) {
+  return (
+    <TabsContent
+      className={cn(catalogPanelVariants({ empty }), className)}
+      {...props}
+    />
+  );
+}
+function CatalogSection({
+  children,
+  ...props
+}: React.ComponentProps<"section">) {
+  return (
+    <section className="mb-7 last:mb-0" {...props}>
+      {children}
+    </section>
+  );
+}
+function CatalogHeading(props: React.ComponentProps<"h3">) {
+  return (
+    <h3
+      className="mb-3 flex items-center gap-2 text-sm font-semibold [&>svg]:size-4 [&>svg]:text-muted-foreground"
+      {...props}
+    />
+  );
+}
 type Definition = { id: string; title: string; description: string };
 const icons: Record<string, typeof CalendarClock> = {
   "peek/meetings": CalendarClock,
@@ -98,28 +141,36 @@ export function ScenarioLibrary({
     const Icon = icons[definition.id] ?? Library;
     const favorite = favorites.includes(definition.id);
     return (
-      <div className="scenario-library-item" key={definition.id}>
+      <div
+        className="mt-2 flex items-center gap-1 rounded-xl border border-line pr-2.5 hover:border-settings-border-hover hover:bg-card"
+        key={definition.id}
+      >
         <Link
-          className="scenario-library-link"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-4 pr-2 pl-3 text-foreground sm:pl-4"
           href={`/settings/scenarios/new?package=${encodeURIComponent(definition.id)}`}
           onClick={onSelect}
         >
-          <span className="scenario-library-icon">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary sm:size-10 [&>svg]:size-5">
             <Icon aria-hidden="true" />
           </span>
-          <span className="scenario-library-copy">
+          <span className="flex min-w-0 flex-1 flex-col gap-1 wrap-anywhere">
             <strong className="flex flex-wrap items-center gap-2">
               {definition.title}
             </strong>
-            <span>{definition.description}</span>
+            <span className="text-sm leading-relaxed text-muted-foreground">
+              {definition.description}
+            </span>
           </span>
-          <ChevronRight className="scenario-library-arrow" aria-hidden="true" />
+          <ChevronRight
+            className="hidden size-4 shrink-0 text-muted-foreground sm:block"
+            aria-hidden="true"
+          />
         </Link>
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="scenario-library-favorite"
+          className="aria-pressed:text-primary"
           aria-pressed={favorite}
           aria-label={`${favorite ? t.removeScenarioFavorite : t.addScenarioFavorite}: ${definition.title}`}
           title={favorite ? t.removeScenarioFavorite : t.addScenarioFavorite}
@@ -133,81 +184,72 @@ export function ScenarioLibrary({
 
   return (
     <>
-      <p className="scenario-library-intro">{t.scenarioLibraryHint}</p>
+      <p className="mx-5 mt-2.5 mb-5 pr-3 text-sm text-muted-foreground sm:mx-7 sm:mb-6">
+        {t.scenarioLibraryHint}
+      </p>
       <Tabs
         value={tab}
         onValueChange={setTab}
         orientation="vertical"
-        className="scenario-library"
+        className="grid grid-cols-1 gap-0 border-t border-line sm:grid-cols-[14rem_minmax(0,1fr)]"
       >
-        <TabsList
-          className="scenario-library-nav"
-          aria-label={t.scenarioLibrary}
-        >
-          <TabsTrigger value="builtin">
+        <TabsList variant="catalog" aria-label={t.scenarioLibrary}>
+          <TabsTrigger variant="catalog" value="builtin">
             <Library aria-hidden="true" />
             {t.builtinScenarios}
           </TabsTrigger>
-          <TabsTrigger value="downloaded">
+          <TabsTrigger variant="catalog" value="downloaded">
             <Download aria-hidden="true" />
             {t.downloadedScenarios}
           </TabsTrigger>
-          <TabsTrigger value="community">
+          <TabsTrigger variant="catalog" value="community">
             <Users aria-hidden="true" />
             {t.communityScenarios}
             <Badge variant="secondary">{t.comingSoon}</Badge>
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="builtin" className="scenario-library-content">
-          <section
-            className="scenario-library-section"
-            aria-labelledby="scenario-favorites-heading"
-          >
-            <h3 id="scenario-favorites-heading">
+        <CatalogPanel value="builtin">
+          <CatalogSection aria-labelledby="scenario-favorites-heading">
+            <CatalogHeading id="scenario-favorites-heading">
               <Star aria-hidden="true" />
               {t.favoriteScenarios}
-            </h3>
+            </CatalogHeading>
             {scenarioDefinitions.some((d) => favorites.includes(d.id)) ? (
               scenarioDefinitions
                 .filter((d) => favorites.includes(d.id))
                 .map(renderScenario)
             ) : (
-              <p className="scenario-library-favorites-hint">
+              <p className="mb-3 rounded-lg border border-dashed border-line px-4 py-3 text-sm leading-relaxed text-muted-foreground">
                 {t.favoriteScenariosHint}
               </p>
             )}
             {saveError ? <p role="status">{t.favoritesSaveError}</p> : null}
-          </section>
-          <section
-            className="scenario-library-section"
-            aria-labelledby="scenario-starter-heading"
-          >
-            <h3 id="scenario-starter-heading">{t.starterScenarios}</h3>
-            <p className="scenario-library-section-hint">
+          </CatalogSection>
+          <CatalogSection aria-labelledby="scenario-starter-heading">
+            <CatalogHeading id="scenario-starter-heading">
+              {t.starterScenarios}
+            </CatalogHeading>
+            <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
               {t.starterScenariosHint}
             </p>
             {scenarioDefinitions.map(renderScenario)}
-          </section>
-          <section
-            className="scenario-library-section"
-            aria-labelledby="scenario-categories-heading"
-          >
-            <h3 id="scenario-categories-heading">{t.scenarioCategories}</h3>
-            <details className="scenario-library-category">
-              <summary>
+          </CatalogSection>
+          <CatalogSection aria-labelledby="scenario-categories-heading">
+            <CatalogHeading id="scenario-categories-heading">
+              {t.scenarioCategories}
+            </CatalogHeading>
+            <details className="group/category">
+              <summary className="flex cursor-pointer list-none items-center gap-2.5 py-3.5 text-sm [&::-webkit-details-marker]:hidden [&>svg]:size-4 [&>svg]:text-muted-foreground [&>svg:last-child]:group-open/category:rotate-90">
                 <CalendarClock aria-hidden="true" />
-                <span>{t.scenarioCategoryCalendar}</span>
+                <span className="flex-1">{t.scenarioCategoryCalendar}</span>
                 <Badge variant="secondary">{scenarioDefinitions.length}</Badge>
                 <ChevronRight aria-hidden="true" />
               </summary>
               {scenarioDefinitions.map(renderScenario)}
             </details>
-          </section>
-        </TabsContent>
-        <TabsContent
-          value="downloaded"
-          className="scenario-library-content scenario-library-empty"
-        >
+          </CatalogSection>
+        </CatalogPanel>
+        <CatalogPanel value="downloaded" empty>
           {downloaded.length ? (
             downloaded.map(renderScenario)
           ) : (
@@ -224,11 +266,8 @@ export function ScenarioLibrary({
               </Button>
             </Empty>
           )}
-        </TabsContent>
-        <TabsContent
-          value="community"
-          className="scenario-library-content scenario-library-empty"
-        >
+        </CatalogPanel>
+        <CatalogPanel value="community" empty>
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -239,7 +278,7 @@ export function ScenarioLibrary({
               <EmptyDescription>{t.communityScenariosHint}</EmptyDescription>
             </EmptyHeader>
           </Empty>
-        </TabsContent>
+        </CatalogPanel>
       </Tabs>
     </>
   );
