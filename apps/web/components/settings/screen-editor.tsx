@@ -99,7 +99,7 @@ export function ScreenList({
         description={t.screensDescription}
         action={
           <Button asChild>
-            <Link href="/settings/screens/new">+ {t.addScreen}</Link>
+            <Link href="/screens/new">+ {t.addScreen}</Link>
           </Button>
         }
       />
@@ -108,12 +108,12 @@ export function ScreenList({
           <SettingsCard
             key={screen.id}
             title={
-              <Link href={`/settings/screens/${screen.id}`}>{screen.name}</Link>
+              <Link href={`/screens/${screen.id}/edit`}>{screen.name}</Link>
             }
             description={<code>/{screen.id}</code>}
             preview={
               <Link
-                href={`/settings/screens/${screen.id}`}
+                href={`/screens/${screen.id}/edit`}
                 aria-label={screen.name}
               >
                 <ScreenPreview config={screen} locale={locale} />
@@ -122,7 +122,7 @@ export function ScreenList({
             actions={
               <>
                 <Button variant="outline" asChild>
-                  <Link href={`/settings/screens/${screen.id}`}>
+                  <Link href={`/screens/${screen.id}/edit`}>
                     {t.editScreen}
                   </Link>
                 </Button>
@@ -204,7 +204,7 @@ export function ScreenEditor({
     <div className="min-w-0">
       <EditorHeader
         title={screen?.name ?? t.addScreen}
-        backHref="/settings/screens"
+        backHref="/screens"
         backLabel={t.backToScreens}
         action={
           screen ? (
@@ -235,7 +235,7 @@ export function ScreenEditor({
             await refresh();
             setStatus("saved");
             if (!screen || screen.id !== result.id)
-              router.replace(`/settings/screens/${result.id}`);
+              router.replace(`/screens/${result.id}/edit`);
           } catch (error) {
             setStatus(error instanceof Error ? error.message : "error");
           }
@@ -440,7 +440,7 @@ export function ScreenEditor({
         <EditorActions>
           <Button disabled={busy}>{busy ? t.saving : t.save}</Button>
           <Button variant="ghost" asChild>
-            <Link href="/settings/screens">{t.cancel}</Link>
+            <Link href="/screens">{t.cancel}</Link>
           </Button>
           {screen ? (
             <DeleteButton
@@ -452,7 +452,7 @@ export function ScreenEditor({
                 try {
                   await mutate({ action: "screen-delete", id: screen.id });
                   await refresh();
-                  router.push("/settings/screens");
+                  router.push("/screens");
                 } catch (error) {
                   setStatus(error instanceof Error ? error.message : "error");
                 }

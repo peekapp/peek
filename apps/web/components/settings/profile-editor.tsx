@@ -42,7 +42,7 @@ export function ProfileEditor({
             t.addProfile
           )
         }
-        backHref="/settings/profiles"
+        backHref="/profiles"
         backLabel={t.backToProfiles}
       />
       {profile?.system ? (
@@ -60,7 +60,7 @@ export function ProfileEditor({
               });
               await refresh();
               setStatus("saved");
-              if (!profile) router.replace(`/settings/profiles/${result.id}`);
+              if (!profile) router.replace(`/profiles/${result.id}`);
             } catch (e) {
               setStatus(e instanceof Error ? e.message : "error");
             }
@@ -137,7 +137,7 @@ export function ProfileEditor({
               {status === "saving" ? t.saving : t.save}
             </Button>
             <Button variant="ghost" asChild>
-              <Link href="/settings/profiles">{t.cancel}</Link>
+              <Link href="/profiles">{t.cancel}</Link>
             </Button>
             {profile ? (
               <DeleteButton
@@ -148,7 +148,7 @@ export function ProfileEditor({
                   try {
                     await mutate({ action: "profile-delete", id: profile.id });
                     await refresh();
-                    router.push("/settings/profiles");
+                    router.push("/profiles");
                   } catch (e) {
                     setStatus(e instanceof Error ? e.message : "error");
                   }

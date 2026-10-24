@@ -33,7 +33,7 @@ export function DefinitionPicker({
       id: m.id,
       title: m.name,
       description: m.description,
-      href: `/settings/connections/new?package=${encodeURIComponent(m.id)}`,
+      href: `/connections/new?package=${encodeURIComponent(m.id)}`,
     }));
   return (
     <Dialog open={open} onOpenChange={setOpen}>

@@ -6,6 +6,15 @@
 @source "./";
 @custom-variant dark (&:where(.dark, .dark *));
 @theme static inline {
+  --color-sidebar: var(--ui-card);
+  --color-sidebar-foreground: var(--foreground);
+  --color-sidebar-primary: var(--ui-primary);
+  --color-sidebar-primary-foreground: var(--ui-primary-foreground);
+  --color-sidebar-accent: var(--ui-accent);
+  --color-sidebar-accent-foreground: var(--ui-accent-foreground);
+  --color-sidebar-border: var(--ui-border);
+  --color-sidebar-ring: var(--ui-ring);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--ui-card);

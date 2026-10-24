@@ -203,7 +203,7 @@ export function Extensions({
   const router = useRouter();
   const section = kind === "scenario" ? "scenarios" : "connections";
   const createHref = (m: Manifest) =>
-    `/settings/${m.kind === "scenario" ? "scenarios" : "connections"}/new?package=${encodeURIComponent(m.id)}`;
+    `/${m.kind === "scenario" ? "scenarios" : "connections"}/new?package=${encodeURIComponent(m.id)}`;
   async function refresh() {
     const r = await fetch("/api/extensions", { cache: "no-store" });
     if (!r.ok) throw new Error("extensions-unavailable");
@@ -282,10 +282,10 @@ export function Extensions({
             connections={data.connections}
             profiles={profiles}
             locale={locale}
-            cancel={() => router.push(`/settings/${section}`)}
+            cancel={() => router.push(`/${section}`)}
             save={async (instance) => {
               await api({ action: "save", instance });
-              router.push(`/settings/${section}`);
+              router.push(`/${section}`);
             }}
           />
         )}
@@ -605,7 +605,7 @@ export function Extensions({
                 key={i.id}
                 title={
                   <Link
-                    href={`/settings/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
+                    href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
                   >
                     {i.name}
                   </Link>
@@ -626,7 +626,7 @@ export function Extensions({
                   <>
                     <Button variant="outline" asChild>
                       <Link
-                        href={`/settings/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
+                        href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
                       >
                         {t("Edit", "Изменить")}
                       </Link>
@@ -753,7 +753,7 @@ function InstanceEditor({
       <EditorHeader
         title={item?.name ?? `${t("Configure", "Настроить")} ${m.name}`}
         description={m.description}
-        backHref={`/settings/${m.kind === "scenario" ? "scenarios" : "connections"}`}
+        backHref={`/${m.kind === "scenario" ? "scenarios" : "connections"}`}
         backLabel={t("Back to list", "Назад к списку")}
       />
       <EditorForm

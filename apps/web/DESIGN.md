@@ -15,7 +15,7 @@ Consistency is implemented in components, not achieved by copying classes.
 
 | Purpose                 | Component                        | Contract                                                                    |
 | ----------------------- | -------------------------------- | --------------------------------------------------------------------------- |
-| Settings navigation     | `Settings`                       | All six sections stay in one shell; one page h1                             |
+| Settings navigation     | `Settings`                       | AppShell sidebar for resources; General/Extensions tabs; one page h1                             |
 | Section heading         | `SettingsHeading`                | h2, description below, primary action to the right; wraps on narrow screens |
 | Resource collection     | `SettingsGrid`                   | Two equal columns, one on small screens, 24px gap                           |
 | Resource card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
@@ -32,6 +32,13 @@ Use one-column forms for short editors. A screen editor can add a preview aside:
 this is a functional difference, not a separate heading, field, or action style.
 The display dashboard has a different information density from settings but shares
 identity, theme tokens, controls, and accessible states.
+
+AppShell owns the logo header, resource links with icons, and Settings footer.
+Use it in Settings and /design-system. / redirects to /screens. Resources live at
+/screens, /scenarios, /connections and /profiles; /settings is only General and
+Extensions. Screen editors use /screens/new and /screens/[id]/edit; display URLs
+(/screens/[id]) remain fullscreen. Legacy settings resource URLs redirect, preserving
+query parameters.
 
 ## Styling
 

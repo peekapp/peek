@@ -147,7 +147,7 @@ export function ScenarioLibrary({
       >
         <Link
           className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-4 pr-2 pl-3 text-foreground sm:pl-4"
-          href={`/settings/scenarios/new?package=${encodeURIComponent(definition.id)}`}
+          href={`/scenarios/new?package=${encodeURIComponent(definition.id)}`}
           onClick={onSelect}
         >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary sm:size-10 [&>svg]:size-5">

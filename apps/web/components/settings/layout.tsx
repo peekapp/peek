@@ -186,12 +186,24 @@ export function SettingsTopbar(props: React.ComponentProps<"header">) {
     />
   );
 }
-export function SettingsTitle({ children }: { children: ReactNode }) {
-  return (
-    <h1 className="mt-8 mb-8 text-3xl font-medium tracking-tight md:mt-10 md:text-4xl">
-      {children}
-    </h1>
-  );
+const settingsTitleVariants = cva("", {
+  variants: {
+    visibility: {
+      visible:
+        "mt-8 mb-8 text-3xl font-medium tracking-tight md:mt-10 md:text-4xl",
+      hidden: "sr-only",
+    },
+  },
+  defaultVariants: { visibility: "visible" },
+});
+export function SettingsTitle({
+  children,
+  visibility,
+}: {
+  children: ReactNode;
+  visibility?: "visible" | "hidden";
+}) {
+  return <h1 className={settingsTitleVariants({ visibility })}>{children}</h1>;
 }
 export function SettingsNavigation({
   children,

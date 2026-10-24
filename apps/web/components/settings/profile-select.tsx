@@ -37,7 +37,7 @@ export function ProfileSelect({
         ))}
       </SettingsSelect>
       <small>
-        <Link href="/settings/profiles" target="_blank" rel="noopener">
+        <Link href="/profiles" target="_blank" rel="noopener">
           {t.profiles}
         </Link>
       </small>
