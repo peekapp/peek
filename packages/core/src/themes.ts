@@ -3,6 +3,7 @@ import type { Locale } from "./i18n";
 // Keep the original IDs so saved screen configurations remain compatible.
 export const themes = [
   "night",
+  "oled",
   "day",
   "midnight",
   "graphite",
@@ -31,6 +32,7 @@ export function resolveTheme(
 const names = {
   en: {
     night: "Standard",
+    oled: "OLED",
     day: "Light",
     midnight: "Midnight",
     graphite: "Graphite",
@@ -44,6 +46,7 @@ const names = {
   },
   ru: {
     night: "Стандартная",
+    oled: "OLED",
     day: "Светлая",
     midnight: "Тёмно-синяя",
     graphite: "Графитовая",

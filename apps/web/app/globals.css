@@ -135,6 +135,46 @@
   --due: #d4b393;
   --brand-filter: invert(1);
 }
+[data-theme="oled"] {
+  color-scheme: dark;
+  --ui-card: #000000;
+  --ui-popover: #0a0a0a;
+  --ui-primary: #ededed;
+  --ui-primary-foreground: #000000;
+  --ui-muted: #141414;
+  --ui-muted-foreground: #a8a8a8;
+  --ui-accent: #242424;
+  --ui-accent-foreground: #ededed;
+  --ui-border: #333333;
+  --ui-input: #444444;
+  --ui-ring: #b8b8b8;
+  --ui-destructive: #dc4949;
+  --ui-success: #243d35;
+  --ui-success-foreground: #a5d9b5;
+  --ui-status-error: #472c33;
+  --ui-status-error-foreground: #f2afb5;
+  --ui-warning: #4c3a29;
+  --ui-warning-foreground: #f0d3ae;
+  --ui-settings-card: #000000;
+  --ui-settings-card-hover: #141414;
+  --ui-settings-border: #333333;
+  --ui-settings-border-hover: #b8b8b8;
+  --ui-detail: #cccccc;
+  --ui-navigation-active: #ededed;
+  --ui-navigation-indicator: #b8b8b8;
+  --ui-choice-border: #444444;
+  --ui-choice-foreground: #cccccc;
+  --ui-secondary: #141414;
+  --ui-secondary-foreground: #ededed;
+  --background: #000000;
+  --foreground: #ededed;
+  --muted: #a8a8a8;
+  --surface: #141414;
+  --line: #333333;
+  --timer: #ededed;
+  --due: #dcc19e;
+  --brand-filter: invert(1);
+}
 [data-theme="day"] {
   color-scheme: light;
   --ui-card: #ffffff;
