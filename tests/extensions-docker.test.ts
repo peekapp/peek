@@ -270,3 +270,22 @@ __sync();
   },
   30000,
 );
+
+check(
+  "Docker: malformed protocol output cannot publish subsequent results",
+  async () => {
+    const output: unknown[] = [];
+    const run = await runContainer(
+      pkg(`export default {async evaluate() {
+      process.stdout.write('not json\\n');
+      setInterval(() => process.stdout.write(JSON.stringify({type:'result',result:{cards:[],nextRunAt:null}})+'\\n'), 150);
+      await new Promise(() => {});
+    }}`),
+      {},
+      (result) => output.push(result),
+    );
+    await expect(run.done).rejects.toThrow("execution-failed");
+    expect(output).toEqual([]);
+  },
+  20000,
+);

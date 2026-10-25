@@ -1,7 +1,6 @@
 import { networkInterfaces } from "node:os";
 import { spawn } from "node:child_process";
 import { randomUUID, createHash } from "node:crypto";
-import type { Manifest } from "@peekapp/sdk";
 import type { ExtensionPackage } from "@peek/extensions";
 import { LIMITS, boundedJson } from "@peek/extensions";
 const NAMESPACE =
@@ -13,16 +12,13 @@ const GATEWAY =
 export async function docker(args: string[], timeout = 15000): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn("docker", args, { stdio: ["ignore", "pipe", "pipe"] });
-    let text = "",
-      err = "";
+    let text = "";
     const timer = setTimeout(() => proc.kill("SIGKILL"), timeout);
     proc.stdout.on("data", (b) => {
       text += b;
       if (text.length > 2_000_000) proc.kill("SIGKILL");
     });
-    proc.stderr.on("data", (b) => {
-      if (err.length < 2000) err += b;
-    });
+    proc.stderr.resume();
     proc.once("error", (e) => {
       clearTimeout(timer);
       reject(e);
@@ -187,6 +183,7 @@ export async function runContainer(
         void stop();
       };
       proc.stdout.on("data", (chunk) => {
+        if (failed) return;
         buffer = Buffer.concat([buffer, chunk]);
         if (buffer.length > LIMITS.message) {
           fail();
@@ -208,6 +205,7 @@ export async function runContainer(
             onResult(msg.result);
           } catch {
             fail();
+            return;
           }
         }
       });

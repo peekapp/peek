@@ -20,6 +20,7 @@ function broadcast() {
     store = openStore(databasePath(), true);
   } catch {}
   for (const [client, id] of clients) {
+    if (client.desiredSize !== null && client.desiredSize <= 0) continue;
     let frame = frames.get(id);
     if (!frame) {
       try {

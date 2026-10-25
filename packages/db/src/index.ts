@@ -269,6 +269,24 @@ export function openStore(path: string, readonly = false) {
               .map((b) => b.connectionId),
           ),
         );
+        const scenarioProfiles = new Map(
+          instances.map((i) => [i.id, i.profile_id]),
+        );
+        const profileOwners = new Map(
+          tx
+            .select()
+            .from(profiles)
+            .all()
+            .map((p) => [
+              p.id,
+              {
+                profileId: p.id,
+                name: p.name,
+                color: p.color,
+                system: p.system,
+              },
+            ]),
+        );
         return {
           screen,
           theme: meta.theme,
@@ -278,18 +296,14 @@ export function openStore(path: string, readonly = false) {
             .from(cards)
             .all()
             .map((row) => {
-              const extension = row.scenarioId
-                ? (sqlite
-                    .query(
-                      "SELECT profile_id FROM extension_instances WHERE id=?",
-                    )
-                    .get(row.scenarioId) as { profile_id: string } | null)
-                : null;
-              if (extension)
-                return {
-                  ...row.payload,
-                  owner: ownerFor(extension.profile_id),
-                };
+              const profileId = row.scenarioId
+                ? scenarioProfiles.get(row.scenarioId)
+                : undefined;
+              if (profileId) {
+                const owner = profileOwners.get(profileId);
+                if (!owner) throw new Error("invalid-profile");
+                return { ...row.payload, owner };
+              }
               return row.payload;
             })
             .filter((card) =>

@@ -71,10 +71,10 @@ The default database is `data/peek.sqlite`. To use another location, set the sam
 
 ## Connections and scenarios
 
-1. In **Settings → Connections**, choose **Add connection** on iCalendar.
+1. In **Connections**, choose **Add connection** on iCalendar.
 2. Enter a name, profile, time zone, refresh interval and the provider's **HTTPS ICS subscription URL**. A calendar sharing web page is not an ICS feed. Token-bearing subscription URLs are supported.
 3. Save and inspect the last successful run or error. **Run now** queues an immediate attempt; it does not claim the connection succeeded.
-4. In **Settings → Scenarios**, create Meetings or Deadlines and select one or more connections. Multiple scenarios share snapshots without downloading the same calendar separately.
+4. In **Scenarios**, create Meetings or Deadlines and select one or more connections. Multiple scenarios share snapshots without downloading the same calendar separately.
 
 The same forms also support installed external packages. **Settings → Extensions** manages uploads, HTTPS release links, permission review, package removal and rollback. The **Official** badge matches the exact package content supplied with this installation; an uploaded package's author or ID alone cannot confer that status.
 
@@ -99,7 +99,7 @@ Subscription URLs are encrypted and never returned by the API. When editing, kee
 
 Profiles provide a name and one of twelve colors. **Shared** is a localized system profile. A scenario may select another profile's connection; its cards belong to the scenario's profile. Renames and color changes reach screens without re-fetching sources. Referenced profiles cannot be deleted.
 
-Create independent displays in **Settings → Screens**. Each has an editable, unique URL ID such as `family-tv`, a display name, appearance and scale. IDs accept 1–64 lowercase Latin letters, digits and single hyphens; `new` is reserved. The default screen is `/screens/default`.
+Create independent displays in **Screens**. Each has an editable, unique URL ID such as `family-tv`, a display name, appearance and scale. IDs accept 1–64 lowercase Latin letters, digits and single hyphens; `new` is reserved. The default screen is `/screens/default`.
 
 Choose **All profiles**, or select specific profiles including Shared. An empty selection produces an empty display. Source warnings follow the selected scenarios' bindings. Saved changes arrive over SSE; deleting a screen invalidates its URL. Screen selection is organizational, not access control.
 

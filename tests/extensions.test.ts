@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -304,6 +304,103 @@ test("enabled persistent integrations recover after a runner restart", () => {
     expect(f.store.context(f.store.instance(id)!).state).toEqual({
       cursor: 42,
     });
+  } finally {
+    f.close();
+  }
+});
+
+test("bindings reject duplicate datasets and malformed entries before saving", () => {
+  const f = fixture();
+  try {
+    install(f.store, [pkg("scenario"), pkg("integration")]);
+    const c = f.store.save({
+      packageId: "test/integration",
+      name: "Source",
+      profileId: "shared",
+      settings: {},
+      secrets: { token: "x" },
+      bindings: {},
+      enabled: true,
+    });
+    const input = {
+      packageId: "test/scenario",
+      name: "Screen",
+      profileId: "shared",
+      settings: {},
+      enabled: true,
+      bindings: { items: [{ connectionId: c, dataset: "items" }] },
+    };
+    expect(() =>
+      f.store.save({
+        ...input,
+        bindings: { items: [...input.bindings.items, ...input.bindings.items] },
+      }),
+    ).toThrow("duplicate-binding");
+    expect(() =>
+      f.store.save({ ...input, bindings: { items: [null as any] } }),
+    ).toThrow("invalid-bindings");
+    expect(f.store.instances()).toHaveLength(1);
+    expect(f.store.save(input)).toBeString();
+  } finally {
+    f.close();
+  }
+});
+
+test("rollback schedules using the current enabled state", () => {
+  for (const enabled of [true, false]) {
+    const f = fixture();
+    try {
+      install(f.store, [pkg("integration")]);
+      const input = {
+        packageId: "test/integration",
+        name: "Source",
+        profileId: "shared",
+        settings: {},
+        secrets: { token: "x" },
+        bindings: {},
+        enabled,
+      };
+      const id = f.store.save(input);
+      install(f.store, [pkg("integration", "0.1.1")]);
+      f.store.save({ ...input, id, enabled: !enabled });
+      const stale = f.store.instance(id)!;
+      f.store.rollback();
+      const restored = f.store.instance(id)!;
+      expect(restored.enabled).toBe(Number(!enabled));
+      expect(restored.next_run_at !== null).toBe(!enabled);
+      expect(f.store.due().some((i) => i.id === id)).toBe(!enabled);
+      expect(f.store.publish(stale, { datasets: { items: [] } })).toBe(false);
+    } finally {
+      f.close();
+    }
+  }
+});
+
+test("migration enforces the same settings size limit as instance saves", () => {
+  const f = fixture();
+  try {
+    install(f.store, [pkg("integration")]);
+    const id = f.store.save({
+      packageId: "test/integration",
+      name: "Source",
+      profileId: "shared",
+      settings: {},
+      secrets: { token: "x" },
+      bindings: {},
+      enabled: true,
+    });
+    const review = f.store.stage([pkg("integration", "0.1.1")], []);
+    f.store.confirm(review.id);
+    const op = f.store.pending()!;
+    expect(() =>
+      f.store.commitInstall(op, f.store.installInput(op).affected, {
+        [id]: { settings: { label: "x".repeat(1024 * 1024) }, state: null },
+      }),
+    ).toThrow("payload-too-large");
+    expect(f.store.getPackage("test/integration").manifest.version).toBe(
+      "0.1.0",
+    );
+    expect(f.store.instance(id)!.settings).toBe("{}");
   } finally {
     f.close();
   }

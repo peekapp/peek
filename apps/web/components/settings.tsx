@@ -1,5 +1,5 @@
 "use client";
-import { LoadingState, ErrorState, SettingsEmpty } from "./settings/layout";
+import { LoadingState, SettingsEmpty } from "./settings/layout";
 import {
   FormFeedback,
   SettingsNavigation,

@@ -82,9 +82,8 @@ export function Dashboard({
       const incoming = JSON.parse(event.data) as ScreenState;
       lastMessage = Date.now();
       offset.current = incoming.serverTime - Date.now();
-      setSnapshot((current) =>
-        incoming.revision >= current.revision ? incoming : current,
-      );
+      // Restored databases may have lower revisions; SSE frames arrive in order.
+      setSnapshot(incoming);
       setConnection(navigator.onLine ? "connected" : "offline");
     };
     const unavailable = () => {

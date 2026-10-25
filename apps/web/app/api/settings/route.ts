@@ -11,6 +11,7 @@ export function GET(request: Request) {
     try {
       extensions = openExtensions(databasePath());
       const instances = extensions.instances();
+      const snapshot = store.snapshot();
       return Response.json(
         {
           timeZone: installationTimeZone(),
@@ -22,8 +23,8 @@ export function GET(request: Request) {
           connections: instances
             .filter((i) => i.kind === "integration")
             .map((i) => ({ id: i.id, profileId: i.profile_id })),
-          locale: store.snapshot().locale,
-          theme: store.snapshot().theme,
+          locale: snapshot.locale,
+          theme: snapshot.theme,
         },
         { headers: { "Cache-Control": "no-store" } },
       );

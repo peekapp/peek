@@ -110,7 +110,17 @@ export function openExtensions(path: string) {
         (!input.multiple && selected.length > 1)
       )
         throw new Error("invalid-bindings");
+      const seen = new Set<string>();
       for (const b of selected) {
+        if (
+          !b ||
+          typeof b.connectionId !== "string" ||
+          typeof b.dataset !== "string"
+        )
+          throw new Error("invalid-bindings");
+        const key = JSON.stringify([b.connectionId, b.dataset]);
+        if (seen.has(key)) throw new Error("duplicate-binding");
+        seen.add(key);
         const c = connections.find((c) => c.id === b.connectionId)?.contracts[
           b.dataset
         ];
@@ -402,6 +412,7 @@ export function openExtensions(path: string) {
               state: JSON.parse(i.state),
             };
             validate(p.manifest.settings, next.settings);
+            boundedJson(next.settings, LIMITS.state);
             boundedJson(next.state, LIMITS.state);
             db.run(
               "UPDATE extension_instances SET settings=?,state=?,generation=generation+1,next_run_at=?,snapshots='{}' WHERE id=?",
@@ -479,7 +490,7 @@ export function openExtensions(path: string) {
               i.bindings,
               i.snapshots,
               current.generation + 1,
-              i.enabled ? Date.now() : null,
+              current.enabled ? Date.now() : null,
               i.id,
             ],
           );

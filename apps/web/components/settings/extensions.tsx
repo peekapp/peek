@@ -197,6 +197,7 @@ export function Extensions({
     t = (en: string, other: string) => (ru ? other : en);
   const [data, setData] = useState<Status | null>(null),
     [error, setError] = useState(""),
+    [loadError, setLoadError] = useState(""),
     [busy, setBusy] = useState(false),
     [url, setUrl] = useState("");
   const [review, setReview] = useState<{
@@ -226,14 +227,15 @@ export function Extensions({
         if (active) {
           setData(status);
           setProfiles(settings.profiles);
+          setLoadError("");
         }
       } catch (e) {
-        if (active) setError(String(e));
+        if (active) setLoadError(String(e));
       }
     }
     void load();
     const timer = setInterval(() => {
-      if (active) void refresh().catch(() => {});
+      if (active) void load();
     }, 3000);
     return () => {
       active = false;
@@ -264,9 +266,9 @@ export function Extensions({
     )?.manifest;
     return (
       <section className="flex flex-col gap-6">
-        {error ? (
+        {error || loadError ? (
           <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{error || loadError}</AlertDescription>
           </Alert>
         ) : null}
         {!data ? (
@@ -318,9 +320,9 @@ export function Extensions({
           ) : null
         }
       />
-      {error ? (
+      {error || loadError ? (
         <Alert variant="destructive">
-          <AlertDescription role="alert">{error}</AlertDescription>
+          <AlertDescription role="alert">{error || loadError}</AlertDescription>
         </Alert>
       ) : null}
       {data && !data.runtime.ready ? (
@@ -497,7 +499,7 @@ export function Extensions({
               </AlertDescription>
             </Alert>
           ))}
-        {!data && !error ? (
+        {!data && !error && !loadError ? (
           <LoadingState>{t("Loading…", "Загрузка…")}</LoadingState>
         ) : null}
         {kind &&

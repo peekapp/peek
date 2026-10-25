@@ -1,7 +1,7 @@
 import { messages, type Locale } from "@peek/core/i18n";
 export async function mutate(
   body: unknown,
-): Promise<{ id?: string; checkedAt?: number | null }> {
+): Promise<{ id?: string }> {
   const response = await fetch("/api/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -53,11 +53,3 @@ export function encode(packages: ExtensionPackage[]) {
   decode(bytes);
   return bytes;
 }
-export function resolvePackages(
-  installed: ExtensionPackage[],
-  incoming: ExtensionPackage[],
-) {
-  const selected = new Map(installed.map((p) => [p.manifest.id, p]));
-  for (const p of incoming) selected.set(p.manifest.id, p);
-  return selected;
-}
