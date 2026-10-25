@@ -10,6 +10,7 @@ import {
   SettingsIcon,
 } from "lucide-react";
 import { messages, type Locale } from "@peek/core/i18n";
+import { SettingsTitle } from "./settings/layout";
 import { Brand } from "./brand";
 import {
   Sidebar,
@@ -101,10 +102,15 @@ export function AppShell({
     <SidebarProvider>
       <AppSidebar locale={locale} section={section} />
       <div className="min-w-0 flex-1">
-        <header className="flex h-14 items-center border-b px-4">
+        <header className="grid h-14 grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-4 border-b px-4 text-center">
           <SidebarTrigger
             aria-label={locale === "ru" ? "Переключить меню" : "Toggle sidebar"}
           />
+          <SettingsTitle>
+            {section === "design-system"
+              ? "Дизайн-система Peek"
+              : messages(locale)[section]}
+          </SettingsTitle>
         </header>
         {children}
       </div>

@@ -15,7 +15,8 @@ Consistency is implemented in components, not achieved by copying classes.
 
 | Purpose                 | Component                        | Contract                                                                    |
 | ----------------------- | -------------------------------- | --------------------------------------------------------------------------- |
-| Settings navigation     | `Settings`                       | AppShell sidebar for resources; General/Extensions tabs; one page h1                             |
+| Settings navigation     | `Settings`                       | AppShell sidebar for resources; General/Extensions tabs; one centered compact page h1 in the top bar                             |
+| Collection toolbar      | `SettingsToolbar`                | Search input and primary action; filters by name with a shared no-results state |
 | Section heading         | `SettingsHeading`                | h2, description below, primary action to the right; wraps on narrow screens |
 | Resource collection     | `SettingsGrid`                   | Two equal columns, one on small screens, 24px gap                           |
 | Resource card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
@@ -85,3 +86,7 @@ states, long names, both locales and light/dark palettes at desktop/mobile width
 The gallery renders production components and must remain scrollable on mobile.
 An unavailable extension runner does not validate extension execution: use isolated
 API fixtures for its UI and report that limitation separately.
+
+Page titles live in AppShell’s top bar at normal text size. Collection pages use
+SettingsToolbar instead of introductory headings/descriptions. SettingsPage uses
+16px padding on mobile and 24px on desktop, with no centered width cap.

@@ -10,7 +10,9 @@ import {
   EditorGrid,
   SettingsNavigation,
   SettingsPage,
-  SettingsTitle,
+  SettingsToolbar,
+  matchesSearch,
+  SearchEmpty,
 } from "./settings/layout";
 import {
   SettingsHeading,
@@ -21,6 +23,7 @@ import {
 } from "./settings/layout";
 import { ProfileIdentity } from "./profile-label";
 
+import { useState } from "react";
 import Link from "next/link";
 import { PlusIcon } from "lucide-react";
 import { ColorPair } from "./design-system/color-pair";
@@ -73,14 +76,10 @@ const roles = [
 
 /** A read-only catalogue: example actions never mutate application data. */
 export function DesignSystem() {
+  const [query, setQuery] = useState("");
   return (
     <AppShell locale="ru" section="design-system">
       <SettingsPage lang="ru">
-        <SettingsTitle>Дизайн-система Peek</SettingsTitle>
-        <p>
-          Текущая тема приложения. Компоненты shadcn, состояния и композиции из
-          приложения.
-        </p>
         <section
           className="flex flex-col gap-6 py-8"
           aria-labelledby="colors-title"
@@ -303,26 +302,40 @@ export function DesignSystem() {
               </NavigationMenuItem>
             ))}
           </SettingsNavigation>
-          <SettingsHeading
-            title="Сценарии"
-            description="Подпись всегда под заголовком, действие справа."
+          <SettingsToolbar
+            query={query}
+            onQueryChange={setQuery}
+            placeholder="Поиск сценариев"
             action={<Button>+ Добавить сценарий</Button>}
           />
+          {![
+            "Встречи команды",
+            "Очень длинное название экрана для проверки переноса текста без переполнения",
+          ].some((name) => matchesSearch(query, name)) ? (
+            <SearchEmpty locale="ru" />
+          ) : null}
           <SettingsGrid>
-            <SettingsCard
-              title="Встречи команды"
-              description="Встречи · Включено"
-              actions={<Button variant="outline">Изменить</Button>}
-            >
-              <ProfileIdentity name="Общее" color="blue" />
-              <p>Рабочий календарь</p>
-            </SettingsCard>
-            <SettingsCard
-              title="Очень длинное название экрана для проверки переноса текста без переполнения"
-              description="Одна композиция для экранов, профилей, сценариев и подключений."
-            >
-              <ProfileIdentity name="Александра" color="pink" />
-            </SettingsCard>
+            {matchesSearch(query, "Встречи команды") ? (
+              <SettingsCard
+                title="Встречи команды"
+                description="Встречи · Включено"
+                actions={<Button variant="outline">Изменить</Button>}
+              >
+                <ProfileIdentity name="Общее" color="blue" />
+                <p>Рабочий календарь</p>
+              </SettingsCard>
+            ) : null}
+            {matchesSearch(
+              query,
+              "Очень длинное название экрана для проверки переноса текста без переполнения",
+            ) ? (
+              <SettingsCard
+                title="Очень длинное название экрана для проверки переноса текста без переполнения"
+                description="Одна композиция для экранов, профилей, сценариев и подключений."
+              >
+                <ProfileIdentity name="Александра" color="pink" />
+              </SettingsCard>
+            ) : null}
           </SettingsGrid>
           <EditorHeader
             title="Новый профиль"

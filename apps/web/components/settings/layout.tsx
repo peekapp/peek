@@ -1,3 +1,6 @@
+import { Input } from "../ui/input";
+import { SearchIcon } from "lucide-react";
+import type { Locale } from "@peek/core/i18n";
 import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
 import { FieldGroup } from "../ui/field";
@@ -26,11 +29,9 @@ export function SettingsHeading({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-8 flex flex-wrap items-start justify-between gap-5">
+    <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h2 className="mb-2 text-2xl font-medium tracking-tight wrap-anywhere">
-          {title}
-        </h2>
+        <h2 className="text-base font-medium wrap-anywhere">{title}</h2>
         {description ? (
           <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
             {description}
@@ -38,6 +39,59 @@ export function SettingsHeading({
         ) : null}
       </div>
       {action}
+    </div>
+  );
+}
+/** Shared collection controls; search filters the collection in its owner. */
+export function SettingsToolbar({
+  query,
+  onQueryChange,
+  placeholder,
+  action,
+}: {
+  query: string;
+  onQueryChange: (query: string) => void;
+  placeholder: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="relative min-w-48 flex-1">
+        <SearchIcon
+          aria-hidden="true"
+          className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground"
+        />
+        <Input
+          type="search"
+          aria-label={placeholder}
+          placeholder={placeholder}
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          className="pl-9"
+        />
+      </div>
+      {action}
+    </div>
+  );
+}
+export function matchesSearch(
+  query: string,
+  ...values: (string | undefined)[]
+) {
+  const term = query.trim().toLocaleLowerCase();
+  return values.some((value) => value?.toLocaleLowerCase().includes(term));
+}
+export function SearchEmpty({ locale }: { locale: Locale }) {
+  return (
+    <div role="status">
+      <SettingsEmpty
+        title={locale === "ru" ? "Ничего не найдено" : "No results found"}
+        description={
+          locale === "ru"
+            ? "Попробуйте другой запрос."
+            : "Try a different search."
+        }
+      />
     </div>
   );
 }
@@ -168,15 +222,7 @@ export function SettingsPage({
   className,
   ...props
 }: React.ComponentProps<"main">) {
-  return (
-    <main
-      className={cn(
-        "mx-auto max-w-6xl px-4 py-6 md:px-10 md:pt-8 md:pb-18",
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <main className={cn("w-full p-4 md:p-6", className)} {...props} />;
 }
 export function SettingsTopbar(props: React.ComponentProps<"header">) {
   return (
@@ -189,8 +235,7 @@ export function SettingsTopbar(props: React.ComponentProps<"header">) {
 const settingsTitleVariants = cva("", {
   variants: {
     visibility: {
-      visible:
-        "mt-8 mb-8 text-3xl font-medium tracking-tight md:mt-10 md:text-4xl",
+      visible: "truncate text-sm",
       hidden: "sr-only",
     },
   },

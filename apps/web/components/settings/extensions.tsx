@@ -26,6 +26,9 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import {
   SettingsHeading,
+  SettingsToolbar,
+  matchesSearch,
+  SearchEmpty,
   SettingsGrid,
   SettingsCard,
   SettingsEmpty,
@@ -189,6 +192,7 @@ export function Extensions({
   itemId?: string;
   packageId?: string;
 }) {
+  const [query, setQuery] = useState("");
   const ru = locale === "ru",
     t = (en: string, other: string) => (ru ? other : en);
   const [data, setData] = useState<Status | null>(null),
@@ -294,29 +298,15 @@ export function Extensions({
   }
   return (
     <section className="flex flex-col gap-6">
-      <SettingsHeading
-        title={
+      <SettingsToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder={
           kind === "scenario"
-            ? t("Scenarios", "Сценарии")
+            ? t("Search scenarios", "Поиск сценариев")
             : kind === "integration"
-              ? t("Connections", "Подключения")
-              : t("Extensions", "Расширения")
-        }
-        description={
-          kind === "scenario"
-            ? t(
-                "Manage the information shown on your screens.",
-                "Управляйте информацией на ваших экранах.",
-              )
-            : kind === "integration"
-              ? t(
-                  "Connect data sources for your scenarios.",
-                  "Подключайте источники данных для сценариев.",
-                )
-              : t(
-                  "Install and manage packages for scenarios and connections.",
-                  "Устанавливайте пакеты сценариев и подключений.",
-                )
+              ? t("Search connections", "Поиск подключений")
+              : t("Search extensions", "Поиск расширений")
         }
         action={
           kind && data ? (
@@ -510,7 +500,10 @@ export function Extensions({
         {!data && !error ? (
           <LoadingState>{t("Loading…", "Загрузка…")}</LoadingState>
         ) : null}
-        {kind && data && !data.instances.some((i) => i.kind === kind) ? (
+        {kind &&
+        data &&
+        !query.trim() &&
+        !data.instances.some((i) => i.kind === kind) ? (
           <SettingsEmpty
             title={
               kind === "scenario"
@@ -523,12 +516,30 @@ export function Extensions({
             )}
           />
         ) : null}
+        {data &&
+        query.trim() &&
+        !data.instances.some(
+          (i) =>
+            (!kind || i.kind === kind) &&
+            matchesSearch(query, i.name, i.package_id),
+        ) &&
+        (kind ||
+          !data.packages.some((p) =>
+            matchesSearch(
+              query,
+              p.manifest.name,
+              p.manifest.id,
+              p.manifest.description,
+            ),
+          )) ? (
+          <SearchEmpty locale={locale} />
+        ) : null}
         {!kind ? (
           <>
             <SettingsHeading
               title={t("Installed packages", "Установленные пакеты")}
             />
-            {data?.packages.length === 0 ? (
+            {data?.packages.length === 0 && !query.trim() ? (
               <SettingsEmpty
                 title={t(
                   "No packages installed yet.",
@@ -538,7 +549,16 @@ export function Extensions({
             ) : null}
             <SettingsGrid>
               {data?.packages
-                .filter((p) => !kind || p.manifest.kind === kind)
+                .filter(
+                  (p) =>
+                    (!kind || p.manifest.kind === kind) &&
+                    matchesSearch(
+                      query,
+                      p.manifest.name,
+                      p.manifest.id,
+                      p.manifest.description,
+                    ),
+                )
                 .map((p) => (
                   <SettingsCard
                     key={p.manifest.id}
@@ -599,7 +619,11 @@ export function Extensions({
         ) : null}
         <SettingsGrid>
           {data?.instances
-            .filter((i) => !kind || i.kind === kind)
+            .filter(
+              (i) =>
+                (!kind || i.kind === kind) &&
+                matchesSearch(query, i.name, i.package_id),
+            )
             .map((i) => (
               <SettingsCard
                 key={i.id}

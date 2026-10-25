@@ -32,7 +32,9 @@ import type { Screen, ScreenConfig } from "@peek/core/screens";
 import { type Profile } from "@peek/core/profiles";
 import { ProfileLabel } from "../profile-label";
 import {
-  SettingsHeading,
+  SettingsToolbar,
+  matchesSearch,
+  SearchEmpty,
   SettingsGrid,
   SettingsCard,
   SettingsEmpty,
@@ -92,11 +94,16 @@ export function ScreenList({
   locale: Locale;
 }) {
   const t = messages(locale);
+  const [query, setQuery] = useState("");
+  const filtered = screens.filter((screen) =>
+    matchesSearch(query, screen.name, screen.id),
+  );
   return (
     <>
-      <SettingsHeading
-        title={t.screens}
-        description={t.screensDescription}
+      <SettingsToolbar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder={locale === "ru" ? "Поиск экранов" : "Search screens"}
         action={
           <Button asChild>
             <Link href="/screens/new">+ {t.addScreen}</Link>
@@ -104,7 +111,7 @@ export function ScreenList({
         }
       />
       <SettingsGrid>
-        {screens.map((screen) => (
+        {filtered.map((screen) => (
           <SettingsCard
             key={screen.id}
             title={
@@ -152,6 +159,9 @@ export function ScreenList({
           </SettingsCard>
         ))}
       </SettingsGrid>
+      {screens.length > 0 && !filtered.length ? (
+        <SearchEmpty locale={locale} />
+      ) : null}
       {!screens.length ? (
         <SettingsEmpty
           title={t.emptyScreens}

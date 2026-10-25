@@ -4,7 +4,9 @@ import {
   FormFeedback,
   SettingsNavigation,
   SettingsPage,
-  SettingsTitle,
+  SettingsToolbar,
+  SearchEmpty,
+  matchesSearch,
 } from "./settings/layout";
 import { NavigationMenuItem, NavigationMenuLink } from "./ui/navigation-menu";
 import { Alert, AlertDescription } from "./ui/alert";
@@ -17,15 +19,10 @@ import { SelectItem } from "./ui/select";
 import { AppShell } from "./app-shell";
 import type { Screen } from "@peek/core/screens";
 import { ScreenEditor, ScreenList } from "./settings/screen-editor";
-import { type Profile } from "@peek/core/profiles";
+import { profileName, type Profile } from "@peek/core/profiles";
 import { ProfileEditor } from "./settings/profile-editor";
 import { ProfileLabel } from "./profile-label";
-import {
-  SettingsHeading,
-  SettingsGrid,
-  SettingsCard,
-  PreferenceRow,
-} from "./settings/layout";
+import { SettingsGrid, SettingsCard, PreferenceRow } from "./settings/layout";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
@@ -48,6 +45,7 @@ export function Settings({
   path?: string[];
   packageId?: string;
 }) {
+  const [query, setQuery] = useState("");
   const [locale, setLocale] = useState<Locale>(initialLocale),
     [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(false);
@@ -89,15 +87,6 @@ export function Settings({
       }
     >
       <SettingsPage>
-        <SettingsTitle
-          visibility={
-            tab === "general" || tab === "extensions" ? "visible" : "hidden"
-          }
-        >
-          {tab === "general" || tab === "extensions"
-            ? t.settings
-            : t[tab as "screens" | "scenarios" | "connections" | "profiles"]}
-        </SettingsTitle>
         {tab === "general" || tab === "extensions" ? (
           <SettingsNavigation aria-label={t.settings}>
             {(["general", "extensions"] as const).map((key) => (
@@ -126,13 +115,13 @@ export function Settings({
             </AlertDescription>
           </Alert>
         ) : null}
-        <div className="pt-8">
+        <div
+          className={
+            tab === "general" || tab === "extensions" ? "pt-4" : undefined
+          }
+        >
           {tab === "general" ? (
             <>
-              <SettingsHeading
-                title={t.general}
-                description={t.generalDescription}
-              />
               <PreferenceRow title={t.appTheme} description={t.appThemeHint}>
                 <div className="w-56 max-w-full shrink-0">
                   <ThemeSelect
@@ -222,49 +211,57 @@ export function Settings({
               )
             ) : (
               <>
-                <SettingsHeading
-                  title={t.profiles}
-                  description={t.profilesDescription}
+                <SettingsToolbar
+                  query={query}
+                  onQueryChange={setQuery}
+                  placeholder={
+                    locale === "ru" ? "Поиск профилей" : "Search profiles"
+                  }
                   action={
                     <Button asChild>
-                      <Link href="/profiles/new">
-                        + {t.addProfile}
-                      </Link>
+                      <Link href="/profiles/new">+ {t.addProfile}</Link>
                     </Button>
                   }
                 />
+                {data.profiles.every(
+                  (p) => !matchesSearch(query, profileName(p, locale)),
+                ) ? (
+                  <SearchEmpty locale={locale} />
+                ) : null}
                 <SettingsGrid>
-                  {data.profiles.map((p) => (
-                    <SettingsCard
-                      key={p.id}
-                      title={
-                        <Link href={`/profiles/${p.id}`}>
-                          <ProfileLabel profile={p} locale={locale} />
-                        </Link>
-                      }
-                      description={p.system ? t.systemProfile : t.profiles}
-                      actions={
-                        <Button variant="outline" asChild>
+                  {data.profiles
+                    .filter((p) => matchesSearch(query, profileName(p, locale)))
+                    .map((p) => (
+                      <SettingsCard
+                        key={p.id}
+                        title={
                           <Link href={`/profiles/${p.id}`}>
-                            {locale === "ru" ? "Изменить" : "Edit"}
+                            <ProfileLabel profile={p} locale={locale} />
                           </Link>
-                        </Button>
-                      }
-                    >
-                      <div className="text-sm text-detail wrap-anywhere">
-                        {t.connections}:{" "}
-                        {
-                          data.connections.filter((c) => c.profileId === p.id)
-                            .length
-                        }{" "}
-                        · {t.scenarios}:{" "}
-                        {
-                          data.scenarios.filter((s) => s.profileId === p.id)
-                            .length
                         }
-                      </div>
-                    </SettingsCard>
-                  ))}
+                        description={p.system ? t.systemProfile : t.profiles}
+                        actions={
+                          <Button variant="outline" asChild>
+                            <Link href={`/profiles/${p.id}`}>
+                              {locale === "ru" ? "Изменить" : "Edit"}
+                            </Link>
+                          </Button>
+                        }
+                      >
+                        <div className="text-sm text-detail wrap-anywhere">
+                          {t.connections}:{" "}
+                          {
+                            data.connections.filter((c) => c.profileId === p.id)
+                              .length
+                          }{" "}
+                          · {t.scenarios}:{" "}
+                          {
+                            data.scenarios.filter((s) => s.profileId === p.id)
+                              .length
+                          }
+                        </div>
+                      </SettingsCard>
+                    ))}
                 </SettingsGrid>
               </>
             )
