@@ -1,3 +1,6 @@
+import type { CSSProperties } from "react";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { profileInitials } from "../lib/profile-initials";
 import { profileColors, type ProfileColor } from "@peek/core/colors";
 import { profileName, type Profile } from "@peek/core/profiles";
 import type { Locale } from "@peek/core/i18n";
@@ -12,11 +15,13 @@ export function ProfileIdentity({
 }) {
   return (
     <span className="inline-flex min-w-0 items-center gap-2 text-foreground">
-      <i
-        className="size-2 shrink-0 rounded-full"
+      <Avatar
+        size="sm"
         aria-hidden="true"
-        style={{ backgroundColor: profileColors[color] }}
-      />
+        style={{ "--profile-color": profileColors[color] } as CSSProperties}
+      >
+        <AvatarFallback variant="profile">{profileInitials(name)}</AvatarFallback>
+      </Avatar>
       <span className="min-w-0 wrap-anywhere">{name}</span>
     </span>
   );

@@ -28,7 +28,7 @@ Consistency is implemented in components, not achieved by copying classes.
 | Editor section          | `EditorSection`                  | Common field spacing and section typography                                 |
 | Editor actions          | `EditorActions`                  | Save first, ghost Cancel second, destructive action at the end              |
 | Labeled control         | `SettingsField` / shadcn `Field` | Label above control; hint below; linked IDs                                 |
-| Profile                 | `ProfileLabel`                   | Localized name and the same color dot, including selectors, rows and cards        |
+| Profile                 | `ProfileLabel`                   | Localized name and the same 24px colored initials avatar, including selectors, rows and cards        |
 | Unsaved profile preview | `ProfileIdentity`                | Same identity component, with draft name/color                              |
 | Confirmation            | `ConfirmAction` / `DeleteButton` | Red text trigger, solid destructive confirmation in Radix AlertDialog; never native confirm() |
 
@@ -59,7 +59,9 @@ SettingsNavigation, EditorForm (including its preview variant), EditorGrid,
 FormFeedback, LoadingState and ErrorState alongside the compositions above.
 Dynamic inline values are reserved for runtime profile colors, screen scale, and validated extension mask-image URLs.
 Keep profile colors
-in `@peek/core/colors`; never create another dot/color implementation.
+in `@peek/core/colors`; never create another avatar/color implementation.
+Profile avatars use a solid profile-color fill without a border and dark initials
+through the profile-foreground token in every theme, so colors stay easy to scan.
 
 Use Button, Input, Textarea, SettingsSelect, Field, Alert, Empty, Badge and dialogs
 from the existing component library. Add missing shadcn primitives through the CLI,

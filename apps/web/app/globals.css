@@ -16,6 +16,7 @@
   --color-sidebar-ring: var(--ui-ring);
 
   --color-background: var(--background);
+  --color-profile-foreground: #17201e;
   --color-foreground: var(--foreground);
   --color-card: var(--ui-card);
   --color-card-foreground: var(--foreground);
