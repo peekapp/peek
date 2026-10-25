@@ -275,7 +275,14 @@ with sync_playwright() as p:
         "canRollback": False,
     }
     status["packages"][0]["manifest"]["iconColor"] = "theme"
-    page.route("**/api/extensions", lambda route: route.fulfill(json=status))
+    def extension_route(route):
+        if route.request.method == "POST":
+            body = route.request.post_data_json
+            if body.get("action") == "set-enabled":
+                instance = next(i for i in status["instances"] if i["id"] == body["id"])
+                instance["enabled"] = int(body["enabled"])
+        route.fulfill(json=status)
+    page.route("**/api/extensions", extension_route)
     for width in [390, 1280]:
         page.set_viewport_size({"width": width, "height": 844})
         visit(page, "/scenarios")
@@ -437,9 +444,9 @@ with sync_playwright() as p:
             for path in ["/screens", "/profiles", "/settings", "/scenarios", "/connections"]:
                 visit(page, path)
                 if path in ["/scenarios", "/connections"]:
-                    cards = page.locator('[data-variant="resource"]')
+                    cards = page.locator('tbody tr' if path == "/scenarios" else '[data-variant="resource"]')
                     expect(cards).to_have_count(2)
-                    expect(cards.first.locator('[data-slot="extension-icon"] img').first).to_be_visible()
+                    expect(cards.first.locator('[data-slot="extension-icon"]').first).to_be_visible()
                     if path == "/scenarios":
                         mask = cards.first.locator('[data-icon-color="theme"]').first
                         expect(mask).to_be_visible()
@@ -448,30 +455,65 @@ with sync_playwright() as p:
                         assert mask.evaluate("el => getComputedStyle(el).maskMode === 'alpha'")
                         expect(cards.nth(1).locator('[data-icon-color="original"]')).to_be_visible()
                     expect(cards.nth(1).get_by_role("status")).to_contain_text("Calendar unavailable")
-                    update_label = (
-                        ("Update cards" if locale == "en" else "Обновить карточки")
-                        if path == "/scenarios"
-                        else ("Refresh data" if locale == "en" else "Обновить данные")
-                    )
-                    details = cards.first.locator("details")
-                    update = details.get_by_role("button", name=update_label, include_hidden=True)
-                    expect(details.locator("summary")).to_have_text("Troubleshooting" if locale == "en" else "Диагностика")
-                    expect(cards.get_by_text("Next update" if locale == "en" else "Следующее обновление", exact=True)).to_have_count(0)
-                    expect(details).not_to_have_attribute("open", "")
-                    expect(details.locator("dl")).not_to_be_visible()
-                    expect(update).not_to_be_visible()
-                    details.locator("summary").focus()
-                    page.keyboard.press("Enter")
-                    expect(details.locator("dl")).to_be_visible()
-                    expect(update).to_be_visible()
-                    expect(update).to_be_enabled()
-                    page.keyboard.press("Enter")
-                    expect(details.locator("dl")).not_to_be_visible()
-                    expect(update).not_to_be_visible()
-                    cards.nth(1).locator("summary").click()
-                    expect(cards.nth(1).get_by_role("button", name=update_label)).to_be_disabled()
-                    expect(cards.first.locator('[data-slot="badge"]')).to_have_attribute("data-variant", "success")
-                    expect(cards.first.get_by_role("button", name="Delete" if locale == "en" else "Удалить", exact=True)).to_have_attribute("data-variant", "destructive-ghost")
+                    if path == "/scenarios":
+                        expect(cards.locator("details")).to_have_count(0)
+                        expect(cards.get_by_text("Compatible calendar", exact=True)).to_have_count(0)
+                        expect(cards.get_by_role("button", name="Delete" if locale == "en" else "Удалить", exact=True)).to_have_count(0)
+                        avatar = cards.first.locator('[data-slot="tooltip-trigger"]')
+                        avatar.focus()
+                        expect(page.get_by_role("tooltip")).to_have_text("Shared" if locale == "en" else "Общее")
+                        menu = cards.first.get_by_role("button", name="Actions" if locale == "en" else "Действия", exact=True)
+                        expect(cards.first.get_by_text("Downloaded Alpha", exact=True)).to_have_count(0)
+                        toggle = cards.first.get_by_role("button", name="Disable scenario" if locale == "en" else "Выключить сценарий", exact=True)
+                        toggle.click()
+                        expect(cards.first.get_by_role("button", name="Enable scenario" if locale == "en" else "Включить сценарий", exact=True)).to_be_visible()
+                        menu.click()
+                        page.get_by_role("menuitem", name="Enable" if locale == "en" else "Включить", exact=True).click()
+                        expect(toggle).to_be_visible()
+                        menu.click()
+                        # A server poll must update cells without remounting the open menu.
+                        with page.expect_response(lambda r: r.url.endswith("/api/extensions") and r.request.method == "GET"):
+                            pass
+                        expect(page.get_by_role("menu")).to_be_visible()
+                        expect(page.get_by_role("menuitem", name="Edit" if locale == "en" else "Изменить", exact=True)).to_be_visible()
+                        page.get_by_role("menuitem", name="Delete" if locale == "en" else "Удалить", exact=True).click()
+                        expect(page.get_by_role("alertdialog")).to_be_visible()
+                        page.get_by_role("button", name="Cancel" if locale == "en" else "Отмена", exact=True).click()
+                        page.keyboard.press("Escape")
+                        expect(page).to_have_url(base + "/scenarios")
+                        href = cards.first.get_by_role("link").get_attribute("href")
+                        cards.first.click(position={"x": 8, "y": 8})
+                        expect(page).to_have_url(base + href)
+                        visit(page, "/scenarios")
+                        cards.first.get_by_role("link").focus()
+                        page.keyboard.press("Enter")
+                        expect(page).to_have_url(base + href)
+                        visit(page, "/scenarios")
+                    else:
+                        update_label = (
+                            ("Update cards" if locale == "en" else "Обновить карточки")
+                            if path == "/scenarios"
+                            else ("Refresh data" if locale == "en" else "Обновить данные")
+                        )
+                        details = cards.first.locator("details")
+                        update = details.get_by_role("button", name=update_label, include_hidden=True)
+                        expect(details.locator("summary")).to_have_text("Troubleshooting" if locale == "en" else "Диагностика")
+                        expect(cards.get_by_text("Next update" if locale == "en" else "Следующее обновление", exact=True)).to_have_count(0)
+                        expect(details).not_to_have_attribute("open", "")
+                        expect(details.locator("dl")).not_to_be_visible()
+                        expect(update).not_to_be_visible()
+                        details.locator("summary").focus()
+                        page.keyboard.press("Enter")
+                        expect(details.locator("dl")).to_be_visible()
+                        expect(update).to_be_visible()
+                        expect(update).to_be_enabled()
+                        page.keyboard.press("Enter")
+                        expect(details.locator("dl")).not_to_be_visible()
+                        expect(update).not_to_be_visible()
+                        cards.nth(1).locator("summary").click()
+                        expect(cards.nth(1).get_by_role("button", name=update_label)).to_be_disabled()
+                        expect(cards.first.locator('[data-slot="badge"]')).to_have_attribute("data-variant", "success")
+                        expect(cards.first.get_by_role("button", name="Delete" if locale == "en" else "Удалить", exact=True)).to_have_attribute("data-variant", "destructive-ghost")
                     page.screenshot(path=f"/tmp/peek-cards-{path[1:]}-{locale}-{width}.png", full_page=True)
                 no_overflow(page)
                 for card in page.locator('[data-variant="resource"]').all():

@@ -1,4 +1,6 @@
 "use client";
+import { SettingsRowMenu } from "./row-menu";
+import { SettingsDataTable } from "./data-table";
 import { LoadingState, ErrorState } from "./layout";
 import { EditorForm } from "./layout";
 import { useEffect, useState } from "react";
@@ -343,6 +345,190 @@ export function Extensions({
       </section>
     );
   }
+  const rows =
+    data?.instances
+      .filter(
+        (i) =>
+          (!kind || i.kind === kind) &&
+          matchesSearch(query, i.name, i.package_id),
+      )
+      .map((i) => ({
+        id: i.id,
+        profile: profiles
+          ?.filter((p) => p.id === i.profile_id)
+          .map((p) => (
+            <ProfileLabel key={p.id} profile={p} locale={locale} avatarOnly />
+          )),
+        error: i.last_error ? (
+          <Alert variant="destructive" role="status">
+            <AlertDescription>{i.last_error}</AlertDescription>
+          </Alert>
+        ) : null,
+        media: (
+          <ExtensionIcon
+            kind={i.kind}
+            color={
+              data.packages.find((p) => p.manifest.id === i.package_id)
+                ?.manifest.iconColor
+            }
+            src={
+              data.packages.find((p) => p.manifest.id === i.package_id)
+                ?.iconDataUrl
+            }
+          />
+        ),
+        title: (
+          <Link
+            className={
+              kind === "scenario"
+                ? "after:absolute after:inset-0 focus-visible:outline-none"
+                : undefined
+            }
+            href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
+          >
+            {i.name}
+          </Link>
+        ),
+        description:
+          data.packages.find((p) => p.manifest.id === i.package_id)?.manifest
+            .name ?? i.package_id,
+        status:
+          kind === "scenario" ? (
+            <Badge variant={i.enabled ? "success" : "inactive"} asChild>
+              <button
+                type="button"
+                disabled={busy}
+                className="cursor-pointer disabled:cursor-wait"
+                aria-label={
+                  i.enabled
+                    ? t("Disable scenario", "Выключить сценарий")
+                    : t("Enable scenario", "Включить сценарий")
+                }
+                onClick={() =>
+                  void perform(() =>
+                    api({
+                      action: "set-enabled",
+                      id: i.id,
+                      enabled: !i.enabled,
+                    }),
+                  )
+                }
+              >
+                {i.enabled
+                  ? t("Enabled", "Включено")
+                  : t("Disabled", "Выключено")}
+              </button>
+            </Badge>
+          ) : (
+            <Badge variant={i.enabled ? "success" : "inactive"}>
+              {i.enabled
+                ? t("Enabled", "Включено")
+                : t("Disabled", "Выключено")}
+            </Badge>
+          ),
+        actions:
+          kind === "scenario" ? (
+            <SettingsRowMenu
+              enabled={!!i.enabled}
+              onToggle={() =>
+                perform(() =>
+                  api({ action: "set-enabled", id: i.id, enabled: !i.enabled }),
+                )
+              }
+              href={`/scenarios/${encodeURIComponent(i.id)}`}
+              locale={locale}
+              disabled={busy}
+              onDelete={() =>
+                perform(() => api({ action: "delete-instance", id: i.id }))
+              }
+            />
+          ) : (
+            <>
+              <Button variant="outline" asChild>
+                <Link
+                  href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
+                >
+                  {t("Edit", "Изменить")}
+                </Link>
+              </Button>
+              <DeleteButton
+                locale={locale}
+                disabled={busy}
+                description={t(
+                  "Delete this instance and its local data?",
+                  "Удалить этот экземпляр и его локальные данные?",
+                )}
+                onConfirm={() =>
+                  perform(() => api({ action: "delete-instance", id: i.id }))
+                }
+              />
+            </>
+          ),
+        children: (
+          <>
+            {profiles
+              ?.filter((p) => p.id === i.profile_id)
+              .map((p) => (
+                <ProfileLabel key={p.id} profile={p} locale={locale} />
+              ))}
+            {i.kind === "scenario" ? (
+              <div className="flex flex-wrap gap-3">
+                {[
+                  ...new Set(
+                    Object.values(i.bindings)
+                      .flat()
+                      .map((b) => b.connectionId),
+                  ),
+                ].map((id) => {
+                  const connection = data.connections.find((c) => c.id === id);
+                  const instance = data.instances.find((c) => c.id === id);
+                  const sourcePackage = data.packages.find(
+                    (p) => p.manifest.id === instance?.package_id,
+                  );
+                  return connection ? (
+                    <ExtensionLabel
+                      key={id}
+                      kind="connection"
+                      src={sourcePackage?.iconDataUrl}
+                      color={sourcePackage?.manifest.iconColor}
+                    >
+                      {connection.name}
+                    </ExtensionLabel>
+                  ) : null;
+                })}
+              </div>
+            ) : null}
+            {i.last_error ? (
+              <Alert variant="destructive" role="status">
+                <AlertDescription>{i.last_error}</AlertDescription>
+              </Alert>
+            ) : null}
+            <SettingsRowDetails label={t("Troubleshooting", "Диагностика")}>
+              <dl className="grid gap-4">
+                <div className="grid gap-1">
+                  <dt>{t("Last updated", "Последнее обновление")}</dt>
+                  <dd className="text-foreground">
+                    {i.last_success
+                      ? new Date(i.last_success).toLocaleString(locale)
+                      : t("Not updated yet", "Ещё не обновлялось")}
+                  </dd>
+                </div>
+              </dl>
+              <Button
+                variant="ghost"
+                disabled={busy || !i.enabled}
+                onClick={() =>
+                  void perform(() => api({ action: "run", id: i.id }))
+                }
+              >
+                {i.kind === "scenario"
+                  ? t("Update cards", "Обновить карточки")
+                  : t("Refresh data", "Обновить данные")}
+              </Button>
+            </SettingsRowDetails>
+          </>
+        ),
+      })) ?? [];
   return (
     <SettingsCollection>
       <SettingsToolbar
@@ -675,131 +861,15 @@ export function Extensions({
             />
           </>
         ) : null}
-        <SettingsList>
-          {data?.instances
-            .filter(
-              (i) =>
-                (!kind || i.kind === kind) &&
-                matchesSearch(query, i.name, i.package_id),
-            )
-            .map((i) => (
-              <SettingsRow
-                key={i.id}
-                media={
-                  <ExtensionIcon
-                    kind={i.kind}
-                    color={data.packages.find((p) => p.manifest.id === i.package_id)?.manifest.iconColor}
-                    src={
-                      data.packages.find((p) => p.manifest.id === i.package_id)
-                        ?.iconDataUrl
-                    }
-                  />
-                }
-                title={
-                  <Link
-                    href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
-                  >
-                    {i.name}
-                  </Link>
-                }
-                description={
-                  data.packages.find((p) => p.manifest.id === i.package_id)
-                    ?.manifest.name ?? i.package_id
-                }
-                status={
-                  <Badge variant={i.enabled ? "success" : "inactive"}>
-                    {i.enabled
-                      ? t("Enabled", "Включено")
-                      : t("Disabled", "Выключено")}
-                  </Badge>
-                }
-                actions={
-                  <>
-                    <Button variant="outline" asChild>
-                      <Link
-                        href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
-                      >
-                        {t("Edit", "Изменить")}
-                      </Link>
-                    </Button>
-                    <DeleteButton
-                      locale={locale}
-                      disabled={busy}
-                      description={t(
-                        "Delete this instance and its local data?",
-                        "Удалить этот экземпляр и его локальные данные?",
-                      )}
-                      onConfirm={() =>
-                        perform(() =>
-                          api({ action: "delete-instance", id: i.id }),
-                        )
-                      }
-                    />
-                  </>
-                }
-              >
-                {profiles?.filter((p) => p.id === i.profile_id)
-                  .map((p) => (
-                    <ProfileLabel key={p.id} profile={p} locale={locale} />
-                  ))}
-                {i.kind === "scenario" ? (
-                  <div className="flex flex-wrap gap-3">
-                    {[
-                      ...new Set(
-                        Object.values(i.bindings)
-                          .flat()
-                          .map((b) => b.connectionId),
-                      ),
-                    ].map((id) => {
-                      const connection = data.connections.find(
-                        (c) => c.id === id,
-                      );
-                      const instance = data.instances.find((c) => c.id === id);
-                      const sourcePackage = data.packages.find((p) => p.manifest.id === instance?.package_id);
-                      return connection ? (
-                        <ExtensionLabel
-                          key={id}
-                          kind="connection"
-                          src={sourcePackage?.iconDataUrl}
-                          color={sourcePackage?.manifest.iconColor}
-                        >
-                          {connection.name}
-                        </ExtensionLabel>
-                      ) : null;
-                    })}
-                  </div>
-                ) : null}
-                {i.last_error ? (
-                  <Alert variant="destructive" role="status">
-                    <AlertDescription>{i.last_error}</AlertDescription>
-                  </Alert>
-                ) : null}
-                <SettingsRowDetails label={t("Troubleshooting", "Диагностика")}>
-                  <dl className="grid gap-4">
-                    <div className="grid gap-1">
-                      <dt>{t("Last updated", "Последнее обновление")}</dt>
-                      <dd className="text-foreground">
-                        {i.last_success
-                          ? new Date(i.last_success).toLocaleString(locale)
-                          : t("Not updated yet", "Ещё не обновлялось")}
-                      </dd>
-                    </div>
-                  </dl>
-                  <Button
-                    variant="ghost"
-                    disabled={busy || !i.enabled}
-                    onClick={() =>
-                      void perform(() => api({ action: "run", id: i.id }))
-                    }
-                  >
-                    {i.kind === "scenario"
-                      ? t("Update cards", "Обновить карточки")
-                      : t("Refresh data", "Обновить данные")}
-                  </Button>
-                </SettingsRowDetails>
-              </SettingsRow>
+        {kind === "scenario" ? (
+          <SettingsDataTable rows={rows} locale={locale} />
+        ) : (
+          <SettingsList>
+            {rows.map(({ id, ...row }) => (
+              <SettingsRow key={id} {...row} />
             ))}
-        </SettingsList>
+          </SettingsList>
+        )}
         {!kind && data?.canRollback ? (
           <ConfirmAction
             locale={locale}

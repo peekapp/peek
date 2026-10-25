@@ -724,6 +724,22 @@ export function openExtensions(path: string) {
         })
         .immediate();
     },
+    setEnabled(id: string, enabled: boolean) {
+      if (typeof id !== "string" || typeof enabled !== "boolean")
+        throw new Error("invalid-instance");
+      return db.transaction(() => {
+        const current = instance(id);
+        if (!current) throw new Error("instance-not-found");
+        return this.save({
+          id, enabled,
+          packageId: current.package_id,
+          name: current.name,
+          profileId: current.profile_id,
+          settings: JSON.parse(current.settings),
+          bindings: JSON.parse(current.bindings),
+        });
+      }).immediate();
+    },
     requestRun(id: string) {
       const result = db.run(
         "UPDATE extension_instances SET generation=generation+1,next_run_at=?,last_error=NULL WHERE id=? AND enabled=1",

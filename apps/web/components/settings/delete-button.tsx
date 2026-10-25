@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
 import { Button } from "../ui/button";
 import {
@@ -21,12 +21,14 @@ export function ConfirmAction({
   description,
   disabled,
   onConfirm,
+  trigger,
 }: {
   locale: Locale;
   label?: string;
   description: string;
   disabled?: boolean;
   onConfirm: () => Promise<void>;
+  trigger?: ReactElement;
 }) {
   const t = messages(locale);
   const [open, setOpen] = useState(false);
@@ -39,14 +41,16 @@ export function ConfirmAction({
       }}
     >
       <AlertDialogTrigger asChild>
-        <Button
-          type="button"
-          variant="destructive-ghost"
-          className="ml-auto"
-          disabled={disabled || pending}
-        >
-          {label ?? t.remove}
-        </Button>
+        {trigger ?? (
+          <Button
+            type="button"
+            variant="destructive-ghost"
+            className="ml-auto"
+            disabled={disabled || pending}
+          >
+            {label ?? t.remove}
+          </Button>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

@@ -897,3 +897,31 @@ test("unrelated and partial successes do not hide unresolved package failures", 
     }
   } finally { f.close(); }
 });
+
+test("enable changes preserve current configuration and invalidate in-flight results", () => {
+  const f = fixture();
+  try {
+    install(f.store, [pkg("connection"), pkg("scenario")]);
+    const connection = f.store.save(sourceInput());
+    const id = f.store.save({ ...scenarioInput(connection), settings: { label: "latest" } });
+    const before = f.store.instance(id)!;
+    f.store.setEnabled(id, false);
+    const disabled = f.store.instance(id)!;
+    expect(disabled.enabled).toBe(0);
+    expect(disabled.next_run_at).toBeNull();
+    expect(disabled.settings).toBe(before.settings);
+    expect(disabled.bindings).toBe(before.bindings);
+    expect(disabled.name).toBe(before.name);
+    expect(f.store.publish(before, { cards: [], nextRunAt: null })).toBe(false);
+    f.store.setEnabled(id, true);
+    expect(f.store.instance(id)!.enabled).toBe(1);
+    expect(f.store.due().some((i) => i.id === id)).toBe(true);
+    const secret = f.store.context(f.store.instance(connection)!).secrets;
+    f.store.setEnabled(connection, false);
+    expect(f.store.context(f.store.instance(connection)!).secrets).toEqual(secret);
+    expect(() => f.store.setEnabled("missing", true)).toThrow("instance-not-found");
+    expect(() => f.store.setEnabled(id, "false" as unknown as boolean)).toThrow("invalid-instance");
+  } finally {
+    f.close();
+  }
+});

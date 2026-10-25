@@ -90,6 +90,7 @@ export async function POST(request: Request) {
     else if (body.action === "cancel") store.cancel(body.id);
     else if (body.action === "save")
       return Response.json({ id: store.save(body.instance) });
+    else if (body.action === "set-enabled") store.setEnabled(body.id, body.enabled);
     else if (body.action === "run") store.requestRun(body.id);
     else if (body.action === "delete-instance") store.removeInstance(body.id);
     else if (body.action === "delete-package") store.removePackage(body.id);

@@ -20,9 +20,10 @@ Consistency is implemented in components, not achieved by copying classes.
 | Collection toolbar      | `SettingsToolbar`                | Search input and primary action; filters by name with a shared no-results state |
 | Section heading         | `SettingsHeading`                | h2, description below, primary action to the right; wraps on narrow screens |
 | Screen collection | `SettingsGrid` + `SettingsCard` | Preview cards in two equal columns, one on small screens, 24px gap |
-| Text resource collection | `SettingsList` + `SettingsRow` | Profiles, scenarios, connections, and installed extensions use shadcn Item rows in one bordered list with separators; metadata left, actions right, stacked on mobile |
+| Text resource collection | `SettingsList` + `SettingsRow` | Profiles, connections, and installed extensions use shadcn Item rows in one bordered list with separators; metadata left, actions right, stacked on mobile |
 | Screen card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
-| Scenario/connection status | `SettingsRow` status + `SettingsRowDetails` | Green Enabled badge beside the name; profile, connections and errors visible; last successful update and manual refresh in an expandable Troubleshooting disclosure; no next-update timestamp; package artwork through ExtensionIcon |
+| Scenario collection | `SettingsDataTable` | shadcn Table with TanStack Table; clickable rows with name (no subtitle), clickable enable/disable status, avatar-only profile (name in tooltip), and a trailing three-dot Edit/Enable-or-Disable/Delete menu with icons; column headers are screen-reader-only; keyboard focus remains visible without a mouse-click row ring; no connections or troubleshooting; errors stay visible; stacked cells on narrow screens; existing search and empty states |
+| Connection/list status | `SettingsRow` status + `SettingsRowDetails` | Green Enabled badge beside the name; profile, connections and errors visible; last successful update and manual refresh in an expandable Troubleshooting disclosure; no next-update timestamp; package artwork through ExtensionIcon |
 | Empty collection        | `SettingsEmpty`                  | Shared shadcn Empty composition with next-step copy                         |
 | Editor heading          | `EditorHeader`                   | Back link, shared section heading, optional description/action              |
 | Editor section          | `EditorSection`                  | Common field spacing and section typography                                 |
@@ -110,7 +111,7 @@ poll these out from under a draft. Catalog/status lists and independent profile 
 may refresh without remounting editors or resetting search and installation inputs.
 Load extension schemas and profile choices independently.
 
-Text resource loading uses `LoadingState layout="list"`; screen loading retains the card grid. Keep errors visible in rows and troubleshooting expandable. Preserve real title links, separate actions, and wrapping names/metadata without horizontal scrolling.
+Text resource loading uses `LoadingState layout="list"`; screen loading retains the card grid. Keep errors visible in rows and connection troubleshooting expandable. Preserve real title links, separate actions, and wrapping names/metadata without horizontal scrolling.
 
 ## Extension identity
 
