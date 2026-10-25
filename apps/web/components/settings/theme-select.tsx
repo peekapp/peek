@@ -41,7 +41,7 @@ export function ThemeSelect({
             {theme !== "inherit" ? (
               <span
                 aria-hidden="true"
-                className="inline-flex h-4.5 w-6 items-center rounded border border-line bg-background p-0.5"
+                className="inline-flex h-4.5 w-6 items-center rounded border border-border bg-background p-0.5"
                 data-theme={theme}
               >
                 <i className="h-2.5 w-2 rounded-sm bg-foreground" />

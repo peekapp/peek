@@ -45,6 +45,8 @@ query parameters.
 ## Styling
 
 Use semantic theme variables, the existing font, and a spacing rhythm of 8/16/24/32px.
+Use shared `card`, `border`, `muted-foreground`, `accent`, `primary` and `secondary`
+colors across settings and dashboard components; do not add page-specific color tokens.
 Keep appearance in Tailwind utilities inside components. Model variants with CVA
 and combine classes with cn(). `globals.css` is limited to Tailwind imports,
 theme palettes, semantic tokens, CSS variables and global base/accessibility rules.

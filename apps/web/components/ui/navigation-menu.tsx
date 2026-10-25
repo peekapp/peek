@@ -127,7 +127,7 @@ const navigationLinkVariants = cva("", {
     variant: {
       default:
         "flex flex-col gap-1 rounded-sm p-2 text-sm transition-[color,background-color,border-color,box-shadow] outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 data-[active=true]:bg-accent/50 data-[active=true]:text-accent-foreground data-[active=true]:hover:bg-accent data-[active=true]:focus:bg-accent [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
-      tab: "flex shrink-0 items-center gap-2 border-b-2 border-transparent px-0.5 pb-4 text-sm text-muted-foreground no-underline outline-none hover:text-foreground aria-[current=page]:border-navigation-indicator aria-[current=page]:text-navigation-active focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+      tab: "flex shrink-0 items-center gap-2 border-b-2 border-transparent px-0.5 pb-4 text-sm text-muted-foreground no-underline outline-none hover:text-foreground aria-[current=page]:border-primary aria-[current=page]:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
     },
   },
   defaultVariants: { variant: "default" },

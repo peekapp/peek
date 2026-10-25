@@ -157,7 +157,7 @@ export function Dashboard({
           <Brand />
           {screen ? (
             <small
-              className="max-w-28 truncate border-l border-line pl-5 text-xs text-muted-foreground md:max-w-56"
+              className="max-w-28 truncate border-l border-border pl-5 text-xs text-muted-foreground md:max-w-56"
               title={screen.name}
             >
               {screen.name}
@@ -184,7 +184,7 @@ export function Dashboard({
           aria-label={t.currentEvents}
         >
           <article
-            className="flex min-h-115 min-w-0 flex-col rounded-3xl bg-surface p-6 md:min-h-140 md:p-7 xl:p-9 2xl:min-h-162 2xl:p-12"
+            className="flex min-h-115 min-w-0 flex-col rounded-3xl bg-secondary p-6 md:min-h-140 md:p-7 xl:p-9 2xl:min-h-162 2xl:p-12"
             key={primary.id}
           >
             <div className="flex items-center justify-between gap-4 text-xs">
@@ -229,7 +229,7 @@ export function Dashboard({
             <div className="flex min-w-0 flex-col px-1">
               {secondary.map((card) => (
                 <article
-                  className="group/event min-w-0 flex-1 border-b border-line px-1 py-6 last:border-0 md:px-0 md:py-8"
+                  className="group/event min-w-0 flex-1 border-b border-border px-1 py-6 last:border-0 md:px-0 md:py-8"
                   data-urgent={priorityAt(card, now) > card.priority}
                   key={card.id}
                 >

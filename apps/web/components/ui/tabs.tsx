@@ -32,7 +32,7 @@ const tabsListVariants = cva(
         default: "bg-muted",
         line: "gap-1 bg-transparent",
         catalog:
-          "w-full h-full items-stretch justify-start gap-0.5 rounded-none border-b border-line bg-card p-2 sm:flex-col sm:gap-1.5 sm:border-r sm:border-b-0 sm:px-3 sm:py-4",
+          "w-full h-full items-stretch justify-start gap-0.5 rounded-none border-b border-border bg-card p-2 sm:flex-col sm:gap-1.5 sm:border-r sm:border-b-0 sm:px-3 sm:py-4",
       },
     },
     defaultVariants: {

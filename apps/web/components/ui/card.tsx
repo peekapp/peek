@@ -9,12 +9,12 @@ const cardVariants = cva(
     variants: {
       variant: {
         default:
-          "flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm",
+          "flex flex-col gap-6 rounded-md border bg-card py-6 text-card-foreground shadow-sm",
         resource:
-          "flex flex-col gap-5 overflow-hidden rounded-xl border border-settings-border bg-settings-card py-6 text-card-foreground",
-        preview: "flex flex-col gap-5 rounded-xl border border-line p-6",
+          "flex flex-col gap-5 overflow-hidden rounded-md border border-border bg-card py-6 text-card-foreground",
+        preview: "flex flex-col gap-5 rounded-md border border-border p-6",
         choice:
-          "relative grid gap-2 rounded-xl border border-choice-border p-5 pr-10 text-foreground no-underline hover:bg-surface",
+          "relative grid gap-2 rounded-md border border-border p-5 pr-10 text-foreground no-underline hover:bg-accent hover:text-accent-foreground",
       },
     },
     defaultVariants: { variant: "default" },

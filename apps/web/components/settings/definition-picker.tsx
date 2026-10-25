@@ -101,7 +101,7 @@ export function DefinitionPicker({
                     </CardDescription>
                   </CardHeader>
                   <span
-                    className="absolute right-4 top-6 text-2xl text-choice-foreground"
+                    className="absolute right-4 top-6 text-2xl text-muted-foreground"
                     aria-hidden="true"
                   >
                     ›

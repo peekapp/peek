@@ -192,7 +192,7 @@ export function EditorSection({
   children: ReactNode;
 }) {
   return (
-    <section className="pb-8 [&+section]:border-t [&+section]:border-line [&+section]:pt-8">
+    <section className="pb-8 [&+section]:border-t [&+section]:border-border [&+section]:pt-8">
       {title ? <h3 className="mb-6 text-base font-medium">{title}</h3> : null}
       {children}
     </section>
@@ -200,7 +200,7 @@ export function EditorSection({
 }
 export function EditorActions({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-2.5 border-t border-line pt-6 text-sm md:gap-5">
+    <div className="flex flex-wrap items-center gap-2.5 border-t border-border pt-6 text-sm md:gap-5">
       {children}
     </div>
   );
@@ -216,7 +216,7 @@ export function PreferenceRow({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-start justify-between gap-5 border-t border-line py-7 md:flex-row md:items-center md:gap-8">
+    <div className="flex flex-col items-start justify-between gap-5 border-t border-border py-7 md:flex-row md:items-center md:gap-8">
       <div>
         <h3 className="mb-6 text-base font-medium">{title}</h3>
         <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
@@ -268,7 +268,7 @@ export function SettingsNavigation({
     <NavigationMenu
       {...props}
       viewport={false}
-      className="block max-w-none overflow-x-auto border-b border-line"
+      className="block max-w-none overflow-x-auto border-b border-border"
     >
       <NavigationMenuList className="justify-start gap-6 md:gap-8">
         {children}

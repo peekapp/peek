@@ -142,7 +142,7 @@ export function ScenarioLibrary({
     const favorite = favorites.includes(definition.id);
     return (
       <div
-        className="mt-2 flex items-center gap-1 rounded-xl border border-line pr-2.5 hover:border-settings-border-hover hover:bg-card"
+        className="mt-2 flex items-center gap-1 rounded-md border border-border pr-2.5 hover:border-ring hover:bg-card"
         key={definition.id}
       >
         <Link
@@ -191,7 +191,7 @@ export function ScenarioLibrary({
         value={tab}
         onValueChange={setTab}
         orientation="vertical"
-        className="grid grid-cols-1 gap-0 border-t border-line sm:grid-cols-[14rem_minmax(0,1fr)]"
+        className="grid grid-cols-1 gap-0 border-t border-border sm:grid-cols-[14rem_minmax(0,1fr)]"
       >
         <TabsList variant="catalog" aria-label={t.scenarioLibrary}>
           <TabsTrigger variant="catalog" value="builtin">
@@ -219,7 +219,7 @@ export function ScenarioLibrary({
                 .filter((d) => favorites.includes(d.id))
                 .map(renderScenario)
             ) : (
-              <p className="mb-3 rounded-lg border border-dashed border-line px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+              <p className="mb-3 rounded-lg border border-dashed border-border px-4 py-3 text-sm leading-relaxed text-muted-foreground">
                 {t.favoriteScenariosHint}
               </p>
             )}

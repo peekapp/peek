@@ -295,7 +295,7 @@ export function Settings({
                           </Button>
                         }
                       >
-                        <div className="text-sm text-detail wrap-anywhere">
+                        <div className="text-sm text-muted-foreground wrap-anywhere">
                           {t.connections}:{" "}
                           {
                             data.connections.filter((c) => c.profileId === p.id)

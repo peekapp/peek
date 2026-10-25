@@ -120,7 +120,7 @@ export function ProfileEditor({
                 </RadioGroup>
               </FieldSet>
               <div
-                className="flex flex-wrap items-center gap-5 rounded-xl border border-line bg-background p-6 sm:col-span-2"
+                className="flex flex-wrap items-center gap-5 rounded-md border border-border bg-background p-6 sm:col-span-2"
                 aria-label={t.preview}
               >
                 <span className="text-sm text-muted-foreground">

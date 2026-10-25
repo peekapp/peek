@@ -58,7 +58,7 @@ function ScreenPreview({
   const { theme } = useAppTheme();
   return (
     <div
-      className="min-w-0 rounded-xl bg-background p-4 text-foreground"
+      className="min-w-0 rounded-md bg-background p-4 text-foreground"
       data-theme={resolveTheme(config.theme, theme)}
       aria-label={t.preview}
     >
@@ -67,7 +67,7 @@ function ScreenPreview({
         <span>12:45</span>
       </div>
       <div className="grid h-36 grid-cols-[1.6fr_1fr] gap-4" aria-hidden="true">
-        <div className="flex min-w-0 flex-col items-start justify-between rounded-lg bg-surface p-4">
+        <div className="flex min-w-0 flex-col items-start justify-between rounded-md bg-secondary p-4">
           <span className="text-xs">peek</span>
           <strong
             className="font-light leading-none tracking-tighter"
