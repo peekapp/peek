@@ -39,6 +39,7 @@ import {
 import { ProfileLabel } from "../profile-label";
 import type { Profile } from "@peek/core/profiles";
 import { DeleteButton, ConfirmAction } from "./delete-button";
+import { numericSetting } from "./numeric-setting";
 type Binding = { connectionId: string; dataset: string };
 type Item = {
   id: string;
@@ -147,13 +148,9 @@ function SchemaFields({
                 autoComplete={secret ? "new-password" : "off"}
                 value={String(value[key] ?? "")}
                 onChange={(e) =>
-                  update(
-                    s.type === "string"
-                      ? e.target.value
-                      : e.target.value === ""
-                        ? null
-                        : Number(e.target.value),
-                  )
+                  s.type === "string"
+                    ? update(e.target.value)
+                    : onChange(numericSetting(value, key, e.target.value))
                 }
               />
             ) : (

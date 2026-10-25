@@ -399,6 +399,14 @@ export function openExtensions(path: string) {
         for (const i of affected)
           if (instance(i.id)?.generation !== i.generation)
             throw new Error("instance-changed-retry-install");
+        if (!payload.packages.length) {
+          for (const id of payload.roots)
+            db.run("UPDATE extension_packages SET explicit=1 WHERE id=?", [id]);
+          db.run("UPDATE extension_operations SET status='complete' WHERE id=?", [
+            op.id,
+          ]);
+          return;
+        }
         // Only one coherent rollback point; ciphertext stays on the server.
         db.run("INSERT OR REPLACE INTO extension_history VALUES (1,?)", [
           JSON.stringify({ packages: installed(), instances: instances() }),

@@ -256,6 +256,61 @@ test("failed migration rolls back transaction; immutable versions and coherent r
     f.close();
   }
 });
+test("unchanged installs preserve rollback, cards and scheduling while promoting explicit packages", () => {
+  const f = fixture();
+  try {
+    const source = pkg("integration");
+    const cards = pkg("scenario");
+    cards.manifest.inputs = {};
+    install(f.store, [source, cards]);
+    const id = f.store.save({
+      packageId: cards.manifest.id,
+      name: "Cards",
+      profileId: "shared",
+      settings: {},
+      bindings: {},
+      enabled: true,
+    });
+    const newer = structuredClone(cards);
+    newer.manifest.version = "0.1.1";
+    install(f.store, [newer]);
+    const now = Date.now();
+    f.store.publish(f.store.instance(id)!, {
+      cards: [{
+        id: "one",
+        title: "Keep",
+        visibleFrom: now,
+        targetAt: now + 60000,
+        expiresAt: now + 60000,
+      }],
+      nextRunAt: null,
+    });
+    const before = f.store.instance(id);
+    const snapshot = f.main.snapshot(now);
+    const review = f.store.stage(
+      [source, newer],
+      [source.manifest.id, newer.manifest.id],
+    );
+    f.store.confirm(review.id);
+    const op = f.store.pending()!;
+    const input = f.store.installInput(op);
+    expect(input.packages).toHaveLength(0);
+    f.store.commitInstall(op, input.affected, {});
+    expect(f.store.instance(id)).toEqual(before);
+    expect(f.main.snapshot(now)).toEqual(snapshot);
+    expect(
+      f.store.installed().find((p) => p.id === source.manifest.id)!.explicit,
+    ).toBe(1);
+    expect(
+      f.store.status().operations.find((o) => o.id === op.id)!.status,
+    ).toBe("complete");
+    f.store.rollback();
+    expect(f.store.getPackage(cards.manifest.id).manifest.version).toBe("0.1.0");
+  } finally {
+    f.close();
+  }
+});
+
 test("changes after review and new instances during migration invalidate commit", () => {
   const f = fixture();
   try {

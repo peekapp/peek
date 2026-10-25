@@ -21,6 +21,71 @@ function pkg(code: string, integration = false): ExtensionPackage {
   };
 }
 check(
+  "Docker: failed one-shot runs never replace the previous result",
+  async () => {
+    for (const ending of [
+      "process.exit(1);",
+      "process.stdout.write('garbage'); process.exit(0);",
+      "process.stdout.write(line); process.exit(0);",
+      "setInterval(() => {}, 1000); await new Promise(() => {});",
+    ]) {
+      const previous = { cards: [{ title: "Keep existing cards" }] };
+      let saved: unknown = previous;
+      const run = await runContainer(
+        pkg(`export default {async evaluate() {
+          const line = JSON.stringify({type:'result',result:{cards:[],nextRunAt:null}})+'\\n';
+          process.stdout.write(line);
+          await new Promise(resolve => setTimeout(resolve, 150));
+          ${ending}
+        }}`),
+        {},
+        (result) => {
+          saved = result;
+        },
+      );
+      await expect(run.done).rejects.toThrow("execution-failed");
+      expect(saved).toBe(previous);
+    }
+  },
+  30000,
+);
+check(
+  "Docker: successful one-shot results validate at completion and integrations publish live",
+  async () => {
+    const invalid = await runContainer(
+      pkg("export default {evaluate(){return {cards:[]}}}"),
+      {},
+      () => {
+        throw new Error("invalid-result");
+      },
+    );
+    await expect(invalid.done).rejects.toThrow("execution-failed");
+    let published!: () => void;
+    const publication = new Promise<void>((resolve) => {
+      published = resolve;
+    });
+    const integration = pkg(
+      "export default {async run({publish}) {await publish({datasets:{items:[]}});setInterval(()=>{},1000)}}",
+      true,
+    );
+    integration.manifest.permissions = {};
+    const live = await runContainer(integration, {}, () => published());
+    const completion = live.done.catch(() => {});
+    try {
+      await Promise.race([
+        publication,
+        Bun.sleep(3000).then(() => {
+          throw new Error("publication-timeout");
+        }),
+      ]);
+    } finally {
+      await live.stop();
+      await completion;
+    }
+  },
+  10000,
+);
+check(
   "Docker: scenario cannot reach network, read host data or escape read-only root",
   async () => {
     await readiness();

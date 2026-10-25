@@ -171,6 +171,7 @@ export async function runContainer(
       failed = false,
       count = 0,
       last = 0;
+    let result: unknown;
     const done = new Promise<void>((resolve, reject) => {
       const timer = integration
         ? undefined
@@ -202,7 +203,8 @@ export async function runContainer(
               throw new Error("invalid-protocol");
             if (!integration && count) throw new Error("multiple-results");
             count++;
-            onResult(msg.result);
+            if (integration) onResult(msg.result);
+            else result = msg.result;
           } catch {
             fail();
             return;
@@ -218,11 +220,14 @@ export async function runContainer(
       });
       proc.once("close", (code) => {
         if (timer) clearTimeout(timer);
-        void stop().then(() =>
-          code === 0 && !failed && count > 0
-            ? resolve()
-            : reject(new Error("execution-failed")),
-        );
+        void stop()
+          .then(() => {
+            if (code !== 0 || failed || count === 0 || buffer.length)
+              throw new Error("execution-failed");
+            // One-shot results become visible only after the whole run succeeds.
+            if (!integration) onResult(result);
+          })
+          .then(resolve, () => reject(new Error("execution-failed")));
       });
     });
     proc.stdin.end(request);
