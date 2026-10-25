@@ -1,6 +1,7 @@
 "use client";
 import { LoadingState, SettingsEmpty } from "./settings/layout";
 import {
+  EditorHeader,
   FormFeedback,
   SettingsNavigation,
   SettingsPage,
@@ -25,7 +26,7 @@ import { ProfileEditor } from "./settings/profile-editor";
 import { ProfileLabel } from "./profile-label";
 import { SettingsGrid, SettingsCard, PreferenceRow } from "./settings/layout";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
 import { Extensions } from "./settings/extensions";
 import { mutate } from "./settings/api";
@@ -51,29 +52,39 @@ export function Settings({
     [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(false);
   const { theme, setTheme } = useAppTheme();
+  const refreshVersion = useRef(0);
+  const preferenceSaves = useRef(0);
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeStatus, setThemeStatus] = useState<"saved" | "error" | "">("");
   const t = messages(locale),
     tab = path[0] ?? "general",
     item = path[1];
   async function refresh() {
+    if (preferenceSaves.current) return;
+    const version = ++refreshVersion.current;
     try {
       const res = await fetch("/api/settings", { cache: "no-store" });
       if (!res.ok) throw new Error();
       const next = (await res.json()) as Data;
+      if (version !== refreshVersion.current) return;
       setData(next);
       setTheme(next.theme);
       setLocale(next.locale ?? "en");
       setError(false);
     } catch {
+      if (version !== refreshVersion.current) return;
       setError(true);
     }
   }
   useEffect(() => {
     void refresh();
-    const timer = setInterval(refresh, 5000);
-    return () => clearInterval(timer);
-  }, []);
+    // A remote deletion must not unmount an editor and discard its draft.
+    const timer = item ? undefined : setInterval(refresh, 5000);
+    return () => {
+      refreshVersion.current++;
+      clearInterval(timer);
+    };
+  }, [item]);
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
@@ -128,19 +139,23 @@ export function Settings({
                   <ThemeSelect
                     value={theme}
                     locale={locale}
-                    disabled={!data || themeBusy}
+                    disabled={themeBusy}
                     onValueChange={async (value) => {
                       if (value === "inherit") return;
+                      preferenceSaves.current++;
+                      refreshVersion.current++;
                       setThemeBusy(true);
                       setThemeStatus("");
                       try {
                         await mutate({ action: "theme", theme: value });
-                        await refresh();
+                        setTheme(value);
                         setThemeStatus("saved");
                       } catch {
                         setThemeStatus("error");
                       } finally {
+                        preferenceSaves.current--;
                         setThemeBusy(false);
+                        void refresh();
                       }
                     }}
                   />
@@ -161,11 +176,16 @@ export function Settings({
                   aria-label={t.language}
                   value={locale}
                   onValueChange={async (value) => {
+                    preferenceSaves.current++;
+                    refreshVersion.current++;
                     try {
                       await mutate({ action: "locale", locale: value });
                       setLocale(value as Locale);
                     } catch {
                       setError(true);
+                    } finally {
+                      preferenceSaves.current--;
+                      void refresh();
                     }
                   }}
                 >
@@ -174,39 +194,59 @@ export function Settings({
                 </SettingsSelect>
               </PreferenceRow>
             </>
-          ) : !data ? (
-            error ? null : (
-              <LoadingState>{t.loading}</LoadingState>
-            )
           ) : tab === "screens" ? (
             item ? (
-              item === "new" || data.screens.some((s) => s.id === item) ? (
+              item === "new" || data?.screens.some((s) => s.id === item) ? (
                 <ScreenEditor
                   key={item}
-                  screen={data.screens.find((s) => s.id === item)}
-                  profiles={data.profiles}
+                  screen={data?.screens.find((s) => s.id === item)}
+                  profiles={data?.profiles ?? []}
+                  profilesLoading={!data && !error}
                   locale={locale}
                   refresh={refresh}
                 />
+              ) : !data ? (
+                <>
+                  <EditorHeader
+                    backHref="/screens"
+                    backLabel={t.backToScreens}
+                    title={t.editScreen}
+                  />
+                  {!error ? (
+                    <LoadingState layout="editor">{t.loading}</LoadingState>
+                  ) : null}
+                </>
               ) : (
                 <SettingsEmpty title={t.notFound} />
               )
             ) : (
               <ScreenList
-                screens={data.screens}
-                profiles={data.profiles}
+                screens={data?.screens}
+                profiles={data?.profiles ?? []}
+                error={error}
                 locale={locale}
               />
             )
           ) : tab === "profiles" ? (
             item ? (
-              profile || item === "new" ? (
+              item === "new" || profile ? (
                 <ProfileEditor
                   key={item}
                   profile={profile}
                   locale={locale}
                   refresh={refresh}
                 />
+              ) : !data ? (
+                <>
+                  <EditorHeader
+                    backHref="/profiles"
+                    backLabel={t.backToProfiles}
+                    title={t.profiles}
+                  />
+                  {!error ? (
+                    <LoadingState layout="editor">{t.loading}</LoadingState>
+                  ) : null}
+                </>
               ) : (
                 <SettingsEmpty title={t.notFound} />
               )
@@ -224,13 +264,17 @@ export function Settings({
                     </Button>
                   }
                 />
-                {data.profiles.every(
+                {!data && !error ? (
+                  <LoadingState>{t.loading}</LoadingState>
+                ) : null}
+                {data &&
+                data.profiles.every(
                   (p) => !matchesSearch(query, profileName(p, locale)),
                 ) ? (
                   <SearchEmpty locale={locale} />
                 ) : null}
                 <SettingsGrid>
-                  {data.profiles
+                  {data?.profiles
                     .filter((p) => matchesSearch(query, profileName(p, locale)))
                     .map((p) => (
                       <SettingsCard

@@ -371,6 +371,8 @@ export function DesignSystem() {
             <FormFeedback>Пример сообщения после сохранения</FormFeedback>
           </EditorForm>
           <LoadingState>Загрузка…</LoadingState>
+          <LoadingState layout="editor">Загрузка формы…</LoadingState>
+          <LoadingState layout="fields">Загрузка профилей…</LoadingState>
           <ErrorState>Не удалось загрузить данные.</ErrorState>
           <SettingsEmpty
             title="Пока нет экранов"

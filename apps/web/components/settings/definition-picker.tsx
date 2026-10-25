@@ -20,10 +20,12 @@ export function DefinitionPicker({
   kind,
   locale,
   packages,
+  disabled = false,
 }: {
   kind: "scenario" | "integration";
   packages: Status["packages"];
   locale: Locale;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const t = messages(locale);
@@ -38,7 +40,7 @@ export function DefinitionPicker({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button">
+        <Button type="button" disabled={disabled}>
           +{" "}
           {kind === "scenario"
             ? locale === "ru"

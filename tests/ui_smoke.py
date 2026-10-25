@@ -53,6 +53,93 @@ with sync_playwright() as p:
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
 
+    # An old initial response must not undo a preference saved in the meantime.
+    old_settings = context.request.get(base + "/api/settings").json()
+    held_preferences = []
+    def hold_preference_reads(route):
+        if route.request.method == "GET":
+            held_preferences.append(route)
+        else:
+            route.continue_()
+    page.route("**/api/settings", hold_preference_reads)
+    page.goto(base + "/settings")
+    theme = page.get_by_role("combobox", name="Appearance theme")
+    expect(theme).to_be_enabled()
+    theme.click()
+    page.get_by_role("option", name="Light", exact=True).click()
+    expect(page.locator("html")).to_have_attribute("data-theme", "day")
+    held_preferences.pop(0).fulfill(json=old_settings)
+    while held_preferences:
+        held_preferences.pop(0).continue_()
+    page.unroute("**/api/settings")
+    expect(page.locator("html")).to_have_attribute("data-theme", "day")
+    context.request.post(base + "/api/settings", headers={"Origin": base}, data={"action": "theme", "theme": "night"})
+
+    # Controls must render and accept search before either API has responded.
+    for width in [1280, 390]:
+        page.set_viewport_size({"width": width, "height": 900})
+        for path in ["/screens", "/profiles", "/scenarios", "/connections", "/settings/extensions"]:
+            held_loads = []
+            page.route("**/api/settings", lambda route: held_loads.append(route))
+            page.route("**/api/extensions", lambda route: held_loads.append(route))
+            page.goto(base + path)
+            search = page.get_by_role("searchbox")
+            expect(search).to_be_visible()
+            search.fill("no-matching-resource")
+            expect(page.locator('[data-slot="skeleton"]').first).to_be_visible()
+            expect(page.get_by_text("No results found", exact=True)).to_have_count(0)
+            if path in ["/scenarios", "/connections"]:
+                expect(page.get_by_role("button", name=re.compile(r"^\+ Add"))).to_be_disabled()
+            elif path != "/settings/extensions":
+                expect(page.get_by_role("link", name=re.compile(r"^\+"))).to_be_visible()
+            no_overflow(page)
+            while held_loads:
+                held_loads.pop(0).continue_()
+            page.unroute("**/api/settings")
+            page.unroute("**/api/extensions")
+            page.wait_for_load_state("networkidle")
+            expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
+            expect(search).to_have_value("no-matching-resource")
+        for path in ["/screens/new", "/profiles/new", "/scenarios/new", "/connections/new"]:
+            held_loads = []
+            page.route("**/api/settings", lambda route: held_loads.append(route))
+            page.route("**/api/extensions", lambda route: held_loads.append(route))
+            page.goto(base + path)
+            expect(page.get_by_role("link", name=re.compile("Back to|All screens|All profiles"))).to_be_visible()
+            if path == "/profiles/new":
+                expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
+                draft = page.get_by_role("textbox", name="Profile name", exact=True)
+                draft.fill("Profile typed before data")
+                page.get_by_role("radio", name="Green", exact=True).check()
+            else:
+                expect(page.locator('[data-slot="skeleton"]').first).to_be_visible()
+            if path == "/screens/new":
+                draft = page.locator("#screen-name")
+                draft.fill("Screen typed before data")
+                page.locator("#screen-id").fill("my-custom-id")
+                page.locator("#screen-all").uncheck()
+                page.get_by_role("radio", name="120%", exact=True).click()
+                expect(page.get_by_role("button", name="Save", exact=True)).to_be_enabled()
+            no_overflow(page)
+            while held_loads:
+                held_loads.pop(0).continue_()
+            page.unroute("**/api/settings")
+            page.unroute("**/api/extensions")
+            page.wait_for_load_state("networkidle")
+            if path == "/profiles/new":
+                expect(draft).to_have_value("Profile typed before data")
+                expect(page.get_by_role("radio", name="Green", exact=True)).to_be_checked()
+            if path == "/screens/new":
+                expect(draft).to_have_value("Screen typed before data")
+                expect(page.locator("#screen-id")).to_have_value("my-custom-id")
+                expect(page.locator("#screen-all")).not_to_be_checked()
+                expect(page.get_by_role("radio", name="120%", exact=True)).to_be_checked()
+                expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
+            if path in ["/screens/new", "/profiles/new"]:
+                page.get_by_role("link", name="Cancel", exact=True).click()
+                page.wait_for_url(base + path.removesuffix("/new"))
+    page.set_viewport_size({"width": 1280, "height": 900})
+
     # Real profile save, held in flight to reproduce edit/duplicate-submit races.
     visit(page, "/profiles")
     page.get_by_role("link", name="+ Create profile").click()
@@ -219,8 +306,23 @@ with sync_playwright() as p:
     status["packages"].append(
         {"manifest": integration, "explicit": True, "unused": True, "official": False}
     )
-    visit(page, "/connections/new?package=test%2Fconnection")
-    page.get_by_role("textbox", name="Name", exact=True).fill("Unsaved connection")
+    held_profiles = []
+    page.route("**/api/settings", lambda route: held_profiles.append(route))
+    page.goto(base + "/connections/new?package=test%2Fconnection")
+    name_field = page.get_by_role("textbox", name="Name", exact=True)
+    expect(name_field).to_be_visible()
+    name_field.fill("Unsaved connection")
+    expect(page.locator('[data-slot="skeleton"]').first).to_be_visible()
+    while held_profiles:
+        held_profiles.pop(0).continue_()
+    page.unroute("**/api/settings")
+    expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
+    expect(name_field).to_have_value("Unsaved connection")
+    # Removing the package remotely must not unmount the open editor.
+    status["packages"].pop()
+    with page.expect_response("**/api/settings"):
+        pass
+    expect(name_field).to_have_value("Unsaved connection")
     page.get_by_role("link", name="Screens", exact=True).click()
     expect(page.get_by_role("alertdialog")).to_be_visible()
     page.get_by_role("button", name="Keep editing").click()
@@ -229,6 +331,16 @@ with sync_playwright() as p:
     )
     page.get_by_role("link", name="Cancel", exact=True).click()
     page.wait_for_url(base + "/connections")
+
+    visit(page, "/settings/extensions")
+    search = page.get_by_role("searchbox")
+    search.fill("unmatched-package")
+    release_url = page.get_by_role("textbox", name="Release URL", exact=True)
+    release_url.fill("https://example.com/unfinished")
+    with page.expect_response("**/api/extensions"):
+        pass
+    expect(search).to_have_value("unmatched-package")
+    expect(release_url).to_have_value("https://example.com/unfinished")
 
     # Both locales and palettes, narrow resource/gallery layouts, real shared styles.
     for locale, theme in [("en", "night"), ("ru", "day")]:

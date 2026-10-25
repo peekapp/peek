@@ -208,7 +208,8 @@ export function Extensions({
     id: string;
     packages: { manifest: Manifest; sha256: string }[];
   } | null>(null);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [profiles, setProfiles] = useState<Profile[] | null>(null);
+  const [profilesError, setProfilesError] = useState("");
   const router = useRouter();
   const section = kind === "scenario" ? "scenarios" : "connections";
   const createHref = (m: Manifest) =>
@@ -220,32 +221,46 @@ export function Extensions({
   }
   useEffect(() => {
     let active = true;
-    async function load() {
+    let statusLoaded = false;
+    async function loadStatus() {
       try {
-        const [r, s] = await Promise.all([
-          fetch("/api/extensions", { cache: "no-store" }),
-          fetch("/api/settings", { cache: "no-store" }),
-        ]);
-        if (!r.ok || !s.ok) throw new Error("extensions-unavailable");
-        const [status, settings] = await Promise.all([r.json(), s.json()]);
+        const response = await fetch("/api/extensions", { cache: "no-store" });
+        if (!response.ok) throw new Error("extensions-unavailable");
+        const status = await response.json();
         if (active) {
+          statusLoaded = true;
           setData(status);
-          setProfiles(settings.profiles);
           setLoadError("");
         }
       } catch (e) {
         if (active) setLoadError(String(e));
       }
     }
-    void load();
+    async function loadProfiles() {
+      try {
+        const response = await fetch("/api/settings", { cache: "no-store" });
+        if (!response.ok) throw new Error("profiles-unavailable");
+        const settings = await response.json();
+        if (active) {
+          setProfiles(settings.profiles);
+          setProfilesError("");
+        }
+      } catch (e) {
+        if (active) setProfilesError(String(e));
+      }
+    }
+    void loadStatus();
+    void loadProfiles();
+    // Keep an open editor stable if its record or schema changes elsewhere.
     const timer = setInterval(() => {
-      if (active) void load();
+      if (!itemId || !statusLoaded) void loadStatus();
+      void loadProfiles();
     }, 3000);
     return () => {
       active = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [itemId]);
   async function perform(fn: () => Promise<unknown>) {
     setBusy(true);
     setError("");
@@ -276,7 +291,18 @@ export function Extensions({
           </Alert>
         ) : null}
         {!data ? (
-          <LoadingState>{t("Loading…", "Загрузка…")}</LoadingState>
+          <>
+            <EditorHeader
+              backHref={`/${section}`}
+              backLabel={t("Back to list", "Назад к списку")}
+              title={t("Configure", "Настроить")}
+            />
+            {!loadError ? (
+              <LoadingState layout="editor">
+                {t("Loading…", "Загрузка…")}
+              </LoadingState>
+            ) : null}
+          </>
         ) : !manifest || (itemId !== "new" && !item) ? (
           <p>
             {t(
@@ -291,6 +317,7 @@ export function Extensions({
             item={item}
             connections={data.connections}
             profiles={profiles}
+            profilesError={profilesError}
             locale={locale}
             save={async (instance) => {
               await api({ action: "save", instance });
@@ -314,18 +341,19 @@ export function Extensions({
               : t("Search extensions", "Поиск расширений")
         }
         action={
-          kind && data ? (
+          kind ? (
             <DefinitionPicker
               kind={kind}
               locale={locale}
-              packages={data.packages}
+              packages={data?.packages ?? []}
+              disabled={!data}
             />
           ) : null
         }
       />
-      {error || loadError ? (
+      {error || loadError || profilesError ? (
         <Alert variant="destructive">
-          <AlertDescription role="alert">{error || loadError}</AlertDescription>
+          <AlertDescription role="alert">{error || loadError || profilesError}</AlertDescription>
         </Alert>
       ) : null}
       {data && !data.runtime.ready ? (
@@ -685,8 +713,7 @@ export function Extensions({
                   </>
                 }
               >
-                {profiles
-                  .filter((p) => p.id === i.profile_id)
+                {profiles?.filter((p) => p.id === i.profile_id)
                   .map((p) => (
                     <ProfileLabel key={p.id} profile={p} locale={locale} />
                   ))}
@@ -749,13 +776,15 @@ function InstanceEditor({
   item,
   connections,
   profiles,
+  profilesError,
   locale,
   save,
 }: {
   manifest: Manifest;
   item?: Item;
   connections: Status["connections"];
-  profiles: Profile[];
+  profiles: Profile[] | null;
+  profilesError: string;
   locale: "en" | "ru";
   save: (v: unknown) => Promise<void>;
 }) {
@@ -867,13 +896,19 @@ function InstanceEditor({
               />
             </SettingsField>
             <SettingsField label={t("Profile", "Профиль")}>
-              <SettingsSelect value={profile} onValueChange={setProfile}>
-                {profiles.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <ProfileLabel profile={p} locale={locale} />
-                  </SelectItem>
-                ))}
-              </SettingsSelect>
+              {profiles ? (
+                <SettingsSelect value={profile} onValueChange={setProfile}>
+                  {profiles.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <ProfileLabel profile={p} locale={locale} />
+                    </SelectItem>
+                  ))}
+                </SettingsSelect>
+              ) : profilesError ? (
+                <ErrorState>{profilesError}</ErrorState>
+              ) : (
+                <LoadingState layout="fields">{t("Loading profiles…", "Загрузка профилей…")}</LoadingState>
+              )}
             </SettingsField>
             <SettingsField label={t("Enabled", "Включено")}>
               <Checkbox

@@ -32,6 +32,7 @@ import type { Screen, ScreenConfig } from "@peek/core/screens";
 import { type Profile } from "@peek/core/profiles";
 import { ProfileLabel } from "../profile-label";
 import {
+  LoadingState,
   SettingsToolbar,
   SettingsCollection,
   matchesSearch,
@@ -89,14 +90,16 @@ export function ScreenList({
   screens,
   profiles,
   locale,
+  error = false,
 }: {
-  screens: Screen[];
+  screens?: Screen[];
+  error?: boolean;
   profiles: Profile[];
   locale: Locale;
 }) {
   const t = messages(locale);
   const [query, setQuery] = useState("");
-  const filtered = screens.filter((screen) =>
+  const filtered = screens?.filter((screen) =>
     matchesSearch(query, screen.name, screen.id),
   );
   return (
@@ -111,8 +114,9 @@ export function ScreenList({
           </Button>
         }
       />
+      {!screens && !error ? <LoadingState>{t.loading}</LoadingState> : null}
       <SettingsGrid>
-        {filtered.map((screen) => (
+        {filtered?.map((screen) => (
           <SettingsCard
             key={screen.id}
             title={
@@ -151,19 +155,19 @@ export function ScreenList({
                 ? t.allProfiles
                 : screen.profileIds.length
                   ? profiles
-                      .filter((p) => screen.profileIds.includes(p.id))
-                      .map((p) => (
-                        <ProfileLabel key={p.id} profile={p} locale={locale} />
-                      ))
+                    .filter((p) => screen.profileIds.includes(p.id))
+                    .map((p) => (
+                      <ProfileLabel key={p.id} profile={p} locale={locale} />
+                    ))
                   : t.noScreenProfiles}
             </div>
           </SettingsCard>
         ))}
       </SettingsGrid>
-      {screens.length > 0 && !filtered.length ? (
+      {screens && screens.length > 0 && !filtered?.length ? (
         <SearchEmpty locale={locale} />
       ) : null}
-      {!screens.length ? (
+      {screens && !screens.length ? (
         <SettingsEmpty
           title={t.emptyScreens}
           description={t.screensDescription}
@@ -175,11 +179,13 @@ export function ScreenList({
 export function ScreenEditor({
   screen,
   profiles,
+  profilesLoading = false,
   locale,
   refresh,
 }: {
   screen?: Screen;
   profiles: Profile[];
+  profilesLoading?: boolean;
   locale: Locale;
   refresh: () => Promise<void>;
 }) {
@@ -320,6 +326,9 @@ export function ScreenEditor({
                     <FieldDescription>{t.allProfilesHint}</FieldDescription>
                   </FieldContent>
                 </Field>
+                {profilesLoading ? (
+                  <LoadingState layout="fields">{t.loading}</LoadingState>
+                ) : null}
                 <FieldGroup className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   {profiles.map((profile) => (
                     <Field
@@ -340,8 +349,8 @@ export function ScreenEditor({
                               checked === true
                                 ? [...config.profileIds, profile.id]
                                 : config.profileIds.filter(
-                                    (value) => value !== profile.id,
-                                  ),
+                                  (value) => value !== profile.id,
+                                ),
                           })
                         }
                       />
@@ -412,12 +421,12 @@ export function ScreenEditor({
                     ? t.allProfiles
                     : selectedProfiles.length
                       ? selectedProfiles.map((profile) => (
-                          <ProfileLabel
-                            key={profile.id}
-                            profile={profile}
-                            locale={locale}
-                          />
-                        ))
+                        <ProfileLabel
+                          key={profile.id}
+                          profile={profile}
+                          locale={locale}
+                        />
+                      ))
                       : t.noScreenProfiles}
                 </p>
               </CardDescription>

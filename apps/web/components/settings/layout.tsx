@@ -1,3 +1,4 @@
+import { Skeleton } from "../ui/skeleton";
 import { Input } from "../ui/input";
 import { SearchIcon } from "lucide-react";
 import type { Locale } from "@peek/core/i18n";
@@ -101,7 +102,9 @@ export function SearchEmpty({ locale }: { locale: Locale }) {
 }
 export function SettingsGrid({ children }: { children: ReactNode }) {
   return (
-    <div className="grid items-stretch gap-6 empty:hidden md:grid-cols-2">{children}</div>
+    <div className="grid items-stretch gap-6 empty:hidden md:grid-cols-2">
+      {children}
+    </div>
   );
 }
 export function SettingsCard({
@@ -301,10 +304,40 @@ export function FormFeedback({
     />
   );
 }
-export function LoadingState({ children }: { children: ReactNode }) {
+export function LoadingState({
+  children,
+  layout = "collection",
+}: {
+  children: ReactNode;
+  layout?: "collection" | "editor" | "fields";
+}) {
+  const placeholder = (
+    <div aria-hidden="true" className="flex flex-col gap-4">
+      <Skeleton className="h-5 w-1/3" />
+      <Skeleton className="h-4 w-2/3" />
+      <Skeleton className="h-24 w-full" />
+    </div>
+  );
   return (
-    <div role="status" className="py-8 text-sm text-muted-foreground">
-      {children}
+    <div role="status">
+      <span className="sr-only">{children}</span>
+      {layout === "collection" ? (
+        <SettingsGrid>
+          <Card>
+            <CardContent>{placeholder}</CardContent>
+          </Card>
+          <Card>
+            <CardContent>{placeholder}</CardContent>
+          </Card>
+        </SettingsGrid>
+      ) : layout === "fields" ? (
+        <div aria-hidden="true" className="grid gap-5 sm:grid-cols-2">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-full" />
+        </div>
+      ) : (
+        placeholder
+      )}
     </div>
   );
 }

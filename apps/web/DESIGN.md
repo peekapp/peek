@@ -91,3 +91,17 @@ API fixtures for its UI and report that limitation separately.
 Page titles live in AppShell’s top bar at normal text size. Collection pages use
 SettingsToolbar instead of introductory headings/descriptions. SettingsPage uses
 16px padding on mobile and 24px on desktop, with no centered width cap.
+
+Loading never replaces collection toolbars or editor back navigation. Render these
+controls immediately; keep catalog-dependent actions visible but disabled until ready.
+Use LoadingState (shadcn Skeleton) for pending collections and its editor layout for
+forms, with localized screen-reader status text. Keep existing content during refresh
+and replace initial skeletons with error feedback when a request fails.
+
+New screen/profile editors render from defaults immediately and keep their draft mounted
+when data arrives. Only fetched profile choices use the fields layout of LoadingState.
+
+Editors keep their loaded record and schema stable until save or navigation; do not
+poll these out from under a draft. Catalog/status lists and independent profile choices
+may refresh without remounting editors or resetting search and installation inputs.
+Load extension schemas and profile choices independently.
