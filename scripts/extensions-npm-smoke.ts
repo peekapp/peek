@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile, cp, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 const root = resolve("."),
@@ -45,7 +45,7 @@ try {
       "node",
       "--input-type=module",
       "-e",
-      "import {defineScenario} from '@peekapp/sdk/scenario'; import {defineIntegration} from '@peekapp/sdk/integration'; if(!defineScenario({evaluate(){}})||!defineIntegration({run(){}})) process.exit(1)",
+      "import {defineScenario} from '@peekapp/sdk/scenario'; import {defineConnection} from '@peekapp/sdk/connection'; import {eventsContract} from '@peekapp/sdk/contracts/events'; if(!defineScenario({evaluate(){}})||!defineConnection({run(){}})||eventsContract.id!=='peek/events') process.exit(1)",
     ],
     dir,
   );
@@ -81,6 +81,47 @@ try {
   );
   if (!(await readFile(join(dir, "sample.peek"))).length)
     throw new Error("empty-package");
+  const cli = join(dir, "node_modules/@peekapp/cli/dist/cli.mjs");
+  await run(["node", cli, "init", "connection", "connection"], dir);
+  const m = JSON.parse(
+    await readFile(join(dir, "connection/peek.json"), "utf8"),
+  );
+  if (m.format !== 2 || m.kind !== "connection")
+    throw new Error("incorrect-scaffold");
+  await run(["node", cli, "check", "connection"], dir);
+  await run(["node", cli, "pack", "connection", "connection.peek"], dir);
+  await cp(join(root, "extensions/examples"), join(dir, "examples"), {
+    recursive: true,
+  });
+  for (const name of [
+    "connection",
+    "scenario",
+    "events-connection",
+    "events-scenario",
+  ])
+    await run(
+      ["node", cli, "pack", `examples/${name}`, `${name}-example.peek`],
+      dir,
+    );
+  await mkdir(join(dir, "empty-types"));
+  await run(
+    [
+      join(root, "node_modules/.bin/tsc"),
+      "--noEmit",
+      "--strict",
+      "--skipLibCheck",
+      "--target",
+      "ES2022",
+      "--module",
+      "NodeNext",
+      "--typeRoots",
+      join(dir, "empty-types"),
+      "sample/index.ts",
+      "connection/index.ts",
+      "examples/events-connection/index.ts",
+    ],
+    dir,
+  );
   console.log("SDK and CLI work in a clean external npm project.");
 } finally {
   await rm(dir, { recursive: true, force: true });

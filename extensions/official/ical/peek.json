@@ -1,9 +1,9 @@
 {
-  "format": 1,
+  "format": 2,
   "sdk": "^0.1.0",
   "id": "peek/ical",
-  "version": "0.1.0",
-  "kind": "integration",
+  "version": "0.2.0",
+  "kind": "connection",
   "name": "iCalendar",
   "description": "Read events from a private HTTPS calendar feed.",
   "author": "Peek",
@@ -27,7 +27,10 @@
         "maximum": 86400
       }
     },
-    "required": ["timeZone", "intervalSeconds"]
+    "required": [
+      "timeZone",
+      "intervalSeconds"
+    ]
   },
   "permissions": {
     "internet": true
@@ -42,48 +45,128 @@
         "maxLength": 4096
       }
     },
-    "required": ["url"],
+    "required": [
+      "url"
+    ],
     "additionalProperties": false
   },
   "provides": {
     "events": {
-      "id": "peek/calendar-events",
+      "id": "peek/events",
       "version": "1.0.0",
       "schema": {
-        "type": "array",
-        "maxItems": 10000,
-        "items": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 2200
-            },
-            "title": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 1000
-            },
-            "startAt": {
-              "type": "integer"
-            },
-            "endAt": {
-              "type": "integer"
-            },
-            "deadlineAt": {
-              "type": "integer"
-            },
-            "allDay": {
-              "type": "boolean"
-            },
-            "location": {
-              "type": "string",
-              "maxLength": 1000
-            }
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "events"
+        ],
+        "properties": {
+          "from": {
+            "type": "integer",
+            "minimum": -8640000000000000,
+            "maximum": 8640000000000000
           },
-          "required": ["id", "title", "startAt"],
-          "additionalProperties": false
+          "to": {
+            "type": "integer",
+            "minimum": -8640000000000000,
+            "maximum": 8640000000000000
+          },
+          "events": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "title",
+                    "kind",
+                    "startAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2200
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "location": {
+                      "type": "string",
+                      "maxLength": 1000
+                    },
+                    "kind": {
+                      "enum": [
+                        "timed"
+                      ]
+                    },
+                    "startAt": {
+                      "type": "integer",
+                      "minimum": -8640000000000000,
+                      "maximum": 8640000000000000
+                    },
+                    "endAt": {
+                      "type": "integer",
+                      "minimum": -8640000000000000,
+                      "maximum": 8640000000000000
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "title",
+                    "kind",
+                    "startDate",
+                    "timeZone"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2200
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "location": {
+                      "type": "string",
+                      "maxLength": 1000
+                    },
+                    "kind": {
+                      "enum": [
+                        "all-day"
+                      ]
+                    },
+                    "startDate": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "endDate": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "timeZone": {
+                      "type": "string",
+                      "format": "time-zone",
+                      "maxLength": 100
+                    }
+                  }
+                }
+              ]
+            }
+          }
         }
       }
     }

@@ -1,8 +1,8 @@
 {
-  "format": 1,
+  "format": 2,
   "sdk": "^0.1.0",
   "id": "peek/meetings",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "kind": "scenario",
   "name": "Meetings",
   "description": "Show upcoming meetings from selected calendars.",
@@ -40,14 +40,140 @@
         "maxLength": 200
       }
     },
-    "required": ["leadMinutes", "urgentMinutes", "retainMinutes", "filterText"]
+    "required": [
+      "leadMinutes",
+      "urgentMinutes",
+      "retainMinutes",
+      "filterText"
+    ]
   },
   "permissions": {},
   "inputs": {
     "events": {
-      "contract": "peek/calendar-events",
+      "contract": "peek/events",
       "version": "^1.0.0",
       "multiple": true
     }
-  }
+  },
+  "contracts": [
+    {
+      "id": "peek/events",
+      "version": "1.0.0",
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "events"
+        ],
+        "properties": {
+          "from": {
+            "type": "integer",
+            "minimum": -8640000000000000,
+            "maximum": 8640000000000000
+          },
+          "to": {
+            "type": "integer",
+            "minimum": -8640000000000000,
+            "maximum": 8640000000000000
+          },
+          "events": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "title",
+                    "kind",
+                    "startAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2200
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "location": {
+                      "type": "string",
+                      "maxLength": 1000
+                    },
+                    "kind": {
+                      "enum": [
+                        "timed"
+                      ]
+                    },
+                    "startAt": {
+                      "type": "integer",
+                      "minimum": -8640000000000000,
+                      "maximum": 8640000000000000
+                    },
+                    "endAt": {
+                      "type": "integer",
+                      "minimum": -8640000000000000,
+                      "maximum": 8640000000000000
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "title",
+                    "kind",
+                    "startDate",
+                    "timeZone"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2200
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "location": {
+                      "type": "string",
+                      "maxLength": 1000
+                    },
+                    "kind": {
+                      "enum": [
+                        "all-day"
+                      ]
+                    },
+                    "startDate": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "endDate": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "timeZone": {
+                      "type": "string",
+                      "format": "time-zone",
+                      "maxLength": 100
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
 }

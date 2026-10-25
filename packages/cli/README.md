@@ -11,7 +11,7 @@ npx peek check
 npx peek pack
 ```
 
-Use `peek init integration DIRECTORY` for an integration. The project has
+Use `peek init connection DIRECTORY` for a connection. The project has
 `peek.json` (manifest) and `index.ts` (default SDK definition). `pack` bundles
 JavaScript dependencies into a `.peek` archive; it never runs extension code.
 Native addons and dependencies requiring runtime-discovered files cannot be
@@ -19,7 +19,7 @@ included in this single-JavaScript-bundle format. Use libraries that can be bund
 for Node.js 24. Installation never runs npm lifecycle scripts on the Peek host.
 
 `peek bundle OUTPUT.peek A.peek B.peek` combines separately identified packages
-for convenient scenario + integration delivery. Dependencies retain independent
+for convenient scenario + connection delivery. Dependencies retain independent
 IDs/versions and can be reused by other scenarios.
 
 `peek preview PACKAGE.peek CONTEXT.json` runs through the same Docker isolation

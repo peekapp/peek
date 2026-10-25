@@ -1,8 +1,8 @@
 {
   "name": "@peekapp/sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
-  "description": "Contracts for Peek scenarios and integrations",
+  "description": "Contracts for Peek scenarios and connections",
   "files": [
     "dist",
     "README.md"
@@ -16,9 +16,13 @@
       "types": "./dist/scenario.d.ts",
       "default": "./dist/scenario.js"
     },
-    "./integration": {
-      "types": "./dist/integration.d.ts",
-      "default": "./dist/integration.js"
+    "./connection": {
+      "types": "./dist/connection.d.ts",
+      "default": "./dist/connection.js"
+    },
+    "./contracts/events": {
+      "types": "./dist/contracts/events.d.ts",
+      "default": "./dist/contracts/events.js"
     }
   },
   "scripts": {

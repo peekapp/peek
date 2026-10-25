@@ -46,13 +46,13 @@ import {
 import { ProfileLabel } from "../profile-label";
 import type { Profile } from "@peek/core/profiles";
 import { DeleteButton, ConfirmAction } from "./delete-button";
-import { compatible } from "@peek/extensions/compatibility";
+import { acceptsContract } from "@peek/extensions/compatibility";
 import { numericSetting } from "./numeric-setting";
 type Binding = { connectionId: string; dataset: string };
 type Item = {
   id: string;
   package_id: string;
-  kind: "scenario" | "integration";
+  kind: "scenario" | "connection";
   name: string;
   profile_id: string;
   enabled: number;
@@ -197,7 +197,7 @@ export function Extensions({
   initialData?: Status | null;
   initialProfiles?: Profile[] | null;
   locale: "en" | "ru";
-  kind?: "scenario" | "integration";
+  kind?: "scenario" | "connection";
   itemId?: string;
   packageId?: string;
 }) {
@@ -341,7 +341,7 @@ export function Extensions({
         placeholder={
           kind === "scenario"
             ? t("Search scenarios", "Поиск сценариев")
-            : kind === "integration"
+            : kind === "connection"
               ? t("Search connections", "Поиск подключений")
               : t("Search extensions", "Поиск расширений")
         }
@@ -446,8 +446,8 @@ export function Extensions({
               </CardTitle>
               <CardDescription>
                 {t(
-                  "These packages have not been reviewed by Peek. An integration can use the permissions of the account you connect to it.",
-                  "Эти пакеты не проверены Peek. Интеграция сможет использовать права подключённого к ней аккаунта.",
+                  "These packages have not been reviewed by Peek. A connection can use the permissions of the account you connect to it.",
+                  "Эти пакеты не проверены Peek. Подключение сможет использовать права подключённого к ней аккаунта.",
                 )}
               </CardDescription>
             </CardHeader>
@@ -470,12 +470,12 @@ export function Extensions({
                         )
                         : m.permissions.internet
                           ? t(
-                            "Integration: public internet access.",
-                            "Интеграция: доступ к публичному интернету.",
+                            "Connection: public internet access.",
+                            "Подключение: доступ к публичному интернету.",
                           )
                           : t(
-                            "Integration: no public internet access.",
-                            "Интеграция: без публичного интернета.",
+                            "Connection: no public internet access.",
+                            "Подключение: без публичного интернета.",
                           )}
                     </p>
                     {m.permissions.local?.map((x) => (
@@ -829,8 +829,7 @@ function InstanceEditor({
       Object.entries(connection.contracts)
         .filter(
           ([, contract]) =>
-            contract.id === requirement.contract &&
-            compatible(contract.version, requirement.version),
+            acceptsContract(m, requirement, contract),
         )
         .map(([dataset]) => ({
           connectionId: connection.id,

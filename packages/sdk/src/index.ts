@@ -25,11 +25,11 @@ export type Dependency = {
   sha256?: string;
 };
 export type Manifest = {
-  format: 1;
+  format: 2;
   sdk: "^0.1.0";
   id: string;
   version: string;
-  kind: "scenario" | "integration";
+  kind: "scenario" | "connection";
   name: string;
   description: string;
   author: string;
@@ -41,6 +41,8 @@ export type Manifest = {
     local?: { address: string; port: number }[];
   };
   dependencies?: Dependency[];
+  /** Canonical definitions accepted by inputs; producers embed definitions in provides. */
+  contracts?: Contract[];
   provides?: Record<string, Contract>;
   inputs?: Record<
     string,

@@ -31,11 +31,11 @@ await until(async () => (await status()).runtime.ready);
 if (process.argv[2] !== "verify") {
   const source: ExtensionPackage = {
     manifest: {
-      format: 1,
+      format: 2,
       sdk: "^0.1.0",
       id: "ci/source",
       version: "0.1.0",
-      kind: "integration",
+      kind: "connection",
       name: "CI source",
       description: "Disposable smoke test",
       author: "Peek CI",
@@ -57,7 +57,7 @@ if (process.argv[2] !== "verify") {
   };
   const scenario: ExtensionPackage = {
     manifest: {
-      format: 1,
+      format: 2,
       sdk: "^0.1.0",
       id: "ci/cards",
       version: "0.1.0",
@@ -68,6 +68,7 @@ if (process.argv[2] !== "verify") {
       entry: "index.mjs",
       settings: { type: "object" },
       permissions: {},
+      contracts: [source.manifest.provides!.items],
       inputs: { items: { contract: "ci/items", version: "^1.0.0" } },
       dependencies: [{ id: "ci/source", version: "^0.1.0" }],
     },

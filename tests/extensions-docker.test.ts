@@ -2,20 +2,20 @@ import { expect, test } from "bun:test";
 import { readiness, runContainer } from "../apps/extension-runner/src/docker";
 import type { ExtensionPackage } from "../packages/extensions/src/archive";
 const check = process.env.PEEK_TEST_DOCKER === "1" ? test : test.skip;
-function pkg(code: string, integration = false): ExtensionPackage {
+function pkg(code: string, connection = false): ExtensionPackage {
   return {
     manifest: {
-      format: 1,
+      format: 2,
       sdk: "^0.1.0",
       id: "test/isolation",
       version: "0.1.0",
-      kind: integration ? "integration" : "scenario",
+      kind: connection ? "connection" : "scenario",
       name: "Isolation",
       description: "Test",
       author: "Tests",
       entry: "index.mjs",
       settings: { type: "object" },
-      permissions: integration ? { internet: true } : {},
+      permissions: connection ? { internet: true } : {},
     },
     files: { "index.mjs": code },
   };
@@ -50,7 +50,7 @@ check(
   30000,
 );
 check(
-  "Docker: successful one-shot results validate at completion and integrations publish live",
+  "Docker: successful one-shot results validate at completion and connections publish live",
   async () => {
     const invalid = await runContainer(
       pkg("export default {evaluate(){return {cards:[]}}}"),
@@ -64,12 +64,12 @@ check(
     const publication = new Promise<void>((resolve) => {
       published = resolve;
     });
-    const integration = pkg(
+    const connection = pkg(
       "export default {async run({publish}) {await publish({datasets:{items:[]}});setInterval(()=>{},1000)}}",
       true,
     );
-    integration.manifest.permissions = {};
-    const live = await runContainer(integration, {}, () => published());
+    connection.manifest.permissions = {};
+    const live = await runContainer(connection, {}, () => published());
     const completion = live.done.catch(() => {});
     try {
       await Promise.race([
@@ -149,7 +149,7 @@ check(
   15000,
 );
 check(
-  "Docker: runner installs, executes and recovers a custom integration/scenario pair",
+  "Docker: live publications do not starve slow scenarios, and connections recover on restart",
   async () => {
     const { mkdtempSync, rmSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");
@@ -182,9 +182,9 @@ check(
       });
     try {
       const source = pkg(
-        `export default {run({state}){return {datasets:{items:['Runner verified']},state:{count:(state?.count??0)+1},nextRunAt:null}}}`,
+        `export default {async run({state,publish}){const count=(state?.count??0)+1; for (;;) {await publish({datasets:{items:['Runner verified']},state:{count},nextRunAt:null}); await new Promise(r=>setTimeout(r,200));}}}`,
       );
-      source.manifest.kind = "integration";
+      source.manifest.kind = "connection";
       source.manifest.id = "test/source";
       source.manifest.provides = {
         items: {
@@ -194,12 +194,13 @@ check(
         },
       };
       const scenario = pkg(
-        `export default {evaluate({inputs,now}){return {cards:inputs.items.flatMap(s=>s.data.map((title,index)=>({id:String(index),title,visibleFrom:now,targetAt:now+60000,expiresAt:now+60000}))),nextRunAt:null}}}`,
+        `export default {async evaluate({inputs,now}){await new Promise(r=>setTimeout(r,3000));return {cards:inputs.items.flatMap(s=>s.data.map((title,index)=>({id:String(index),title,visibleFrom:now,targetAt:now+60000,expiresAt:now+60000}))),nextRunAt:null}}}`,
       );
       scenario.manifest.id = "test/cards";
       scenario.manifest.inputs = {
         items: { contract: "test/items", version: "^1.0.0" },
       };
+      scenario.manifest.contracts = [source.manifest.provides.items];
       scenario.manifest.dependencies = [
         { id: "test/source", version: "^0.1.0" },
       ];
@@ -254,8 +255,9 @@ check(
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const { openStore } = await import("../packages/db/src");
-    const { officialStore, connection, scenario, packages } =
-      await import("./helpers/official");
+    const { officialStore, connection, scenario, packages } = await import(
+      "./helpers/official"
+    );
     const dir = mkdtempSync(join(tmpdir(), "peek-official-docker-")),
       path = join(dir, "db.sqlite");
     const main = openStore(path);
@@ -264,15 +266,15 @@ check(
     const now = Date.UTC(2026, 9, 25, 5, 55);
     try {
       const c = connection(store);
-      const integration = structuredClone(
+      const sourcePackage = structuredClone(
         packages.find((p) => p.manifest.id === "peek/ical")!,
       );
       const body = readFileSync("tests/fixtures/calendar.ics", "utf8");
       // Deterministic transport fixture only: the CLI-produced SDK implementation
       // and its bundled node-ical/Luxon code below are unchanged. No public service
       // or calendar account is needed for this runtime regression test.
-      integration.manifest.permissions = {};
-      integration.files["index.mjs"] =
+      sourcePackage.manifest.permissions = {};
+      sourcePackage.files["index.mjs"] =
         `
 import __https from 'node:https';
 import __dns from 'node:dns/promises';
@@ -289,22 +291,23 @@ __https.request = (url, options, callback) => {
   return req;
 };
 __sync();
-` + integration.files["index.mjs"];
+` + sourcePackage.files["index.mjs"];
       const i = store.instance(c)!;
       const run = await runContainer(
-        integration,
+        sourcePackage,
         { ...store.context(i), now },
         (result) => store.publish(i, result),
       );
       await run.done;
-      const events = JSON.parse(store.instance(c)!.snapshots).events.data;
+      const events = JSON.parse(store.instance(c)!.snapshots).events.data
+        .events;
       expect(
         events.find((e: { id: string }) => e.id.startsWith("floating:"))
           .startAt,
       ).toBe(Date.UTC(2026, 9, 25, 6));
       expect(
-        events.find((e: { allDay?: boolean }) => e.allDay).deadlineAt,
-      ).toBe(Date.UTC(2026, 9, 25, 21) - 1);
+        events.find((e: { kind: string }) => e.kind === "all-day").startDate,
+      ).toBe("2026-10-25");
       expect(JSON.parse(store.instance(c)!.state)).toBeNull();
       for (const kind of ["meetings", "deadlines"]) {
         const id = scenario(store, [c], "shared", kind),

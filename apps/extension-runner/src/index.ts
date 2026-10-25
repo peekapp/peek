@@ -8,7 +8,7 @@ main.close();
 const store = openExtensions(databasePath());
 const running = new Map<
   string,
-  { generation: number; kind: "scenario" | "integration"; run: Run }
+  { generation: number; kind: "scenario" | "connection"; run: Run }
 >();
 let migration: Run | undefined;
 let stopped = false,

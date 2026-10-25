@@ -1,9 +1,9 @@
-import { defineIntegration } from "@peekapp/sdk/integration";
+import { defineConnection } from "@peekapp/sdk/connection";
 import type { Json } from "@peekapp/sdk";
 import { fetchCalendar } from "./fetch";
 import { parseCalendar } from "./parse";
 
-export default defineIntegration({
+export default defineConnection({
   async run({ settings, secrets, now, signal }) {
     const { timeZone, intervalSeconds } = settings as {
       timeZone: string;

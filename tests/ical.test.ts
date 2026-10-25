@@ -36,8 +36,10 @@ async function inZone(body = fixture) {
   return JSON.parse(output) as ReturnType<typeof parseCalendar>;
 }
 it("expands recurrence with DST, exclusions, overrides and cancelled events", async () => {
-  const events = await inZone();
-  const weekly = events.filter((e) => e.id.startsWith("weekly:"));
+  const { events } = await inZone();
+  const weekly = events
+    .filter((e) => e.kind === "timed")
+    .filter((e) => e.id.startsWith("weekly:"));
   assert.equal(weekly.length, 3);
   assert.equal(weekly[0].startAt, Date.UTC(2026, 9, 24, 8));
   assert.equal(weekly[1].startAt, Date.UTC(2026, 9, 25, 9));
@@ -46,13 +48,16 @@ it("expands recurrence with DST, exclusions, overrides and cancelled events", as
   assert.ok(!events.some((e) => e.title === "Cancelled meeting"));
 });
 it("interprets floating times in the connection timezone and all-day deadlines at local day end", async () => {
-  const events = await inZone();
+  const { events } = await inZone();
   assert.equal(
-    events.find((e) => e.id.startsWith("floating:"))!.startAt,
+    events
+      .filter((e) => e.kind === "timed")
+      .find((e) => e.id.startsWith("floating:"))!.startAt,
     Date.UTC(2026, 9, 25, 6),
   );
-  const allDay = events.find((e) => e.allDay)!;
-  assert.equal(allDay.deadlineAt, Date.UTC(2026, 9, 25, 21) - 1);
+  const allDay = events.find((e) => e.kind === "all-day")!;
+  assert.equal(allDay.startDate, "2026-10-25");
+  assert.equal(allDay.timeZone, "Europe/Moscow");
 });
 it("rejects non-calendar content and validates connection settings", () => {
   assert.throws(() => parseCalendar("<html>login page</html>", config, now));

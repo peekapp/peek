@@ -1,16 +1,25 @@
+import { acceptsContract } from "./compatibility";
 import { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
-import type { Json, Manifest, Snapshot } from "@peekapp/sdk";
+import { type Json, type Manifest, type Snapshot } from "@peekapp/sdk";
 import type { ScenarioResult } from "@peekapp/sdk/scenario";
-import type { IntegrationUpdate } from "@peekapp/sdk/integration";
+import type { ConnectionUpdate } from "@peekapp/sdk/connection";
 import { encryptSecret, decryptSecret } from "./secrets";
 import { type ExtensionPackage, packageDigest } from "./archive";
-import { compatible, validate, boundedJson, LIMITS } from "./validation";
+import {
+  compatible,
+  validate,
+  boundedJson,
+  LIMITS,
+  manifest,
+  contractDefinitions,
+  canonicalSchema,
+} from "./validation";
 export type Binding = { connectionId: string; dataset: string };
 export type Instance = {
   id: string;
   package_id: string;
-  kind: "scenario" | "integration";
+  kind: "scenario" | "connection";
   name: string;
   profile_id: string;
   settings: string;
@@ -18,6 +27,7 @@ export type Instance = {
   bindings: string;
   enabled: number;
   generation: number;
+  data_revision: number;
   state: string;
   next_run_at: number | null;
   last_success: number | null;
@@ -51,15 +61,17 @@ export function openExtensions(path: string) {
       .all();
   const instance = (id: string) =>
     db
-      .query<Instance, [string]>(
-        "SELECT * FROM extension_instances WHERE id = ?",
-      )
+      .query<
+        Instance,
+        [string]
+      >("SELECT * FROM extension_instances WHERE id = ?")
       .get(id);
   const getPackage = (id: string) => {
     const row = db
-      .query<Installed, [string]>(
-        "SELECT * FROM extension_packages WHERE id = ?",
-      )
+      .query<
+        Installed,
+        [string]
+      >("SELECT * FROM extension_packages WHERE id = ?")
       .get(id);
     if (!row) throw new Error("package-not-installed");
     return JSON.parse(row.payload) as ExtensionPackage;
@@ -88,7 +100,7 @@ export function openExtensions(path: string) {
     contracts: Record<string, { id: string; version: string }>;
   }[] {
     return instances()
-      .filter((i) => i.kind === "integration")
+      .filter((i) => i.kind === "connection")
       .map((i) => ({
         id: i.id,
         name: i.name,
@@ -124,16 +136,39 @@ export function openExtensions(path: string) {
         const c = connections.find((c) => c.id === b.connectionId)?.contracts[
           b.dataset
         ];
-        if (
-          !c ||
-          c.id !== input.contract ||
-          !compatible(c.version, input.version)
-        )
+        if (!c || !acceptsContract(m, input, c))
           throw new Error("incompatible-connection");
       }
     }
   }
+  function checkContracts(packages: ExtensionPackage[], persist = false) {
+    const definitions = new Map<string, string>();
+    for (const row of db
+      .query<
+        { id: string; version: string; schema: string },
+        []
+      >("SELECT * FROM extension_contracts")
+      .all())
+      definitions.set(`${row.id}@${row.version}`, row.schema);
+    for (const p of packages) {
+      manifest(p.manifest);
+      for (const c of contractDefinitions(p.manifest)) {
+        const key = `${c.id}@${c.version}`,
+          schema = canonicalSchema(c.schema);
+        if (definitions.has(key) && definitions.get(key) !== schema)
+          throw new Error(`contract-definition-conflict: ${key}`);
+        definitions.set(key, schema);
+        if (persist)
+          db.run("INSERT OR IGNORE INTO extension_contracts VALUES (?,?,?)", [
+            c.id,
+            c.version,
+            schema,
+          ]);
+      }
+    }
+  }
   function validateSet(packages: ExtensionPackage[]) {
+    checkContracts(packages);
     const selected = new Map(packages.map((p) => [p.manifest.id, p]));
     for (const p of packages)
       for (const d of p.manifest.dependencies ?? []) {
@@ -178,9 +213,10 @@ export function openExtensions(path: string) {
       [Date.now() - 3600000, Date.now() - 7 * 86400000],
     );
     const count = db
-      .query<{ n: number }, []>(
-        "SELECT COUNT(*) n FROM extension_operations WHERE status IN ('review','pending')",
-      )
+      .query<
+        { n: number },
+        []
+      >("SELECT COUNT(*) n FROM extension_operations WHERE status IN ('review','pending')")
       .get()!.n;
     if (count >= 10) throw new Error("too-many-pending-installations");
     const id = randomUUID();
@@ -267,15 +303,16 @@ export function openExtensions(path: string) {
     },
     recover() {
       db.run(
-        "UPDATE extension_instances SET generation=generation+1,next_run_at=? WHERE kind='integration' AND enabled=1",
+        "UPDATE extension_instances SET generation=generation+1,next_run_at=? WHERE kind='connection' AND enabled=1",
         [Date.now()],
       );
     },
     status() {
       const runtime = db
-        .query<{ heartbeat: number; error: string | null }, []>(
-          "SELECT * FROM extension_runtime WHERE id=1",
-        )
+        .query<
+          { heartbeat: number; error: string | null },
+          []
+        >("SELECT * FROM extension_runtime WHERE id=1")
         .get();
       return {
         packages: installed().map((r) => ({
@@ -304,9 +341,10 @@ export function openExtensions(path: string) {
         })),
         connections: allConnections(),
         operations: db
-          .query<Operation, []>(
-            "SELECT id,kind,status,'{}' as payload,created_at,error FROM extension_operations ORDER BY created_at DESC LIMIT 20",
-          )
+          .query<
+            Operation,
+            []
+          >("SELECT id,kind,status,'{}' as payload,created_at,error FROM extension_operations ORDER BY created_at DESC LIMIT 20")
           .all(),
         runtime: {
           ready:
@@ -335,9 +373,10 @@ export function openExtensions(path: string) {
     },
     pending() {
       return db
-        .query<Operation, []>(
-          "SELECT * FROM extension_operations WHERE status='pending' ORDER BY created_at LIMIT 1",
-        )
+        .query<
+          Operation,
+          []
+        >("SELECT * FROM extension_operations WHERE status='pending' ORDER BY created_at LIMIT 1")
         .get();
     },
     fail(id: string, error: string) {
@@ -402,11 +441,23 @@ export function openExtensions(path: string) {
         if (!payload.packages.length) {
           for (const id of payload.roots)
             db.run("UPDATE extension_packages SET explicit=1 WHERE id=?", [id]);
-          db.run("UPDATE extension_operations SET status='complete' WHERE id=?", [
-            op.id,
-          ]);
+          db.run(
+            "UPDATE extension_operations SET status='complete' WHERE id=?",
+            [op.id],
+          );
           return;
         }
+        checkContracts(
+          [
+            ...installed()
+              .filter(
+                (r) => !payload.packages.some((p) => p.manifest.id === r.id),
+              )
+              .map((r) => JSON.parse(r.payload)),
+            ...payload.packages,
+          ],
+          true,
+        );
         // Only one coherent rollback point; ciphertext stays on the server.
         db.run("INSERT OR REPLACE INTO extension_history VALUES (1,?)", [
           JSON.stringify({ packages: installed(), instances: instances() }),
@@ -419,6 +470,18 @@ export function openExtensions(path: string) {
               settings: JSON.parse(i.settings),
               state: JSON.parse(i.state),
             };
+            if (p.manifest.secrets) {
+              try {
+                validate(
+                  p.manifest.secrets,
+                  i.secret ? JSON.parse(decryptSecret(i.secret, path)) : {},
+                );
+              } catch {
+                throw new Error(
+                  `credentials-incompatible: ${i.name}; update saved credentials before upgrading ${p.manifest.id}`,
+                );
+              }
+            }
             validate(p.manifest.settings, next.settings);
             boundedJson(next.settings, LIMITS.state);
             boundedJson(next.state, LIMITS.state);
@@ -463,9 +526,10 @@ export function openExtensions(path: string) {
     rollback() {
       db.transaction(() => {
         const row = db
-          .query<{ payload: string }, []>(
-            "SELECT payload FROM extension_history WHERE id=1",
-          )
+          .query<
+            { payload: string },
+            []
+          >("SELECT payload FROM extension_history WHERE id=1")
           .get();
         if (!row) throw new Error("no-rollback");
         const old = JSON.parse(row.payload) as {
@@ -475,6 +539,10 @@ export function openExtensions(path: string) {
         // Restoring an installation is explicit and includes its configuration/state snapshot.
         if (instances().some((i) => !old.instances.some((x) => x.id === i.id)))
           throw new Error("remove-new-instances-before-rollback");
+        checkContracts(
+          old.packages.map((p) => JSON.parse(p.payload)),
+          true,
+        );
         db.run("DELETE FROM extension_packages");
         for (const p of old.packages)
           db.run("INSERT INTO extension_packages VALUES (?,?,?,?)", [
@@ -553,10 +621,17 @@ export function openExtensions(path: string) {
             const encrypted = instances().find((i) => i.secret)?.secret;
             if (encrypted) decryptSecret(encrypted, path);
           }
+          const configChanged =
+            !!old &&
+            (canonicalSchema(JSON.parse(old.settings)) !==
+              canonicalSchema(input.settings) ||
+              canonicalSchema(
+                old.secret ? JSON.parse(decryptSecret(old.secret, path)) : {},
+              ) !== canonicalSchema(secrets));
           const id = old?.id ?? `ext-${randomUUID()}`;
           db.run(
-            `INSERT INTO extension_instances VALUES (?,?,?,?,?,?,?,?,?,?,?, ?,NULL,NULL,'{}')
-          ON CONFLICT(id) DO UPDATE SET name=excluded.name,profile_id=excluded.profile_id,settings=excluded.settings,secret=excluded.secret,bindings=excluded.bindings,enabled=excluded.enabled,generation=excluded.generation,next_run_at=excluded.next_run_at,last_error=NULL,state=excluded.state,snapshots='{}'`,
+            `INSERT INTO extension_instances (id,package_id,kind,name,profile_id,settings,secret,bindings,enabled,generation,state,next_run_at,last_success,last_error,snapshots) VALUES (?,?,?,?,?,?,?,?,?,?,?, ?,NULL,NULL,?)
+          ON CONFLICT(id) DO UPDATE SET name=excluded.name,profile_id=excluded.profile_id,settings=excluded.settings,secret=excluded.secret,bindings=excluded.bindings,enabled=excluded.enabled,generation=excluded.generation,next_run_at=excluded.next_run_at,last_error=NULL,state=excluded.state,snapshots=excluded.snapshots`,
             [
               id,
               input.packageId,
@@ -570,14 +645,15 @@ export function openExtensions(path: string) {
               JSON.stringify(input.bindings ?? {}),
               input.enabled ? 1 : 0,
               (old?.generation ?? 0) + 1,
-              p.manifest.kind === "integration"
+              p.manifest.kind === "connection" && configChanged
                 ? "null"
                 : (old?.state ?? "null"),
               input.enabled ? Date.now() : null,
+              configChanged ? "{}" : (old?.snapshots ?? "{}"),
             ],
           );
           db.run("DELETE FROM cards WHERE scenario_id=?", [id]);
-          if (p.manifest.kind === "integration")
+          if (p.manifest.kind === "connection")
             for (const dependent of instances().filter(
               (x) => x.kind === "scenario",
             ))
@@ -587,12 +663,13 @@ export function openExtensions(path: string) {
                 )
                   .flat()
                   .some((b) => b.connectionId === id)
-              )
+              ) {
                 db.run("DELETE FROM cards WHERE scenario_id=?", [dependent.id]);
-          db.run(
-            "UPDATE extension_instances SET next_run_at=?,generation=generation+1 WHERE kind='scenario' AND enabled=1",
-            [Date.now()],
-          );
+                db.run(
+                  "UPDATE extension_instances SET generation=generation+1,next_run_at=CASE WHEN enabled=1 THEN ? ELSE NULL END WHERE id=?",
+                  [Date.now(), dependent.id],
+                );
+              }
           revision();
           return id;
         })
@@ -645,7 +722,7 @@ export function openExtensions(path: string) {
       ))
         inputs[name] = bindings.flatMap((b) => {
           const c = instance(b.connectionId);
-          if (c) {
+          if (c?.enabled) {
             inputBytes += Buffer.byteLength(c.snapshots);
             if (inputBytes > LIMITS.message)
               throw new Error("inputs-too-large");
@@ -659,7 +736,7 @@ export function openExtensions(path: string) {
         state: JSON.parse(i.state),
         now: Date.now(),
         inputs,
-        ...(i.kind === "integration"
+        ...(i.kind === "connection"
           ? {
               secrets: i.secret
                 ? JSON.parse(decryptSecret(i.secret, path))
@@ -670,16 +747,18 @@ export function openExtensions(path: string) {
     },
     due(now = Date.now()) {
       return db
-        .query<Instance, [number]>(
-          "SELECT * FROM extension_instances WHERE enabled=1 AND next_run_at<=? ORDER BY next_run_at",
-        )
+        .query<
+          Instance,
+          [number]
+        >("SELECT * FROM extension_instances WHERE enabled=1 AND next_run_at<=? ORDER BY next_run_at")
         .all(now);
     },
     executionStatus(id: string) {
       return db
-        .query<{ enabled: number; generation: number }, [string]>(
-          "SELECT enabled,generation FROM extension_instances WHERE id=?",
-        )
+        .query<
+          { enabled: number; generation: number },
+          [string]
+        >("SELECT enabled,generation FROM extension_instances WHERE id=?")
         .get(id);
     },
     retry(i: Instance, error: string) {
@@ -688,7 +767,7 @@ export function openExtensions(path: string) {
         [error, Date.now() + 60000, i.id, i.generation],
       );
     },
-    publish(i: Instance, result: ScenarioResult | IntegrationUpdate) {
+    publish(i: Instance, result: ScenarioResult | ConnectionUpdate) {
       return db
         .transaction(() => {
           const current = instance(i.id);
@@ -714,8 +793,8 @@ export function openExtensions(path: string) {
           )
             throw new Error("invalid-next-run");
           if (next !== null) next = Math.max(next, now + 1000);
-          if (i.kind === "integration") {
-            const data = (result as IntegrationUpdate).datasets;
+          if (i.kind === "connection") {
+            const data = (result as ConnectionUpdate).datasets;
             if (!data || typeof data !== "object" || Array.isArray(data))
               throw new Error("invalid-datasets");
             const snapshots: Record<string, unknown> = {};
@@ -724,7 +803,17 @@ export function openExtensions(path: string) {
             )) {
               if (!Object.hasOwn(data, name))
                 throw new Error("missing-dataset");
-              validate(contract.schema, data[name]);
+              const pinned = db
+                .query<
+                  { schema: string },
+                  [string, string]
+                >("SELECT schema FROM extension_contracts WHERE id=? AND version=?")
+                .get(contract.id, contract.version);
+              if (!pinned || pinned.schema !== canonicalSchema(contract.schema))
+                throw new Error(
+                  `contract-definition-conflict: ${contract.id}@${contract.version}`,
+                );
+              validate(JSON.parse(pinned.schema), data[name]);
               snapshots[name] = {
                 contract: contract.id,
                 version: contract.version,
@@ -753,7 +842,7 @@ export function openExtensions(path: string) {
                   .some((b) => b.connectionId === i.id)
               )
                 db.run(
-                  "UPDATE extension_instances SET generation=generation+1,next_run_at=? WHERE id=?",
+                  "UPDATE extension_instances SET data_revision=data_revision+1,next_run_at=? WHERE id=?",
                   [now, dependent.id],
                 );
           } else {
@@ -820,6 +909,11 @@ export function openExtensions(path: string) {
               );
             }
           }
+          if (
+            i.kind === "scenario" &&
+            current.data_revision !== i.data_revision
+          )
+            next = now;
           db.run(
             "UPDATE extension_instances SET state=?,next_run_at=?,last_success=?,last_error=NULL WHERE id=?",
             [stateValue, next, now, i.id],

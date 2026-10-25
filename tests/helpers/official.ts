@@ -56,7 +56,13 @@ export function scenario(
 }
 export function publish(store: ExtensionStore, id: string, events: Json) {
   return store.publish(store.instance(id)!, {
-    datasets: { events },
+    datasets: {
+      events: {
+        from: Date.now() - 2 * 86400000,
+        to: Date.now() + 90 * 86400000,
+        events: (events as any[]).map((e) => ({ kind: "timed", ...e })),
+      },
+    },
     nextRunAt: Date.now() + 60000,
   });
 }

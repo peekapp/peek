@@ -1,5 +1,5 @@
-import { defineIntegration } from "@peekapp/sdk/integration";
-export default defineIntegration({
+import { defineConnection } from "@peekapp/sdk/connection";
+export default defineConnection({
   run({ settings, now }) {
     return {
       datasets: {

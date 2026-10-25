@@ -1,0 +1,144 @@
+{
+  "format": 2,
+  "sdk": "^0.1.0",
+  "id": "example/events-scenario",
+  "version": "0.1.0",
+  "kind": "scenario",
+  "name": "Example Events scenario",
+  "description": "Reuse Events without a provider dependency",
+  "author": "Peek examples",
+  "entry": "index.mjs",
+  "settings": {
+    "type": "object",
+    "additionalProperties": false
+  },
+  "permissions": {},
+  "contracts": [
+    {
+      "id": "peek/events",
+      "version": "1.0.0",
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "events"
+        ],
+        "properties": {
+          "from": {
+            "type": "integer",
+            "minimum": -8640000000000000,
+            "maximum": 8640000000000000
+          },
+          "to": {
+            "type": "integer",
+            "minimum": -8640000000000000,
+            "maximum": 8640000000000000
+          },
+          "events": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "title",
+                    "kind",
+                    "startAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2200
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "location": {
+                      "type": "string",
+                      "maxLength": 1000
+                    },
+                    "kind": {
+                      "enum": [
+                        "timed"
+                      ]
+                    },
+                    "startAt": {
+                      "type": "integer",
+                      "minimum": -8640000000000000,
+                      "maximum": 8640000000000000
+                    },
+                    "endAt": {
+                      "type": "integer",
+                      "minimum": -8640000000000000,
+                      "maximum": 8640000000000000
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "title",
+                    "kind",
+                    "startDate",
+                    "timeZone"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2200
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "location": {
+                      "type": "string",
+                      "maxLength": 1000
+                    },
+                    "kind": {
+                      "enum": [
+                        "all-day"
+                      ]
+                    },
+                    "startDate": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "endDate": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "timeZone": {
+                      "type": "string",
+                      "format": "time-zone",
+                      "maxLength": 100
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "inputs": {
+    "events": {
+      "contract": "peek/events",
+      "version": "^1.0.0",
+      "multiple": true
+    }
+  }
+}

@@ -62,7 +62,7 @@ export async function runContainer(
   boundedJson(context, LIMITS.message);
   const name = `peek-ext-${randomUUID()}`,
     gateway = `${name}-net`;
-  const integration = p.manifest.kind === "integration" && action !== "migrate";
+  const connection = p.manifest.kind === "connection" && action !== "migrate";
   let hasGateway = false;
   const stop = async () => {
     await docker(["rm", "-f", name]).catch(() => {});
@@ -71,7 +71,7 @@ export async function runContainer(
   try {
     let network = "none";
     if (
-      integration &&
+      connection &&
       (p.manifest.permissions.internet || p.manifest.permissions.local?.length)
     ) {
       const networkIds = (await docker(["network", "ls", "-q"]))
@@ -149,9 +149,9 @@ export async function runContainer(
       "--network",
       network,
       "--user=1000:1000",
-      `--memory=${integration ? 512 : 128}m`,
-      `--memory-swap=${integration ? 512 : 128}m`,
-      `--pids-limit=${integration ? 64 : 32}`,
+      `--memory=${connection ? 512 : 128}m`,
+      `--memory-swap=${connection ? 512 : 128}m`,
+      `--pids-limit=${connection ? 64 : 32}`,
       "--cpus=0.5",
       "--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=32m,uid=1000,gid=1000",
       "-i",
@@ -173,7 +173,7 @@ export async function runContainer(
       last = 0;
     let result: unknown;
     const done = new Promise<void>((resolve, reject) => {
-      const timer = integration
+      const timer = connection
         ? undefined
         : setTimeout(() => {
             failed = true;
@@ -201,9 +201,9 @@ export async function runContainer(
             const msg = JSON.parse(line.toString());
             if (msg.type !== (action === "migrate" ? "migration" : "result"))
               throw new Error("invalid-protocol");
-            if (!integration && count) throw new Error("multiple-results");
+            if (!connection && count) throw new Error("multiple-results");
             count++;
-            if (integration) onResult(msg.result);
+            if (connection) onResult(msg.result);
             else result = msg.result;
           } catch {
             fail();
@@ -225,7 +225,7 @@ export async function runContainer(
             if (code !== 0 || failed || count === 0 || buffer.length)
               throw new Error("execution-failed");
             // One-shot results become visible only after the whole run succeeds.
-            if (!integration) onResult(result);
+            if (!connection) onResult(result);
           })
           .then(resolve, () => reject(new Error("execution-failed")));
       });

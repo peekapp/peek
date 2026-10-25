@@ -1,5 +1,5 @@
 {
-  "format": 1,
+  "format": 2,
   "sdk": "^0.1.0",
   "id": "example/scenario",
   "version": "0.1.0",
@@ -26,10 +26,17 @@
       "multiple": true
     }
   },
-  "dependencies": [
+  "contracts": [
     {
-      "id": "example/integration",
-      "version": "^0.1.0"
+      "id": "example/messages",
+      "version": "1.0.0",
+      "schema": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 100
+      }
     }
   ]
 }

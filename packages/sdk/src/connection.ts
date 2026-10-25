@@ -1,26 +1,26 @@
 import type { Json, Migrator } from "./index.js";
-export type IntegrationUpdate = {
+export type ConnectionUpdate = {
   datasets: Record<string, Json>;
   state?: Json;
   nextRunAt?: number | null;
 };
-export type IntegrationContext = {
+export type ConnectionContext = {
   settings: Json;
   secrets: Record<string, Json>;
   state: Json;
   now: number;
   signal: AbortSignal;
   /** Publishes a complete replacement snapshot. Resolves after local protocol output. */
-  publish(update: IntegrationUpdate): Promise<void>;
+  publish(update: ConnectionUpdate): Promise<void>;
 };
-export type IntegrationDefinition = {
+export type ConnectionDefinition = {
   /** May return a snapshot or remain alive and publish snapshots until aborted. */
   run(
-    context: IntegrationContext,
-  ): IntegrationUpdate | void | Promise<IntegrationUpdate | void>;
+    context: ConnectionContext,
+  ): ConnectionUpdate | void | Promise<ConnectionUpdate | void>;
   migrate?: Migrator;
 };
-export function defineIntegration<T extends IntegrationDefinition>(
+export function defineConnection<T extends ConnectionDefinition>(
   definition: T,
 ): T {
   return definition;

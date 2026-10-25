@@ -6,13 +6,13 @@ Peek is an MVP for a **trusted home network without accounts or pairing**. Anyon
 
 ## Architecture
 
-All integrations and scenarios are SDK packages. The official `peek/ical`, `peek/meetings`, and `peek/deadlines` packages ship with the application and use the same installation journal, manifests, settings forms, storage, scheduling, validation, and isolated Docker runner as external packages. Neither the web process nor the screen worker imports their handlers.
+All connection and scenario extensions are SDK packages. The official `peek/ical`, `peek/meetings`, and `peek/deadlines` packages ship with the application and use the same installation journal, manifests, settings forms, storage, scheduling, validation, and isolated Docker runner as external packages. Neither the web process nor the screen worker imports their handlers.
 
 ```text
 apps/web/               Next.js screen, Settings, state/SSE endpoints
 apps/worker/            Screen heartbeat, card expiry, migration and demo commands
 apps/extension-runner/  Shared container execution and package migrations
-packages/sdk/           Public integration/scenario contracts
+packages/sdk/           Public connection/scenario contracts
 packages/cli/           Public check/pack/bundle/preview commands
 packages/extensions/    Package installation, instance storage, validation
 packages/core/          Cards, profiles, screens, i18n and time rules
@@ -21,7 +21,7 @@ extensions/official/   iCalendar, Meetings and Deadlines source packages
 extensions/dist/       Generated .peek packages and official bundle
 ```
 
-The web process reads consistent SQLite snapshots and streams them over SSE. Settings writes configuration in short transactions. The runner evaluates due scenarios and starts integrations; the screen worker expires cards and writes a heartbeat every five seconds. Only one web process, one screen worker, and one runner per installation are supported.
+The web process reads consistent SQLite snapshots and streams them over SSE. Settings writes configuration in short transactions. The runner evaluates due scenarios and starts connections; the screen worker expires cards and writes a heartbeat every five seconds. Only one web process, one screen worker, and one runner per installation are supported.
 
 **MVP schema v11 intentionally resets older databases.** Existing connections, scenarios, packages, cards, profiles and screen settings are discarded. There are no legacy calendar/scenario tables or compatibility adapters. Re-running migration on v11 preserves data.
 
@@ -65,7 +65,7 @@ bun run extensions:runner
 bun dev
 ```
 
-`bun dev` is loopback-only. `bun run build` builds the official packages and web app; `bun start` starts the production web server. Keep both worker and runner running. A stopped runner prevents all integrations and scenarios, including official ones, from executing. Settings shows its availability and instance errors.
+`bun dev` is loopback-only. `bun run build` builds the official packages and web app; `bun start` starts the production web server. Keep both worker and runner running. A stopped runner prevents all connections and scenarios, including official ones, from executing. Settings shows its availability and instance errors.
 
 The default database is `data/peek.sqlite`. To use another location, set the same absolute `PEEK_DATABASE_PATH` in all terminals. Demo seeding is opt-in and idempotent: it creates one meeting and three deadlines, without creating connections or scenarios. Expired demo cards are never reseeded automatically.
 
@@ -91,7 +91,7 @@ Each scenario replaces only its own cards and persists its next-run timestamp at
 - `node-ical` and Luxon run inside the connection's Node container. RRULE, EXDATE, RECURRENCE-ID, TZID, cancellation, floating dates and DST are supported. Each connection selects its time zone; explicit event TZID values take precedence.
 - Expansion covers two days in the past and 90 days ahead, with at most 10,000 occurrences. Secondly recurrence is rejected. Titles and locations are capped at 1,000 characters.
 - Successful snapshots remove missing/cancelled events. Failed runs retain the previous snapshot. Editing a connection clears its state and snapshot before a fresh run.
-- The common runner supports eight active integrations and four scenarios concurrently. See [extension limits](docs/extensions.md) for publication, card and resource limits.
+- The common runner supports eight active connections and four scenarios concurrently. See [extension limits](docs/extensions.md) for publication, card and resource limits.
 
 Subscription URLs are encrypted and never returned by the API. When editing, keep credential replacement unchecked to retain the saved URL. A connection referenced by a scenario cannot be deleted.
 

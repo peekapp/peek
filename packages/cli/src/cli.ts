@@ -12,12 +12,12 @@ const [command, ...args] = process.argv.slice(2);
 async function main() {
   if (command === "init") {
     const [kind, folder] = args;
-    if (!["scenario", "integration"].includes(kind) || !folder)
-      throw new Error("Usage: peek init scenario|integration DIRECTORY");
+    if (!["scenario", "connection"].includes(kind) || !folder)
+      throw new Error("Usage: peek init scenario|connection DIRECTORY");
     const dir = resolve(folder);
     await mkdir(dir, { recursive: false });
     const m = {
-      format: 1,
+      format: 2,
       sdk: "^0.1.0",
       id: `local/${kind}-example`,
       version: "0.1.0",
@@ -32,7 +32,7 @@ async function main() {
         additionalProperties: false,
       },
       permissions: {},
-      ...(kind === "integration"
+      ...(kind === "connection"
         ? {
             provides: {
               items: {
@@ -53,8 +53,8 @@ async function main() {
           private: true,
           type: "module",
           scripts: { check: "peek check", pack: "peek pack" },
-          dependencies: { "@peekapp/sdk": "^0.1.0" },
-          devDependencies: { "@peekapp/cli": "^0.1.0" },
+          dependencies: { "@peekapp/sdk": "^0.1.2" },
+          devDependencies: { "@peekapp/cli": "^0.1.2" },
         },
         null,
         2,
@@ -67,8 +67,8 @@ export default defineScenario({ evaluate({ settings, now }) {
   return { cards: [{ id: "hello", title: String((settings as any).title ?? "Hello Peek"), targetAt: now + 60000, visibleFrom: now, expiresAt: now + 60000 }], nextRunAt: now + 60000 };
 } });
 `
-        : `import { defineIntegration } from "@peekapp/sdk/integration";
-export default defineIntegration({ run({ now }) { return { datasets: { items: ["Hello Peek"] }, nextRunAt: now + 60000 }; } });
+        : `import { defineConnection } from "@peekapp/sdk/connection";
+export default defineConnection({ run({ now }) { return { datasets: { items: ["Hello Peek"] }, nextRunAt: now + 60000 }; } });
 `;
     await writeFile(join(dir, "index.ts"), source);
     console.log(`Created ${dir}`);
@@ -141,7 +141,7 @@ export default defineIntegration({ run({ now }) { return { datasets: { items: ["
     return;
   }
   console.log(
-    "peek init scenario|integration DIRECTORY\npeek check [DIRECTORY]\npeek pack [DIRECTORY] [OUTPUT.peek]\npeek bundle OUTPUT.peek PACKAGE.peek PACKAGE.peek ...\npeek preview PACKAGE.peek CONTEXT.json",
+    "peek init scenario|connection DIRECTORY\npeek check [DIRECTORY]\npeek pack [DIRECTORY] [OUTPUT.peek]\npeek bundle OUTPUT.peek PACKAGE.peek PACKAGE.peek ...\npeek preview PACKAGE.peek CONTEXT.json",
   );
 }
 main().catch((error) => {

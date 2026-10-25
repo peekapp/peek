@@ -52,7 +52,7 @@ test("official manifests validate settings and share a versioned calendar contra
   expect(() =>
     validate(m.settings, { ...settings, retainMinutes: 1441 }),
   ).toThrow();
-  expect(m.inputs!.events.contract).toBe("peek/calendar-events");
+  expect(m.inputs!.events.contract).toBe("peek/events");
 });
 test("SDK scenarios schedule visibility, urgency, start and expiry; filter titles and all-day events", () => {
   const now = 1_000_000,
@@ -65,10 +65,16 @@ test("SDK scenarios schedule visibility, urgency, start and expiry; filter title
       events: [
         {
           connectionId: "a",
-          contract: "peek/calendar-events",
+          contract: "peek/events",
           version: "1.0.0",
           updatedAt: now,
-          data: [{ id: "event", title: "Обсуждение", startAt }],
+          data: {
+            from: 0,
+            to: startAt + 86400000,
+            events: [
+              { kind: "timed", id: "event", title: "Обсуждение", startAt },
+            ],
+          },
         },
       ],
     },
@@ -114,21 +120,27 @@ test("SDK scenarios schedule visibility, urgency, start and expiry; filter title
       events: [
         {
           ...context.inputs.events[0],
-          data: [
-            {
-              id: "all",
-              title: "Day",
-              startAt,
-              deadlineAt: startAt + 1000,
-              allDay: true,
-            },
-          ],
+          data: {
+            from: 0,
+            to: 86400000,
+            events: [
+              {
+                id: "all",
+                title: "Day",
+                kind: "all-day",
+                startDate: "1970-01-01",
+                timeZone: "UTC",
+              },
+            ],
+          },
         },
       ],
     },
   };
   expect(meeting.evaluate(allDay).cards).toHaveLength(0);
-  expect(deadline.evaluate(allDay).cards[0].targetAt).toBe(startAt + 1000);
+  expect(
+    deadline.evaluate({ ...allDay, now: 86400000 - 1000 }).cards[0].targetAt,
+  ).toBe(86400000 - 1);
   const early = {
     ...context,
     now: startAt,
@@ -136,9 +148,19 @@ test("SDK scenarios schedule visibility, urgency, start and expiry; filter title
       events: [
         {
           ...context.inputs.events[0],
-          data: [
-            { id: "early", title: "Early", startAt, endAt: startAt + 1000 },
-          ],
+          data: {
+            from: 0,
+            to: 86400000,
+            events: [
+              {
+                kind: "timed",
+                id: "early",
+                title: "Early",
+                startAt,
+                endAt: startAt + 1000,
+              },
+            ],
+          },
         },
       ],
     },
@@ -165,7 +187,7 @@ test("common store binds multiple calendars, rejects stale results, retains data
     const old = store.instance(a)!;
     store.retry(old, "execution-failed");
     expect(main.snapshot().cards).toHaveLength(4);
-    expect(main.snapshot(now, "default").integrationErrors).toBe(1);
+    expect(main.snapshot(now, "default").connectionErrors).toBe(1);
     store.requestRun(a);
     expect(store.publish(old, { datasets: { events: [] } })).toBe(false);
     publish(store, a, []);
@@ -204,7 +226,7 @@ test("bundled defaults install once, survive restart and do not claim uploaded r
     const p = structuredClone(
       packages.find((p) => p.manifest.id === "peek/meetings")!,
     );
-    p.manifest.version = "0.2.0";
+    p.manifest.version = "0.2.1";
     const preview = f.store.stage([p], [p.manifest.id]);
     f.store.confirm(preview.id);
     const op = f.store.pending()!;
@@ -219,14 +241,14 @@ test("bundled defaults install once, survive restart and do not claim uploaded r
     f.close();
   }
 });
-test("MVP schema reset discards old records and creates only the shared model, once", () => {
+test("development schema reset discards old records and creates only the shared model, once", () => {
   const f = fixture();
   try {
     const c = connection(f.store);
     scenario(f.store, [c]);
     const raw = new Database(f.path);
     raw.exec(
-      "CREATE TABLE calendars(id TEXT); CREATE TABLE scenarios(id TEXT); CREATE TABLE events(id TEXT); PRAGMA user_version=10;",
+      "CREATE TABLE calendars(id TEXT); CREATE TABLE scenarios(id TEXT); CREATE TABLE events(id TEXT); PRAGMA user_version=11;",
     );
     raw.close();
     f.main.migrate();

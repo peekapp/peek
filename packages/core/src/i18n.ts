@@ -44,7 +44,7 @@ export const en = {
   connections: "Connections",
   connectionsDescription: "Your connected sources, shared across scenarios.",
   addConnection: "Add connection",
-  chooseIntegration: "Choose an integration",
+  chooseConnection: "Choose a connection",
   createScenario: "Create scenario",
   chooseScenario: "Choose a scenario",
   scenarioLibrary: "Scenario library",
@@ -152,7 +152,7 @@ export const en = {
   invalidFeed: "The response is not a supported ICS calendar.",
   keyError:
     "The encryption key is missing or invalid. Restore the key before continuing.",
-  integrationWarning:
+  connectionWarning:
     "Connection updates need attention. Open Connections in Settings.",
   confirmCalendarDelete: "Disconnect this calendar?",
   preview: "Preview",
@@ -272,7 +272,7 @@ export const ru: Record<keyof typeof en, string> = {
   connections: "Подключения",
   connectionsDescription: "Ваши источники данных для разных сценариев.",
   addConnection: "Добавить подключение",
-  chooseIntegration: "Выберите интеграцию",
+  chooseConnection: "Выберите подключение",
   createScenario: "Создать сценарий",
   chooseScenario: "Выберите сценарий",
   scenarioLibrary: "Библиотека сценариев",
@@ -380,7 +380,7 @@ export const ru: Record<keyof typeof en, string> = {
   invalidFeed: "Ответ не является поддерживаемым ICS-календарём.",
   keyError:
     "Ключ шифрования отсутствует или неверен. Восстановите ключ для продолжения.",
-  integrationWarning:
+  connectionWarning:
     "Ошибка обновления подключения. Откройте вкладку «Подключения» в настройках.",
   confirmCalendarDelete: "Отключить этот календарь?",
   preview: "Предпросмотр",

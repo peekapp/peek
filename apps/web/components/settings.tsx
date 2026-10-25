@@ -326,7 +326,7 @@ export function Settings({
               itemId={item}
               packageId={packageId}
               locale={locale}
-              kind={tab === "scenarios" ? "scenario" : "integration"}
+              kind={tab === "scenarios" ? "scenario" : "connection"}
             />
           ) : null}
         </div>

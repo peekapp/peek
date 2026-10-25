@@ -17,7 +17,7 @@ export function readSettings() {
         .filter((i) => i.kind === "scenario")
         .map((i) => ({ id: i.id, profileId: i.profile_id })),
       connections: instances
-        .filter((i) => i.kind === "integration")
+        .filter((i) => i.kind === "connection")
         .map((i) => ({ id: i.id, profileId: i.profile_id })),
       locale: snapshot.locale ?? "en",
       theme: snapshot.theme ?? defaultTheme,

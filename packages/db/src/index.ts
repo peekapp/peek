@@ -63,9 +63,9 @@ export function openStore(path: string, readonly = false) {
           const { user_version: version } = sqlite
             .query("PRAGMA user_version")
             .get() as { user_version: number };
-          if (version > 11)
+          if (version > 12)
             throw new Error("Database schema is newer than this application");
-          if (version === 11) return;
+          if (version === 12) return;
           // MVP reset: the old built-in model and extension snapshots are intentionally discarded.
           sqlite.exec(`
           DROP TABLE IF EXISTS cards;
@@ -81,6 +81,7 @@ export function openStore(path: string, readonly = false) {
           DROP TABLE IF EXISTS extension_history;
           DROP TABLE IF EXISTS extension_runtime;
           DROP TABLE IF EXISTS extension_defaults;
+          DROP TABLE IF EXISTS extension_contracts;
           CREATE TABLE cards (id TEXT PRIMARY KEY NOT NULL, payload TEXT NOT NULL, expires_at INTEGER NOT NULL, scenario_id TEXT);
           CREATE INDEX cards_expiry ON cards(expires_at);
           CREATE TABLE screen_state (id INTEGER PRIMARY KEY CHECK(id = 1), revision INTEGER NOT NULL, heartbeat INTEGER, theme TEXT NOT NULL DEFAULT 'night', locale TEXT NOT NULL DEFAULT 'en', demo_seeded INTEGER NOT NULL DEFAULT 0);
@@ -100,7 +101,7 @@ export function openStore(path: string, readonly = false) {
             }),
           );
           migrateExtensions(sqlite);
-          sqlite.exec("PRAGMA user_version = 11;");
+          sqlite.exec("PRAGMA user_version = 12;");
         })
         .immediate();
     },
@@ -313,9 +314,9 @@ export function openStore(path: string, readonly = false) {
           heartbeat: meta.heartbeat,
           serverTime: now,
           locale: meta.locale,
-          integrationErrors: instances.filter(
+          connectionErrors: instances.filter(
             (i) =>
-              i.kind === "integration" &&
+              i.kind === "connection" &&
               i.enabled &&
               (!screen || sourceIds.has(i.id)) &&
               (i.last_error ||

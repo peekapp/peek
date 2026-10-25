@@ -1,9 +1,9 @@
 {
-  "format": 1,
+  "format": 2,
   "sdk": "^0.1.0",
-  "id": "example/integration",
+  "id": "example/connection",
   "version": "0.1.0",
-  "kind": "integration",
+  "kind": "connection",
   "name": "Sample source",
   "description": "Demonstrates a custom data contract without changes to Peek.",
   "author": "Peek examples",

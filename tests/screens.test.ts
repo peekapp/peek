@@ -140,7 +140,7 @@ it("only reports errors from sources used by the selected profiles", () => {
     store.migrate();
     const c = connection(extensions);
     scenario(extensions, [c]);
-    assert.equal(store.snapshot(Date.now(), "default").integrationErrors, 1);
+    assert.equal(store.snapshot(Date.now(), "default").connectionErrors, 1);
     store.saveProfile("profile-alone", { name: "Alone", color: "blue" });
     store.saveScreen("screen-empty", {
       ...config,
@@ -148,7 +148,7 @@ it("only reports errors from sources used by the selected profiles", () => {
       profileIds: ["profile-alone"],
     });
     assert.equal(
-      store.snapshot(Date.now(), "screen-empty").integrationErrors,
+      store.snapshot(Date.now(), "screen-empty").connectionErrors,
       0,
     );
     assert.equal(store.snapshot(Date.now(), "screen-empty").scenarioErrors, 0);
@@ -158,7 +158,7 @@ it("only reports errors from sources used by the selected profiles", () => {
       profileIds: ["shared"],
     });
     assert.equal(
-      store.snapshot(Date.now(), "screen-empty").integrationErrors,
+      store.snapshot(Date.now(), "screen-empty").connectionErrors,
       1,
     );
   } finally {

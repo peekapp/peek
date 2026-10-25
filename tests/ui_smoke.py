@@ -24,7 +24,7 @@ def no_overflow(page):
 
 def manifest(name, package_id):
     return {
-        "format": 1,
+        "format": 2,
         "sdk": "^0.1.0",
         "id": package_id,
         "version": "1.0.0",
@@ -35,6 +35,7 @@ def manifest(name, package_id):
         "entry": "index.mjs",
         "permissions": {},
         "settings": {"type": "object", "properties": {}},
+        "contracts": [{"id": "test/events", "version": "2.1.0", "schema": {"type": "array"}}],
         "inputs": {"events": {"contract": "test/events", "version": "^2.0.0"}},
     }
 
@@ -311,13 +312,13 @@ with sync_playwright() as p:
     page.get_by_role("button", name="Leave", exact=True).click()
     page.wait_for_url(base + "/scenarios")
 
-    integration = {
+    connection = {
         **manifest("Test connection", "test/connection"),
-        "kind": "integration",
+        "kind": "connection",
     }
-    del integration["inputs"]
+    del connection["inputs"]
     status["packages"].append(
-        {"manifest": integration, "explicit": True, "unused": True, "official": False}
+        {"manifest": connection, "explicit": True, "unused": True, "official": False}
     )
     held_profiles = []
     page.route("**/api/settings", lambda route: held_profiles.append(route))
@@ -357,7 +358,7 @@ with sync_playwright() as p:
 
     # Instance cards keep context and errors visible, with timestamps on demand.
     status["packages"].append(
-        {"manifest": integration, "explicit": True, "unused": False, "official": False}
+        {"manifest": connection, "explicit": True, "unused": False, "official": False}
     )
     for package, package_id in zip(status["packages"], ["peek/meetings", "peek/deadlines", "peek/ical"]):
         package["manifest"]["id"] = package_id
@@ -376,7 +377,7 @@ with sync_playwright() as p:
             "last_success": 1792872000000 if enabled else None,
             "next_run_at": None,
         }
-        for kind, package_id in [("scenario", "peek/meetings"), ("integration", "peek/ical")]
+        for kind, package_id in [("scenario", "peek/meetings"), ("connection", "peek/ical")]
         for enabled, name in [(1, "Family calendar"), (0, "A very long household calendar name for school, work and weekend activities")]
     ]
 

@@ -1,9 +1,13 @@
 {
   "name": "@peekapp/deadlines",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "dependencies": {
-    "@peekapp/sdk": "workspace:*"
+    "@peekapp/sdk": "workspace:*",
+    "luxon": "3.7.2"
+  },
+  "devDependencies": {
+    "@types/luxon": "3.7.6"
   }
 }

@@ -22,7 +22,7 @@ export function DefinitionPicker({
   packages,
   disabled = false,
 }: {
-  kind: "scenario" | "integration";
+  kind: "scenario" | "connection";
   packages: Status["packages"];
   locale: Locale;
   disabled?: boolean;
@@ -58,7 +58,7 @@ export function DefinitionPicker({
           className={cn(kind === "scenario" && "px-5 text-left sm:px-7")}
         >
           <DialogTitle>
-            {kind === "scenario" ? t.scenarioLibrary : t.chooseIntegration}
+            {kind === "scenario" ? t.scenarioLibrary : t.chooseConnection}
           </DialogTitle>
         </DialogHeader>
         <DialogClose asChild>
