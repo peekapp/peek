@@ -28,7 +28,7 @@ import { SettingsGrid, SettingsCard, PreferenceRow } from "./settings/layout";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
-import { Extensions } from "./settings/extensions";
+import { Extensions, type Status } from "./settings/extensions";
 import { mutate } from "./settings/api";
 type Data = {
   theme: Theme;
@@ -39,17 +39,19 @@ type Data = {
   locale: Locale;
 };
 export function Settings({
-  initialLocale = "en",
+  initialData = null,
+  initialExtensions = null,
   path = [],
   packageId,
 }: {
-  initialLocale?: Locale;
+  initialData?: Data | null;
+  initialExtensions?: Status | null;
   path?: string[];
   packageId?: string;
 }) {
   const [query, setQuery] = useState("");
-  const [locale, setLocale] = useState<Locale>(initialLocale),
-    [data, setData] = useState<Data | null>(null),
+  const [locale, setLocale] = useState<Locale>(initialData?.locale ?? "en"),
+    [data, setData] = useState<Data | null>(initialData),
     [error, setError] = useState(false);
   const { theme, setTheme } = useAppTheme();
   const refreshVersion = useRef(0);
@@ -311,10 +313,16 @@ export function Settings({
               </SettingsCollection>
             )
           ) : tab === "extensions" ? (
-            <Extensions locale={locale} />
+            <Extensions
+              locale={locale}
+              initialData={initialExtensions}
+              initialProfiles={initialData?.profiles}
+            />
           ) : tab === "scenarios" || tab === "connections" ? (
             <Extensions
               key={`${tab}/${item ?? ""}/${packageId ?? ""}`}
+              initialData={initialExtensions}
+              initialProfiles={initialData?.profiles}
               itemId={item}
               packageId={packageId}
               locale={locale}

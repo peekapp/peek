@@ -186,11 +186,15 @@ function SchemaFields({
   );
 }
 export function Extensions({
+  initialData = null,
+  initialProfiles = null,
   locale,
   kind,
   itemId,
   packageId,
 }: {
+  initialData?: Status | null;
+  initialProfiles?: Profile[] | null;
   locale: "en" | "ru";
   kind?: "scenario" | "integration";
   itemId?: string;
@@ -199,7 +203,7 @@ export function Extensions({
   const [query, setQuery] = useState("");
   const ru = locale === "ru",
     t = (en: string, other: string) => (ru ? other : en);
-  const [data, setData] = useState<Status | null>(null),
+  const [data, setData] = useState<Status | null>(initialData),
     [error, setError] = useState(""),
     [loadError, setLoadError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -208,7 +212,7 @@ export function Extensions({
     id: string;
     packages: { manifest: Manifest; sha256: string }[];
   } | null>(null);
-  const [profiles, setProfiles] = useState<Profile[] | null>(null);
+  const [profiles, setProfiles] = useState<Profile[] | null>(initialProfiles);
   const [profilesError, setProfilesError] = useState("");
   const router = useRouter();
   const section = kind === "scenario" ? "scenarios" : "connections";

@@ -49,6 +49,17 @@ with sync_playwright() as p:
             data={"action": action, action: value},
         )
         assert response.ok, response.text()
+    # A refresh must contain real content even when JavaScript cannot run.
+    static_context = browser.new_context(java_script_enabled=False)
+    static_page = static_context.new_page()
+    for path in ["/screens", "/profiles", "/scenarios", "/connections", "/settings/extensions", "/screens/new", "/profiles/new"]:
+        static_page.goto(base + path)
+        expect(static_page.locator('[data-slot="skeleton"]')).to_have_count(0)
+        expect(static_page.locator("main")).to_be_visible()
+    static_page.goto(base + "/profiles")
+    expect(static_page.get_by_text("Shared", exact=True)).to_be_visible()
+    static_context.close()
+
     page = context.new_page()
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -75,7 +86,7 @@ with sync_playwright() as p:
     expect(page.locator("html")).to_have_attribute("data-theme", "day")
     context.request.post(base + "/api/settings", headers={"Origin": base}, data={"action": "theme", "theme": "night"})
 
-    # Controls must render and accept search before either API has responded.
+    # Server-rendered content and controls work before background API reads finish.
     for width in [1280, 390]:
         page.set_viewport_size({"width": width, "height": 900})
         for path in ["/screens", "/profiles", "/scenarios", "/connections", "/settings/extensions"]:
@@ -86,10 +97,9 @@ with sync_playwright() as p:
             search = page.get_by_role("searchbox")
             expect(search).to_be_visible()
             search.fill("no-matching-resource")
-            expect(page.locator('[data-slot="skeleton"]').first).to_be_visible()
-            expect(page.get_by_text("No results found", exact=True)).to_have_count(0)
+            expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
             if path in ["/scenarios", "/connections"]:
-                expect(page.get_by_role("button", name=re.compile(r"^\+ Add"))).to_be_disabled()
+                expect(page.get_by_role("button", name=re.compile(r"^\+ Add"))).to_be_enabled()
             elif path != "/settings/extensions":
                 expect(page.get_by_role("link", name=re.compile(r"^\+"))).to_be_visible()
             no_overflow(page)
@@ -105,14 +115,17 @@ with sync_playwright() as p:
             page.route("**/api/settings", lambda route: held_loads.append(route))
             page.route("**/api/extensions", lambda route: held_loads.append(route))
             page.goto(base + path)
-            expect(page.get_by_role("link", name=re.compile("Back to|All screens|All profiles"))).to_be_visible()
+            if path in ["/scenarios/new", "/connections/new"]:
+                expect(page.get_by_text("Scenario or connection not found.", exact=True)).to_be_visible()
+            else:
+                expect(page.get_by_role("link", name=re.compile("Back to|All screens|All profiles"))).to_be_visible()
             if path == "/profiles/new":
                 expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
                 draft = page.get_by_role("textbox", name="Profile name", exact=True)
                 draft.fill("Profile typed before data")
                 page.get_by_role("radio", name="Green", exact=True).check()
             else:
-                expect(page.locator('[data-slot="skeleton"]').first).to_be_visible()
+                expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
             if path == "/screens/new":
                 draft = page.locator("#screen-name")
                 draft.fill("Screen typed before data")
@@ -312,7 +325,7 @@ with sync_playwright() as p:
     name_field = page.get_by_role("textbox", name="Name", exact=True)
     expect(name_field).to_be_visible()
     name_field.fill("Unsaved connection")
-    expect(page.locator('[data-slot="skeleton"]').first).to_be_visible()
+    expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
     while held_profiles:
         held_profiles.pop(0).continue_()
     page.unroute("**/api/settings")

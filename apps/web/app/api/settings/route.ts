@@ -1,37 +1,14 @@
-import { openExtensions } from "@peek/extensions/store";
-import { databasePath, openStore, installationTimeZone } from "@peek/db";
+import { readSettings } from "../../../lib/settings-data";
+import { databasePath, openStore } from "@peek/db";
 export const dynamic = "force-dynamic";
 import { settingsRequestAllowed } from "../../../lib/request-access";
 export function GET(request: Request) {
   if (!settingsRequestAllowed(request))
     return new Response(null, { status: 403 });
   try {
-    const store = openStore(databasePath(), true);
-    let extensions: ReturnType<typeof openExtensions> | undefined;
-    try {
-      extensions = openExtensions(databasePath());
-      const instances = extensions.instances();
-      const snapshot = store.snapshot();
-      return Response.json(
-        {
-          timeZone: installationTimeZone(),
-          screens: store.listScreens(),
-          profiles: store.listProfiles(),
-          scenarios: instances
-            .filter((i) => i.kind === "scenario")
-            .map((i) => ({ id: i.id, profileId: i.profile_id })),
-          connections: instances
-            .filter((i) => i.kind === "integration")
-            .map((i) => ({ id: i.id, profileId: i.profile_id })),
-          locale: snapshot.locale,
-          theme: snapshot.theme,
-        },
-        { headers: { "Cache-Control": "no-store" } },
-      );
-    } finally {
-      extensions?.close();
-      store.close();
-    }
+    return Response.json(readSettings(), {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch {
     return Response.json({ error: "unavailable" }, { status: 503 });
   }

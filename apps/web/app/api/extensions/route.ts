@@ -4,6 +4,7 @@ import { decode } from "@peek/extensions/archive";
 import { dependencies, downloadPackage } from "@peek/extensions/download";
 import { LIMITS } from "@peek/extensions/validation";
 import { settingsRequestAllowed } from "../../../lib/request-access";
+import { readExtensions } from "../../../lib/settings-data";
 export const dynamic = "force-dynamic";
 async function boundedBody(request: Request) {
   const reader = request.body?.getReader();
@@ -27,14 +28,9 @@ export function GET(request: Request) {
   if (!settingsRequestAllowed(request))
     return new Response(null, { status: 403 });
   try {
-    const store = openExtensions(databasePath());
-    try {
-      return Response.json(store.status(), {
-        headers: { "Cache-Control": "no-store" },
-      });
-    } finally {
-      store.close();
-    }
+    return Response.json(readExtensions(), {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch {
     return Response.json({ error: "extensions-unavailable" }, { status: 503 });
   }
