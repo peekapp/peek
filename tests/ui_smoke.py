@@ -5,6 +5,7 @@ it does not require or test the Docker runner.
 """
 
 import sys
+import base64
 import uuid
 import re
 from playwright.sync_api import sync_playwright, expect, Error
@@ -258,9 +259,13 @@ with sync_playwright() as p:
         manifest("Downloaded Alpha", "test/alpha"),
         manifest("Downloaded Beta", "test/beta"),
     ]
+    icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#3b82f6"/></svg>'
+    def icon_url(svg):
+        return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
+    icon = icon_url(icon_svg)
     status = {
         "packages": [
-            {"manifest": m, "explicit": True, "unused": True, "official": False}
+            {"manifest": m, "iconDataUrl": icon, "explicit": True, "unused": True, "official": False}
             for m in manifests
         ],
         "instances": [],
@@ -269,6 +274,7 @@ with sync_playwright() as p:
         "runtime": {"ready": True, "error": None},
         "canRollback": False,
     }
+    status["packages"][0]["manifest"]["iconColor"] = "theme"
     page.route("**/api/extensions", lambda route: route.fulfill(json=status))
     for width in [390, 1280]:
         page.set_viewport_size({"width": width, "height": 844})
@@ -278,6 +284,8 @@ with sync_playwright() as p:
         panel = page.get_by_role("tabpanel")
         links = panel.get_by_role("link")
         expect(links).to_have_count(2)
+        expect(links.nth(0).locator('[data-icon-color="theme"]')).to_be_visible()
+        expect(links.nth(1).locator('[data-icon-color="original"]')).to_be_visible()
         first, second = links.nth(0).bounding_box(), links.nth(1).bounding_box()
         assert second["y"] >= first["y"] + first["height"], "Catalog cards must stack"
         assert panel.evaluate(
@@ -286,8 +294,38 @@ with sync_playwright() as p:
         page.get_by_role("button", name="Close", exact=True).click()
         no_overflow(page)
 
+    # Package SVG stays in image context, including hostile artwork.
+    probes = []
+    page.route("**/icon-probe**", lambda route: (probes.append(route.request.url), route.abort()))
+    hostile = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" onload="window.__iconExecuted=true;fetch('{base}/icon-probe-load')">
+      <script>window.__iconExecuted=true;fetch('{base}/icon-probe-script')</script>
+      <image href="{base}/icon-probe-image" width="32" height="32"/>
+      <style>@import url('{base}/icon-probe-css');</style>
+      <foreignObject width="32" height="32"><div xmlns="http://www.w3.org/1999/xhtml"><img src="{base}/icon-probe-html" onerror="window.__iconExecuted=true"/></div></foreignObject>
+      <circle cx="16" cy="16" r="10" fill="#3b82f6"/>
+    </svg>'''
+    status["packages"][0]["iconDataUrl"] = icon_url(hostile)
+    status["packages"][1]["iconDataUrl"] = icon_url("not an SVG")
+    status["packages"][1]["manifest"]["iconColor"] = "theme"
+    visit(page, "/settings/extensions")
+    rows = page.locator('[data-variant="resource"]')
+    expect(rows).to_have_count(2)
+    image = rows.first.locator('[data-slot="extension-icon"] img')
+    expect(image).to_be_visible()
+    page.wait_for_function("document.querySelector('[data-slot=extension-icon] img').naturalWidth > 0")
+    expect(rows.nth(1).locator('[data-slot="extension-icon"] svg')).to_be_visible()
+    assert not probes, probes
+    assert page.evaluate("window.__iconExecuted === undefined")
+    assert page.locator('script').evaluate_all("els => els.every(el => !el.textContent.includes('icon-probe-script'))")
+    # A changed source retries a formerly failed image without navigation.
+    status["packages"][1]["iconDataUrl"] = icon
+    expect(rows.nth(1).locator('[data-slot="extension-icon"] img')).to_be_visible(timeout=10000)
+    status["packages"][0]["iconDataUrl"] = icon
+    del status["packages"][1]["manifest"]["iconColor"]
+
     page.set_viewport_size({"width": 1280, "height": 900})
     visit(page, "/scenarios/new?package=test%2Falpha")
+    expect(page.locator("h2").locator("..").locator("..").locator('[data-slot="extension-icon"] img')).to_be_visible()
     expect(page.get_by_text("No compatible connections", exact=True)).to_be_visible()
     expect(page.get_by_role("link", name="Add connection", exact=True)).to_be_visible()
     expect(page.get_by_role("button", name="Save", exact=True)).to_be_disabled()
@@ -318,7 +356,7 @@ with sync_playwright() as p:
     }
     del connection["inputs"]
     status["packages"].append(
-        {"manifest": connection, "explicit": True, "unused": True, "official": False}
+        {"manifest": connection, "iconDataUrl": icon, "explicit": True, "unused": True, "official": False}
     )
     held_profiles = []
     page.route("**/api/settings", lambda route: held_profiles.append(route))
@@ -332,11 +370,14 @@ with sync_playwright() as p:
     page.unroute("**/api/settings")
     expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
     expect(name_field).to_have_value("Unsaved connection")
+    editor_icon = page.locator('[data-slot="extension-icon"] img').first
+    expect(editor_icon).to_have_attribute("src", icon)
     # Removing the package remotely must not unmount the open editor.
     status["packages"].pop()
     with page.expect_response("**/api/settings"):
         pass
     expect(name_field).to_have_value("Unsaved connection")
+    expect(editor_icon).to_have_attribute("src", icon)
     page.get_by_role("link", name="Screens", exact=True).click()
     expect(page.get_by_role("alertdialog")).to_be_visible()
     page.get_by_role("button", name="Keep editing").click()
@@ -358,7 +399,7 @@ with sync_playwright() as p:
 
     # Instance cards keep context and errors visible, with timestamps on demand.
     status["packages"].append(
-        {"manifest": connection, "explicit": True, "unused": False, "official": False}
+        {"manifest": connection, "iconDataUrl": icon, "explicit": True, "unused": False, "official": False}
     )
     for package, package_id in zip(status["packages"], ["peek/meetings", "peek/deadlines", "peek/ical"]):
         package["manifest"]["id"] = package_id
@@ -381,6 +422,7 @@ with sync_playwright() as p:
         for enabled, name in [(1, "Family calendar"), (0, "A very long household calendar name for school, work and weekend activities")]
     ]
 
+    theme_colors = {}
     # Both locales and palettes, narrow resource layouts, real shared styles.
     for locale, theme in [("en", "night"), ("ru", "day")]:
         for action, value in [("locale", locale), ("theme", theme)]:
@@ -397,6 +439,14 @@ with sync_playwright() as p:
                 if path in ["/scenarios", "/connections"]:
                     cards = page.locator('[data-variant="resource"]')
                     expect(cards).to_have_count(2)
+                    expect(cards.first.locator('[data-slot="extension-icon"] img').first).to_be_visible()
+                    if path == "/scenarios":
+                        mask = cards.first.locator('[data-icon-color="theme"]').first
+                        expect(mask).to_be_visible()
+                        theme_colors[theme] = mask.evaluate("el => getComputedStyle(el).backgroundColor")
+                        assert mask.evaluate("el => getComputedStyle(el).maskImage.startsWith('url(')")
+                        assert mask.evaluate("el => getComputedStyle(el).maskMode === 'alpha'")
+                        expect(cards.nth(1).locator('[data-icon-color="original"]')).to_be_visible()
                     expect(cards.nth(1).get_by_role("status")).to_contain_text("Calendar unavailable")
                     update_label = (
                         ("Update cards" if locale == "en" else "Обновить карточки")
@@ -429,6 +479,25 @@ with sync_playwright() as p:
                         "el => el.scrollWidth <= el.clientWidth"
                     ), "Long card content is clipped"
             page.screenshot(path=f"/tmp/peek-ui-{locale}-{width}.png", full_page=True)
+    assert theme_colors["night"] != theme_colors["day"], theme_colors
+    # Real package upload previews bundled SVG before any runner installation.
+    page.unroute("**/api/extensions")
+    for locale, theme in [("en", "night"), ("ru", "day")]:
+        for action, value in [("locale", locale), ("theme", theme)]:
+            response = context.request.post(base + "/api/settings", headers={"Origin": base}, data={"action": action, action: value})
+            assert response.ok, response.text()
+        for width in [390, 1280]:
+            page.set_viewport_size({"width": width, "height": 844})
+            visit(page, "/settings/extensions")
+            page.get_by_label("Package file" if locale == "en" else "Файл пакета").set_input_files("extensions/dist/official.peek")
+            expect(page.get_by_role("button", name="Accept and install" if locale == "en" else "Принять и установить")).to_be_visible()
+            icons = page.locator('[data-slot="extension-icon"] img')
+            expect(icons).to_have_count(3)
+            page.wait_for_function("Array.from(document.querySelectorAll('[data-slot=extension-icon] img')).every(img => img.naturalWidth > 0)")
+            no_overflow(page)
+            page.screenshot(path=f"/tmp/peek-icons-review-{locale}-{width}.png", full_page=True)
+            page.get_by_role("button", name="Cancel" if locale == "en" else "Отмена", exact=True).click()
+            expect(icons).to_have_count(0)
     assert not errors, errors
     browser.close()
     print(

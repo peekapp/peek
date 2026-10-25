@@ -7,7 +7,7 @@ lines.close();
 const request = JSON.parse(line);
 await mkdir("/tmp/extension", { recursive: true });
 for (const [path, text] of Object.entries(request.files)) {
-  if (!/^(index\.mjs|assets\/[a-zA-Z0-9_-]+\.(json|txt))$/.test(path)) throw new Error("invalid-file");
+  if (!/^(index\.mjs|assets\/icon\.svg|assets\/[a-zA-Z0-9_-]+\.(json|txt))$/.test(path)) throw new Error("invalid-file");
   if (path.startsWith("assets/")) await mkdir("/tmp/extension/assets", { recursive: true });
   await writeFile(`/tmp/extension/${path}`, text);
 }

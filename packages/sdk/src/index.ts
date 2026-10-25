@@ -34,6 +34,10 @@ export type Manifest = {
   description: string;
   author: string;
   entry: "index.mjs";
+  /** Optional package artwork, rendered only as an isolated image. */
+  icon?: "assets/icon.svg";
+  /** Preserve artwork colors by default; theme uses its alpha silhouette. */
+  iconColor?: "original" | "theme";
   settings: Schema;
   secrets?: Schema;
   permissions: {

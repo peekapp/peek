@@ -40,11 +40,14 @@ export function decode(bytes: Uint8Array): Bundle {
     for (const [path, contents] of Object.entries(p.files)) {
       // The format contains only UTF-8 files, never links, modes or archive paths.
       if (
-        !/^(index\.mjs|assets\/[a-zA-Z0-9_-]+\.(json|txt))$/.test(path) ||
+        !/^(index\.mjs|assets\/icon\.svg|assets\/[a-zA-Z0-9_-]+\.(json|txt))$/.test(
+          path,
+        ) ||
         typeof contents !== "string"
       )
         throw new Error("unsafe-package-file");
     }
+    iconDataUrl(p);
   }
   return bundle;
 }
@@ -52,4 +55,19 @@ export function encode(packages: ExtensionPackage[]) {
   const bytes = gzipSync(JSON.stringify({ format: "peek-bundle-1", packages }));
   decode(bytes);
   return bytes;
+}
+
+/** The browser image context isolates SVG; this is not an HTML sanitizer. */
+export function iconDataUrl(p: ExtensionPackage): string | null {
+  const icon = p.files["assets/icon.svg"];
+  if (
+    icon !== undefined &&
+    (typeof icon !== "string" || Buffer.byteLength(icon, "utf8") > LIMITS.icon)
+  )
+    throw new Error("invalid-icon-asset");
+  if (!p.manifest.icon) return null;
+  if (p.manifest.icon !== "assets/icon.svg")
+    throw new Error("invalid-icon-path");
+  if (!icon?.trim()) throw new Error("missing-icon-asset");
+  return `data:image/svg+xml;base64,${Buffer.from(icon, "utf8").toString("base64")}`;
 }

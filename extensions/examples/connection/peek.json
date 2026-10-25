@@ -8,6 +8,8 @@
   "description": "Demonstrates a custom data contract without changes to Peek.",
   "author": "Peek examples",
   "entry": "index.mjs",
+  "icon": "assets/icon.svg",
+  "iconColor": "theme",
   "settings": {
     "type": "object",
     "properties": {

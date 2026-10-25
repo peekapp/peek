@@ -19,7 +19,7 @@ export function SettingsField({
   children,
   className,
 }: {
-  label: string;
+  label: ReactNode;
   children: ReactNode;
   className?: string;
 }) {

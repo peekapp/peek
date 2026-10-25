@@ -1,5 +1,6 @@
 "use client";
 
+import { ExtensionIcon } from "../extension-icon";
 import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
 import { useEffect, useState } from "react";
@@ -66,7 +67,13 @@ function CatalogHeading(props: React.ComponentProps<"h3">) {
     />
   );
 }
-type Definition = { id: string; title: string; description: string };
+type Definition = {
+  id: string;
+  title: string;
+  description: string;
+  iconDataUrl: string | null;
+  iconColor: Status["packages"][number]["manifest"]["iconColor"];
+};
 const favoritesKey = "peek:scenario-favorites:v2";
 
 export function ScenarioLibrary({
@@ -81,8 +88,11 @@ export function ScenarioLibrary({
   const t = messages(locale);
   const describe = ({
     manifest: m,
+    iconDataUrl,
   }: Status["packages"][number]): Definition => ({
     id: m.id,
+    iconColor: m.iconColor,
+    iconDataUrl,
     title:
       m.id === "peek/meetings"
         ? t.meetings
@@ -144,6 +154,7 @@ export function ScenarioLibrary({
           href={`/scenarios/new?package=${encodeURIComponent(definition.id)}`}
           onClick={onSelect}
         >
+          <ExtensionIcon kind="scenario" src={definition.iconDataUrl} color={definition.iconColor} />
           <span className="flex min-w-0 flex-1 flex-col gap-1 wrap-anywhere">
             <strong className="flex flex-wrap items-center gap-2">
               {definition.title}

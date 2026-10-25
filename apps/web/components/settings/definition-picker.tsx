@@ -1,4 +1,5 @@
 "use client";
+import { ExtensionIcon } from "../extension-icon";
 import { cn } from "@/lib/utils";
 import type { Status } from "./extensions";
 import { Card, CardHeader, CardTitle, CardDescription } from "../ui/card";
@@ -31,8 +32,10 @@ export function DefinitionPicker({
   const t = messages(locale);
   const choices = packages
     .filter((p) => p.manifest.kind === kind)
-    .map(({ manifest: m }) => ({
+    .map(({ manifest: m, iconDataUrl }) => ({
       id: m.id,
+      iconDataUrl,
+      iconColor: m.iconColor,
       title: m.name,
       description: m.description,
       href: `/connections/new?package=${encodeURIComponent(m.id)}`,
@@ -93,6 +96,11 @@ export function DefinitionPicker({
                   <CardHeader>
                     <CardTitle asChild>
                       <strong className="flex items-center gap-3">
+                        <ExtensionIcon
+                          kind="connection"
+                          src={choice.iconDataUrl}
+                          color={choice.iconColor}
+                        />
                         {choice.title}
                       </strong>
                     </CardTitle>

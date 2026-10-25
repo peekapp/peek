@@ -27,7 +27,11 @@ formats or SDK names.
 
 An installation receipt stores each bundled package's content digest. Only an
 installed package matching that digest receives the Official badge. Author metadata
-and package IDs cannot grant it. Removed defaults stay removed across restarts;
+and package IDs cannot grant it. When an explicit update exactly matches the current
+host bundle, its receipt refreshes atomically with installation. Failed updates
+leave receipts unchanged; rollback restores the previous receipts alongside the
+packages. Provisioning also repairs receipts for already-installed exact bundle
+matches, without upgrading packages. Removed defaults stay removed across restarts;
 updates use the normal explicit upload/review/migration/rollback flow. Application
 rebuilds do not silently upgrade installed packages.
 
@@ -265,3 +269,60 @@ No npm publication is performed by installing/developing Peek.
 `bun run extensions:npm-smoke` packs both packages, installs the tarballs in a clean
 project, imports SDK entrypoints, scaffolds an extension and builds it through the
 installed CLI. This detects accidental dependencies on monorepo source files.
+
+## Extension icons
+
+Optionally add `"icon": "assets/icon.svg"` to `peek.json` and place your artwork
+at that exact path. `peek check` and `peek pack` include and validate it; missing,
+empty, oversized, or differently named icon assets are rejected. SVG is the only
+supported format, with a maximum of 32 KiB of UTF-8 text. Existing packages without
+icons keep working with a generic scenario or connection symbol. Hosts predating
+icon support must be upgraded before installing packages with this asset.
+
+Use a self-contained, static SVG with a square `viewBox`, explicit colors and a
+transparent background. Design for both light and dark themes at 20px and 32px.
+Convert text to paths; do not depend on external fonts, images, styles or scripts.
+Peek preserves aspect ratio and displays SVG only in isolated image/mask contexts,
+never inline HTML. Optional `"iconColor": "original"` (the default) preserves artwork
+colors. Use `"iconColor": "theme"` for monochrome symbols: the SVG's alpha silhouette
+is filled with Peek's foreground color and follows theme changes automatically.
+Use transparent backgrounds; opaque backgrounds become solid squares. Theme mode
+ignores RGB colors and preserves transparency, so it flattens multicolor details.
+An omitted icon still uses the generic fallback regardless of `iconColor`. Malformed/unrenderable images use the fallback;
+packaging validates the asset envelope, not SVG syntax or artwork quality.
+
+The package owns its icon: configured instances inherit it throughout settings.
+There are no per-instance overrides or dashboard icons. Assets participate in
+package digests, installation review, upgrades and rollback; changing an icon
+requires a new package version. Official package artwork also reaches existing
+installations through explicit upgrades, never a silent default replacement.
+See `extensions/examples/connection` for a working authoring example.
+
+## Updating an extension after editing it
+
+1. Change the extension's code, settings schema or icon assets. Increase `version`
+   in `peek.json` for every changed package; keep its `package.json` version in sync.
+   Installed package versions are immutable, even for artwork-only changes.
+2. From the repository root, build the CLI with `bun run extensions:build`, then
+   run `node packages/cli/dist/cli.mjs check PATH_TO_EXTENSION` and
+   `node packages/cli/dist/cli.mjs pack PATH_TO_EXTENSION /tmp/updated.peek`.
+3. In **Settings → Extensions**, choose the `.peek` file, review it, and click
+   **Accept and install**. Wait for the operation to complete. The runner preserves
+   existing instances and credentials, and validates any settings/state migration.
+   If installation fails, the previous package stays installed.
+
+For this repository's official extensions, run `bun install --lockfile-only` after
+bumping workspace versions, then `bun run official:build` to create
+`extensions/dist/official.peek` (all three) or use the individual `.peek` files in
+that directory. Run `docker compose up -d --build --wait` before uploading so the
+host's trusted bundle matches your new official packages. Rebuilding the app alone
+does not upgrade installed extensions; upload and accept the bundle explicitly.
+Exact matches to the trusted bundle retain their Official badges automatically.
+Ordinary third-party extension updates do not require rebuilding the app unless
+they need a newer host feature. If settings/state change incompatibly, supply an
+SDK migration before packaging. Test changes before updating a live installation.
+
+Failed installation banners disappear once newer successful installations cover
+all packages from that attempt. Pending retries, unrelated installs and partial
+successes leave unresolved failures visible. The retained operation journal keeps
+the original failure; the status response omits resolved failures and package code.

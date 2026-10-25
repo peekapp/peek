@@ -22,7 +22,7 @@ Consistency is implemented in components, not achieved by copying classes.
 | Screen collection | `SettingsGrid` + `SettingsCard` | Preview cards in two equal columns, one on small screens, 24px gap |
 | Text resource collection | `SettingsList` + `SettingsRow` | Profiles, scenarios, connections, and installed extensions use shadcn Item rows in one bordered list with separators; metadata left, actions right, stacked on mobile |
 | Screen card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
-| Scenario/connection status | `SettingsRow` status + `SettingsRowDetails` | Green Enabled badge beside the name; profile, connections and errors visible; last successful update and manual refresh in an expandable Troubleshooting disclosure; no next-update timestamp; no package icons until extensions provide them |
+| Scenario/connection status | `SettingsRow` status + `SettingsRowDetails` | Green Enabled badge beside the name; profile, connections and errors visible; last successful update and manual refresh in an expandable Troubleshooting disclosure; no next-update timestamp; package artwork through ExtensionIcon |
 | Empty collection        | `SettingsEmpty`                  | Shared shadcn Empty composition with next-step copy                         |
 | Editor heading          | `EditorHeader`                   | Back link, shared section heading, optional description/action              |
 | Editor section          | `EditorSection`                  | Common field spacing and section typography                                 |
@@ -57,7 +57,7 @@ those selectors to another global stylesheet. Extend the primitive or shared
 composition instead. Reuse SettingsPage, SettingsTopbar, SettingsTitle,
 SettingsNavigation, EditorForm (including its preview variant), EditorGrid,
 FormFeedback, LoadingState and ErrorState alongside the compositions above.
-Dynamic inline values are reserved for runtime profile colors and screen scale.
+Dynamic inline values are reserved for runtime profile colors, screen scale, and validated extension mask-image URLs.
 Keep profile colors
 in `@peek/core/colors`; never create another dot/color implementation.
 
@@ -109,3 +109,16 @@ may refresh without remounting editors or resetting search and installation inpu
 Load extension schemas and profile choices independently.
 
 Text resource loading uses `LoadingState layout="list"`; screen loading retains the card grid. Keep errors visible in rows and troubleshooting expandable. Preserve real title links, separate actions, and wrapping names/metadata without horizontal scrolling.
+
+## Extension identity
+
+ExtensionIcon renders package-supplied SVG as an isolated image with contain sizing.
+The manifest’s optional iconColor defaults to original; theme uses the asset’s
+alpha mask filled with semantic foreground color. Both modes preserve transparency
+and use the same image-error fallback; never inject package SVG into the DOM. Standard icons are 32px in
+lists, catalog choices, installation review and editor headings; compact icons
+are 20px in ExtensionLabel beside connection choices and references. Icons are
+decorative beside visible names. Missing or broken images use WorkflowIcon for
+scenarios and PlugIcon for connections. Both themes use the same asset.
+SettingsRow and EditorHeader expose a shared media slot; keep media beside text
+on mobile while actions stack. Profiles retain their own identity composition.

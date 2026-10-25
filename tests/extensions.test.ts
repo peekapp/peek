@@ -1,5 +1,12 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { Database } from "bun:sqlite";
+import {
+  mkdtempSync,
+  rmSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
@@ -8,6 +15,7 @@ import { openExtensions } from "../packages/extensions/src/store";
 import {
   encode,
   decode,
+  iconDataUrl,
   type ExtensionPackage,
 } from "../packages/extensions/src/archive";
 import { manifest } from "../packages/extensions/src/validation";
@@ -723,4 +731,169 @@ test("manifests require consumer definitions and reject remote schemas and unsup
   expect(() => manifest(p.manifest)).toThrow(
     "missing-input-contract-definition",
   );
+});
+
+test("icon assets are optional, bounded UTF-8 and restricted to the declared path", () => {
+  const p = pkg("connection");
+  expect(iconDataUrl(decode(encode([p])).packages[0])).toBeNull();
+  p.manifest.icon = "assets/icon.svg";
+  expect(() => encode([p])).toThrow("missing-icon-asset");
+  for (const path of [
+    "../icon.svg",
+    "https://example.com/icon.svg",
+    "assets/other.svg",
+    null,
+  ]) {
+    expect(() => manifest({ ...p.manifest, icon: path })).toThrow(
+      "invalid-icon-path",
+    );
+  }
+  p.files["assets/icon.svg"] =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><title>Иконка</title></svg>';
+  expect(decode(encode([p])).packages[0]).toEqual(p);
+  expect(Buffer.from(iconDataUrl(p)!.split(",")[1], "base64").toString()).toBe(
+    p.files["assets/icon.svg"],
+  );
+  p.files["assets/icon.svg"] = "a".repeat(32 * 1024);
+  expect(() => encode([p])).not.toThrow();
+  p.files["assets/icon.svg"] = "я".repeat(16 * 1024 + 1);
+  expect(() => encode([p])).toThrow("invalid-icon-asset");
+  delete p.manifest.icon;
+  expect(() => encode([p])).toThrow("invalid-icon-asset");
+  delete p.files["assets/icon.svg"];
+  p.files["assets/other.svg"] = "<svg/>";
+  expect(() => encode([p])).toThrow("unsafe-package-file");
+});
+
+test("review, updates and rollback carry package icons without exposing files", () => {
+  const f = fixture();
+  try {
+    const p = pkg("connection");
+    p.manifest.icon = "assets/icon.svg";
+    p.files["assets/icon.svg"] =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"/>';
+    const oldIcon = iconDataUrl(p);
+    const review = f.store.stage([p], [p.manifest.id]);
+    expect(review.packages[0].iconDataUrl).toBe(oldIcon);
+    expect(review.packages[0]).not.toHaveProperty("files");
+    f.store.confirm(review.id);
+    let op = f.store.pending()!;
+    f.store.commitInstall(op, f.store.installInput(op).affected, {});
+    expect(f.store.status().packages[0].iconDataUrl).toBe(oldIcon);
+    p.manifest.version = "0.1.1";
+    p.files["assets/icon.svg"] = p.files["assets/icon.svg"].replace(
+      "32 32",
+      "64 64",
+    );
+    const update = f.store.stage([p], [p.manifest.id]);
+    expect(update.packages[0].iconDataUrl).not.toBe(oldIcon);
+    expect(f.store.status().packages[0].iconDataUrl).toBe(oldIcon);
+    f.store.confirm(update.id);
+    op = f.store.pending()!;
+    f.store.commitInstall(op, f.store.installInput(op).affected, {});
+    expect(f.store.status().packages[0].iconDataUrl).toBe(iconDataUrl(p));
+    expect(f.store.status().packages[0]).not.toHaveProperty("files");
+    f.store.rollback();
+    expect(f.store.status().packages[0].iconDataUrl).toBe(oldIcon);
+  } finally {
+    f.close();
+  }
+});
+
+test("CLI check and pack include icons and reject missing, oversized and invalid UTF-8 assets", () => {
+  const dir = mkdtempSync(join(tmpdir(), "peek-icon-cli-"));
+  try {
+    const p = pkg("connection");
+    p.manifest.icon = "assets/icon.svg";
+    mkdirSync(join(dir, "assets"));
+    writeFileSync(join(dir, "peek.json"), JSON.stringify(p.manifest));
+    writeFileSync(join(dir, "index.ts"), "export default {};");
+    const run = (command: string) =>
+      Bun.spawnSync([
+        process.execPath,
+        "packages/cli/src/cli.ts",
+        command,
+        dir,
+        join(dir, "icon.peek"),
+      ]);
+    expect(run("check").exitCode).not.toBe(0);
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"/>';
+    writeFileSync(join(dir, "assets/icon.svg"), svg);
+    expect(run("check").exitCode).toBe(0);
+    expect(run("pack").exitCode).toBe(0);
+    expect(
+      decode(readFileSync(join(dir, "icon.peek"))).packages[0].files[
+        "assets/icon.svg"
+      ],
+    ).toBe(svg);
+    writeFileSync(join(dir, "assets/icon.svg"), "x".repeat(32 * 1024 + 1));
+    expect(run("check").exitCode).not.toBe(0);
+    expect(run("pack").exitCode).not.toBe(0);
+    writeFileSync(join(dir, "assets/icon.svg"), Buffer.from([0xff]));
+    expect(run("check").exitCode).not.toBe(0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+
+test("iconColor is optional, preserves legacy package identity, and accepts only original or theme", () => {
+  const p = pkg("connection");
+  expect(decode(encode([p])).packages[0]).toEqual(p);
+  expect(manifest(p.manifest)).not.toHaveProperty("iconColor");
+  for (const color of ["original", "theme"] as const) {
+    p.manifest.iconColor = color;
+    expect(decode(encode([p])).packages[0].manifest.iconColor).toBe(color);
+  }
+  for (const color of [null, "auto", "", {}, 1, true]) {
+    expect(() => manifest({ ...p.manifest, iconColor: color })).toThrow("invalid-icon-color");
+  }
+});
+
+
+test("successful retries hide old failures without deleting history or exposing package payloads", () => {
+  const f = fixture();
+  try {
+    const packages = [pkg("connection"), pkg("scenario")];
+    const failed = f.store.stage(packages, ["test/scenario"]);
+    f.store.confirm(failed.id);
+    f.store.fail(failed.id, "execution-failed");
+    const visible = () => f.store.status().operations.some((op) => op.id === failed.id);
+    expect(visible()).toBe(true);
+    const retry = f.store.stage(packages, ["test/scenario"]);
+    f.store.confirm(retry.id);
+    expect(visible()).toBe(true);
+    const op = f.store.pending()!;
+    f.store.commitInstall(op, [], {});
+    expect(visible()).toBe(false);
+    expect(f.store.status().operations.every((op) => op.payload === "{}")).toBe(true);
+    const raw = new Database(f.path);
+    try {
+      expect(raw.query("SELECT status,error FROM extension_operations WHERE id=?").get(failed.id)).toEqual({ status: "failed", error: "execution-failed" });
+    } finally { raw.close(); }
+    // A newer failure remains visible, even after an older successful install.
+    const newer = f.store.stage([pkg("connection", "0.1.1")], ["test/connection"]);
+    f.store.confirm(newer.id);
+    f.store.fail(newer.id, "migration-failed");
+    expect(f.store.status().operations.some((op) => op.id === newer.id)).toBe(true);
+  } finally { f.close(); }
+});
+
+test("unrelated and partial successes do not hide unresolved package failures", () => {
+  const f = fixture();
+  try {
+    const packages = [pkg("connection"), pkg("scenario")];
+    const failed = f.store.stage(packages, ["test/scenario"]);
+    f.store.confirm(failed.id);
+    f.store.fail(failed.id, "execution-failed");
+    const visible = () => f.store.status().operations.some((op) => op.id === failed.id);
+    const unrelated = pkg("connection");
+    unrelated.manifest.id = "test/other";
+    for (const p of [unrelated, packages[0], packages[1]]) {
+      const review = f.store.stage([p], [p.manifest.id]);
+      f.store.confirm(review.id);
+      f.store.commitInstall(f.store.pending()!, [], {});
+      expect(visible()).toBe(p.manifest.id !== "test/scenario");
+    }
+  } finally { f.close(); }
 });

@@ -5,7 +5,7 @@ import { type Json, type Manifest, type Snapshot } from "@peekapp/sdk";
 import type { ScenarioResult } from "@peekapp/sdk/scenario";
 import type { ConnectionUpdate } from "@peekapp/sdk/connection";
 import { encryptSecret, decryptSecret } from "./secrets";
-import { type ExtensionPackage, packageDigest } from "./archive";
+import { type ExtensionPackage, packageDigest, iconDataUrl } from "./archive";
 import {
   compatible,
   validate,
@@ -55,6 +55,20 @@ export function openExtensions(path: string) {
     db
       .query<Installed, []>("SELECT * FROM extension_packages ORDER BY id")
       .all();
+  const officialDigests = new Map<string, string>();
+  const receipts = () =>
+    db
+      .query<{ id: string; digest: string }, []>("SELECT id,digest FROM extension_defaults")
+      .all();
+  function refreshOfficialReceipts() {
+    for (const p of installed()) {
+      const digest = officialDigests.get(p.id);
+      if (digest && packageDigest(JSON.parse(p.payload)) === digest)
+        db.run("UPDATE extension_defaults SET digest=? WHERE id=? AND digest<>?", [
+          digest, p.id, digest,
+        ]);
+    }
+  }
   const instances = () =>
     db
       .query<Instance, []>("SELECT * FROM extension_instances ORDER BY name")
@@ -76,6 +90,28 @@ export function openExtensions(path: string) {
     if (!row) throw new Error("package-not-installed");
     return JSON.parse(row.payload) as ExtensionPackage;
   };
+  function visibleOperations() {
+    const resolved = new Set<string>();
+    return db
+      .query<Operation & { roots: string; packageIds: string }, []>(`
+        SELECT id,kind,status,'{}' AS payload,created_at,error,
+          json_extract(payload,'$.roots') AS roots,
+          (SELECT json_group_array(json_extract(value,'$.manifest.id'))
+           FROM json_each(extension_operations.payload,'$.packages')) AS packageIds
+        FROM extension_operations ORDER BY created_at DESC,rowid DESC LIMIT 20
+      `)
+      .all()
+      .filter((op) => {
+        if (op.status !== "complete" && op.status !== "failed") return true;
+        const ids: string[] = [...JSON.parse(op.roots), ...JSON.parse(op.packageIds)];
+        if (op.status === "complete") {
+          for (const id of ids) resolved.add(id);
+          return true;
+        }
+        return !ids.length || !ids.every((id) => resolved.has(id));
+      })
+      .map(({ roots, packageIds, ...op }) => op);
+  }
   function revision() {
     db.run("UPDATE screen_state SET revision = revision + 1 WHERE id = 1");
   }
@@ -152,6 +188,7 @@ export function openExtensions(path: string) {
       definitions.set(`${row.id}@${row.version}`, row.schema);
     for (const p of packages) {
       manifest(p.manifest);
+      iconDataUrl(p);
       for (const c of contractDefinitions(p.manifest)) {
         const key = `${c.id}@${c.version}`,
           schema = canonicalSchema(c.schema);
@@ -247,6 +284,7 @@ export function openExtensions(path: string) {
       id,
       packages: packages.map((p) => ({
         manifest: p.manifest,
+        iconDataUrl: iconDataUrl(p),
         sha256: packageDigest(p),
         status: "unverified",
       })),
@@ -261,10 +299,15 @@ export function openExtensions(path: string) {
     connections: allConnections,
     stage,
     provision(packages: ExtensionPackage[]) {
+      // Only the host's bundled packages establish trust, never an upload's metadata.
+      officialDigests.clear();
+      for (const p of packages)
+        officialDigests.set(p.manifest.id, packageDigest(p));
       // Bundled defaults enter the same installation journal as uploaded packages.
       // A receipt prevents reinstalling a package the user later removes.
       return db
         .transaction(() => {
+          refreshOfficialReceipts();
           const fresh = packages.filter(
             (p) =>
               !db
@@ -317,6 +360,7 @@ export function openExtensions(path: string) {
       return {
         packages: installed().map((r) => ({
           manifest: JSON.parse(r.payload).manifest,
+          iconDataUrl: iconDataUrl(JSON.parse(r.payload)),
           explicit: !!r.explicit,
           official:
             (
@@ -340,12 +384,7 @@ export function openExtensions(path: string) {
           bindings: JSON.parse(i.bindings),
         })),
         connections: allConnections(),
-        operations: db
-          .query<
-            Operation,
-            []
-          >("SELECT id,kind,status,'{}' as payload,created_at,error FROM extension_operations ORDER BY created_at DESC LIMIT 20")
-          .all(),
+        operations: visibleOperations(),
         runtime: {
           ready:
             !!runtime &&
@@ -460,7 +499,11 @@ export function openExtensions(path: string) {
         );
         // Only one coherent rollback point; ciphertext stays on the server.
         db.run("INSERT OR REPLACE INTO extension_history VALUES (1,?)", [
-          JSON.stringify({ packages: installed(), instances: instances() }),
+          JSON.stringify({
+            packages: installed(),
+            instances: instances(),
+            receipts: receipts(),
+          }),
         ]);
         for (const p of payload.packages) {
           for (const i of affected.filter(
@@ -506,6 +549,7 @@ export function openExtensions(path: string) {
             ],
           );
         }
+        refreshOfficialReceipts();
         for (const id of payload.roots)
           db.run("UPDATE extension_packages SET explicit=1 WHERE id=?", [id]);
         for (const i of instances().filter((i) => i.kind === "scenario"))
@@ -535,6 +579,7 @@ export function openExtensions(path: string) {
         const old = JSON.parse(row.payload) as {
           packages: Installed[];
           instances: Instance[];
+          receipts?: { id: string; digest: string }[];
         };
         // Restoring an installation is explicit and includes its configuration/state snapshot.
         if (instances().some((i) => !old.instances.some((x) => x.id === i.id)))
@@ -578,6 +623,10 @@ export function openExtensions(path: string) {
             JSON.parse(i.bindings),
           );
         }
+        for (const receipt of old.receipts ?? [])
+          db.run("UPDATE extension_defaults SET digest=? WHERE id=?", [
+            receipt.digest, receipt.id,
+          ]);
         db.run("DELETE FROM extension_history");
         revision();
       }).immediate();

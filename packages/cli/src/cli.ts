@@ -107,9 +107,14 @@ export default defineConnection({ run({ now }) { return { datasets: { items: ["H
     });
     if (built.outputFiles.length !== 1)
       throw new Error("single-javascript-bundle-required");
-    const bytes = encode([
-      { manifest: m, files: { "index.mjs": built.outputFiles[0].text } },
-    ]);
+    const files: Record<string, string> = {
+      "index.mjs": built.outputFiles[0].text,
+    };
+    if (m.icon) {
+      const icon = await readFile(join(dir, m.icon));
+      files[m.icon] = new TextDecoder("utf-8", { fatal: true }).decode(icon);
+    }
+    const bytes = encode([{ manifest: m, files }]);
     if (command === "pack") {
       const output = resolve(
         args[1] ?? `${m.id.replace("/", "-")}-${m.version}.peek`,

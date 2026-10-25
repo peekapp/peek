@@ -9,6 +9,7 @@ import { NavigationMenu, NavigationMenuList } from "../ui/navigation-menu";
 import { Children, Fragment, type ReactNode } from "react";
 import {
   Item,
+  ItemMedia,
   ItemGroup,
   ItemSeparator,
   ItemContent,
@@ -34,20 +35,25 @@ export function SettingsHeading({
   title,
   description,
   action,
+  media,
 }: {
   title: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
+  media?: ReactNode;
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h2 className="text-base font-medium wrap-anywhere">{title}</h2>
-        {description ? (
-          <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
-            {description}
-          </p>
-        ) : null}
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        {media}
+        <div className="min-w-0">
+          <h2 className="text-base font-medium wrap-anywhere">{title}</h2>
+          {description ? (
+            <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          ) : null}
+        </div>
       </div>
       {action}
     </div>
@@ -129,33 +135,38 @@ export function SettingsRow({
   children,
   actions,
   status,
+  media,
 }: {
   title: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
   actions?: ReactNode;
   status?: ReactNode;
+  media?: ReactNode;
 }) {
   return (
     <Item role="listitem" variant="resource" className="flex-col sm:flex-row">
-      <ItemContent className="w-full gap-2 sm:w-auto">
-        <div className="flex flex-wrap items-center gap-2">
-          <ItemTitle>
-            <h3>{title}</h3>
-          </ItemTitle>
-          {status}
-        </div>
-        {description ? (
-          <ItemDescription className="line-clamp-none wrap-anywhere">
-            {description}
-          </ItemDescription>
-        ) : null}
-        {children ? (
-          <div className="flex min-w-0 flex-col items-start gap-2 text-sm text-muted-foreground wrap-anywhere [&>*]:max-w-full">
-            {children}
+      <div className="flex w-full min-w-0 flex-1 items-start gap-3 sm:w-auto">
+        {media ? <ItemMedia>{media}</ItemMedia> : null}
+        <ItemContent className="w-full gap-2 sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2">
+            <ItemTitle>
+              <h3>{title}</h3>
+            </ItemTitle>
+            {status}
           </div>
-        ) : null}
-      </ItemContent>
+          {description ? (
+            <ItemDescription className="line-clamp-none wrap-anywhere">
+              {description}
+            </ItemDescription>
+          ) : null}
+          {children ? (
+            <div className="flex min-w-0 flex-col items-start gap-2 text-sm text-muted-foreground wrap-anywhere [&>*]:max-w-full">
+              {children}
+            </div>
+          ) : null}
+        </ItemContent>
+      </div>
       {actions ? (
         <ItemActions className="max-w-full flex-wrap sm:shrink-0">
           {actions}
@@ -244,12 +255,14 @@ export function EditorHeader({
   backHref,
   backLabel,
   action,
+  media,
 }: {
   title: ReactNode;
   description?: ReactNode;
   backHref: string;
   backLabel: string;
   action?: ReactNode;
+  media?: ReactNode;
 }) {
   return (
     <>
@@ -263,6 +276,7 @@ export function EditorHeader({
         title={title}
         description={description}
         action={action}
+        media={media}
       />
     </>
   );

@@ -4,6 +4,7 @@ import { EditorForm } from "./layout";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ExtensionIcon, ExtensionLabel } from "../extension-icon";
 import { DefinitionPicker } from "./definition-picker";
 import type { Json, Manifest, Schema } from "@peekapp/sdk";
 import { Button } from "../ui/button";
@@ -66,6 +67,7 @@ type Item = {
 export type Status = {
   packages: {
     manifest: Manifest;
+    iconDataUrl: string | null;
     explicit: boolean;
     unused: boolean;
     official: boolean;
@@ -211,7 +213,11 @@ export function Extensions({
     [url, setUrl] = useState("");
   const [review, setReview] = useState<{
     id: string;
-    packages: { manifest: Manifest; sha256: string }[];
+    packages: {
+      manifest: Manifest;
+      sha256: string;
+      iconDataUrl: string | null;
+    }[];
   } | null>(null);
   const [profiles, setProfiles] = useState<Profile[] | null>(initialProfiles);
   const [profilesError, setProfilesError] = useState("");
@@ -283,11 +289,12 @@ export function Extensions({
       itemId === "new"
         ? undefined
         : data?.instances.find((i) => i.id === itemId && i.kind === kind);
-    const manifest = data?.packages.find(
+    const selectedPackage = data?.packages.find(
       (p) =>
         p.manifest.id === (itemId === "new" ? packageId : item?.package_id) &&
         p.manifest.kind === kind,
-    )?.manifest;
+    );
+    const manifest = selectedPackage?.manifest;
     return (
       <section className="flex flex-col gap-6">
         {error || loadError ? (
@@ -319,6 +326,9 @@ export function Extensions({
           <InstanceEditor
             key={item?.id ?? manifest.id}
             manifest={manifest}
+            iconDataUrl={selectedPackage?.iconDataUrl}
+            packages={data.packages}
+            instances={data.instances}
             item={item}
             connections={data.connections}
             profiles={profiles}
@@ -453,11 +463,14 @@ export function Extensions({
             </CardHeader>
             <CardContent>
               <ul>
-                {review.packages.map(({ manifest: m, sha256 }) => (
+                {review.packages.map(({ manifest: m, sha256, iconDataUrl }) => (
                   <li key={m.id}>
-                    <strong>
-                      {m.name} · {m.version}
-                    </strong>
+                    <div className="flex items-center gap-3">
+                      <ExtensionIcon kind={m.kind} src={iconDataUrl} color={m.iconColor} />
+                      <strong>
+                        {m.name} · {m.version}
+                      </strong>
+                    </div>
                     <p>
                       {m.id} — {m.author}
                     </p>
@@ -600,6 +613,13 @@ export function Extensions({
                 .map((p) => (
                   <SettingsRow
                     key={p.manifest.id}
+                    media={
+                      <ExtensionIcon
+                        kind={p.manifest.kind}
+                        src={p.iconDataUrl}
+                        color={p.manifest.iconColor}
+                      />
+                    }
                     title={p.manifest.name}
                     description={`${p.manifest.id} · ${p.manifest.version} · ${p.manifest.author}`}
                     actions={
@@ -665,6 +685,16 @@ export function Extensions({
             .map((i) => (
               <SettingsRow
                 key={i.id}
+                media={
+                  <ExtensionIcon
+                    kind={i.kind}
+                    color={data.packages.find((p) => p.manifest.id === i.package_id)?.manifest.iconColor}
+                    src={
+                      data.packages.find((p) => p.manifest.id === i.package_id)
+                        ?.iconDataUrl
+                    }
+                  />
+                }
                 title={
                   <Link
                     href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
@@ -713,21 +743,31 @@ export function Extensions({
                     <ProfileLabel key={p.id} profile={p} locale={locale} />
                   ))}
                 {i.kind === "scenario" ? (
-                  <p>
+                  <div className="flex flex-wrap gap-3">
                     {[
                       ...new Set(
                         Object.values(i.bindings)
                           .flat()
-                          .map(
-                            (b) =>
-                              data.connections.find(
-                                (c) => c.id === b.connectionId,
-                              )?.name,
-                          )
-                          .filter(Boolean),
+                          .map((b) => b.connectionId),
                       ),
-                    ].join(" · ")}
-                  </p>
+                    ].map((id) => {
+                      const connection = data.connections.find(
+                        (c) => c.id === id,
+                      );
+                      const instance = data.instances.find((c) => c.id === id);
+                      const sourcePackage = data.packages.find((p) => p.manifest.id === instance?.package_id);
+                      return connection ? (
+                        <ExtensionLabel
+                          key={id}
+                          kind="connection"
+                          src={sourcePackage?.iconDataUrl}
+                          color={sourcePackage?.manifest.iconColor}
+                        >
+                          {connection.name}
+                        </ExtensionLabel>
+                      ) : null;
+                    })}
+                  </div>
                 ) : null}
                 {i.last_error ? (
                   <Alert variant="destructive" role="status">
@@ -781,6 +821,9 @@ export function Extensions({
 }
 function InstanceEditor({
   manifest: m,
+  iconDataUrl,
+  packages,
+  instances,
   item,
   connections,
   profiles,
@@ -789,6 +832,9 @@ function InstanceEditor({
   save,
 }: {
   manifest: Manifest;
+  iconDataUrl?: string | null;
+  packages: Status["packages"];
+  instances: Status["instances"];
   item?: Item;
   connections: Status["connections"];
   profiles: Profile[] | null;
@@ -817,15 +863,19 @@ function InstanceEditor({
     requirement,
     choices: connections.flatMap((connection) =>
       Object.entries(connection.contracts)
-        .filter(
-          ([, contract]) =>
-            acceptsContract(m, requirement, contract),
-        )
-        .map(([dataset]) => ({
-          connectionId: connection.id,
-          name: connection.name,
-          dataset,
-        })),
+        .filter(([, contract]) => acceptsContract(m, requirement, contract))
+        .map(([dataset]) => {
+          const sourcePackage = packages.find(
+            (p) => p.manifest.id === instances.find((i) => i.id === connection.id)?.package_id,
+          );
+          return {
+            connectionId: connection.id,
+            name: connection.name,
+            iconDataUrl: sourcePackage?.iconDataUrl,
+            iconColor: sourcePackage?.manifest.iconColor,
+            dataset,
+          };
+        }),
     ),
   }));
   const missingInput = inputs.find(
@@ -842,6 +892,7 @@ function InstanceEditor({
   return (
     <div>
       <EditorHeader
+        media={<ExtensionIcon kind={m.kind} src={iconDataUrl} color={m.iconColor} />}
         title={item?.name ?? `${t("Configure", "Настроить")} ${m.name}`}
         description={m.description}
         backHref={`/${m.kind === "scenario" ? "scenarios" : "connections"}`}
@@ -991,7 +1042,15 @@ function InstanceEditor({
                   choices.map((choice) => (
                     <SettingsField
                       key={`${choice.connectionId}:${choice.dataset}`}
-                      label={choice.name}
+                      label={
+                        <ExtensionLabel
+                          kind="connection"
+                          src={choice.iconDataUrl}
+                          color={choice.iconColor}
+                        >
+                          {choice.name}
+                        </ExtensionLabel>
+                      }
                     >
                       <Checkbox
                         checked={(bindings[input] ?? []).some(

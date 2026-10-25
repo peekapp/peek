@@ -28,6 +28,6 @@ and theme compatibility.
   SettingsCard (screens only), SettingsList, SettingsRow, SettingsRowDetails, EditorForm, EditorSection, EditorActions, SettingsField,
   FormFeedback, LoadingState, ErrorState and SettingsEmpty.
 - Keep dynamic inline styles only for runtime values (profile colors, screen
-  scale). Static styling belongs in Tailwind. Use semantic colors for every theme.
+  scale, validated extension mask-image URLs). Static styling belongs in Tailwind. Use semantic colors for every theme.
 - Verify production build, types, tests and browser layouts in light/dark themes
   at wide/narrow sizes using isolated data. Include dialogs.

@@ -14,10 +14,14 @@ function pkg(code: string, connection = false): ExtensionPackage {
       description: "Test",
       author: "Tests",
       entry: "index.mjs",
+      icon: "assets/icon.svg",
       settings: { type: "object" },
       permissions: connection ? { internet: true } : {},
     },
-    files: { "index.mjs": code },
+    files: {
+      "index.mjs": code,
+      "assets/icon.svg": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"/>',
+    },
   };
 }
 check(

@@ -6,6 +6,7 @@ import { type Manifest, type Schema, type Contract } from "@peekapp/sdk";
 const validators = new Map<string, ValidateFunction>();
 export const PACKAGE_ID = /^[a-z][a-z0-9-]{0,39}\/[a-z][a-z0-9-]{0,59}$/;
 export const LIMITS = {
+  icon: 32 * 1024,
   archive: 16 * 1024 * 1024,
   unpacked: 32 * 1024 * 1024,
   message: 8 * 1024 * 1024,
@@ -120,6 +121,10 @@ export function manifest(input: unknown): Manifest {
     m.entry !== "index.mjs"
   )
     throw new Error("invalid-manifest");
+  if (m.icon !== undefined && m.icon !== "assets/icon.svg")
+    throw new Error("invalid-icon-path");
+  if (m.iconColor !== undefined && !["original", "theme"].includes(m.iconColor))
+    throw new Error("invalid-icon-color");
   for (const field of [m.name, m.description, m.author])
     if (typeof field !== "string" || !field.trim() || field.length > 2000)
       throw new Error("invalid-metadata");

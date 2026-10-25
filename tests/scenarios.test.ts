@@ -262,7 +262,9 @@ test("bundled defaults install once, survive restart and do not claim uploaded r
     const p = structuredClone(
       packages.find((p) => p.manifest.id === "peek/meetings")!,
     );
-    p.manifest.version = "0.2.1";
+    p.manifest.version = p.manifest.version.replace(/\d+$/, (patch) =>
+      String(Number(patch) + 1),
+    );
     const preview = f.store.stage([p], [p.manifest.id]);
     f.store.confirm(preview.id);
     const op = f.store.pending()!;
@@ -319,6 +321,130 @@ test("credentials stay encrypted and a missing key is never silently replaced", 
       expect(() => connection(f.store)).toThrow("encryption-key");
       expect(existsSync(key)).toBe(false);
     }
+  } finally {
+    f.close();
+  }
+});
+
+
+function nextOfficialBundle(id: string) {
+  const next = structuredClone(packages);
+  const updated = next.find((p) => p.manifest.id === id)!;
+  updated.manifest.version = updated.manifest.version.replace(/\d+$/, (patch) =>
+    String(Number(patch) + 1),
+  );
+  return { next, updated };
+}
+
+test("explicit bundled updates preserve official badges and rollback restores prior receipts", () => {
+  const f = fixture();
+  try {
+    const { next, updated } = nextOfficialBundle("peek/meetings");
+    f.store.removePackage("peek/deadlines");
+    f.store.provision(next);
+    expect(f.store.pending()).toBeNull();
+    expect(f.store.getPackage(updated.manifest.id).manifest.version).not.toBe(
+      updated.manifest.version,
+    );
+    expect(f.store.status().packages.every((p) => p.official)).toBe(true);
+    const review = f.store.stage([updated], [updated.manifest.id]);
+    f.store.confirm(review.id);
+    const op = f.store.pending()!;
+    f.store.commitInstall(op, [], {});
+    expect(f.store.status().packages.every((p) => p.official)).toBe(true);
+    const reopened = officialStore(f.path);
+    try {
+      expect(reopened.status().packages.every((p) => p.official)).toBe(true);
+      reopened.rollback();
+      reopened.provision(next);
+      expect(reopened.status().packages.every((p) => p.official)).toBe(true);
+      expect(
+        reopened.getPackage(updated.manifest.id).manifest.version,
+      ).not.toBe(updated.manifest.version);
+      expect(reopened.installed().some((p) => p.id === "peek/deadlines")).toBe(
+        false,
+      );
+      expect(reopened.pending()).toBeNull();
+    } finally {
+      reopened.close();
+    }
+  } finally {
+    f.close();
+  }
+});
+
+test("matching package ID, author and version cannot impersonate a bundled update", () => {
+  const f = fixture();
+  try {
+    const { next, updated } = nextOfficialBundle("peek/meetings");
+    f.store.provision(next);
+    const tampered = structuredClone(updated);
+    tampered.files["assets/icon.svg"] += "<!-- changed artwork -->";
+    const review = f.store.stage([tampered], [tampered.manifest.id]);
+    f.store.confirm(review.id);
+    f.store.commitInstall(f.store.pending()!, [], {});
+    f.store.provision(next);
+    expect(
+      f.store
+        .status()
+        .packages.find((p) => p.manifest.id === updated.manifest.id)!.official,
+    ).toBe(false);
+    f.store.rollback();
+    expect(f.store.status().packages.every((p) => p.official)).toBe(true);
+  } finally {
+    f.close();
+  }
+});
+
+test("failed bundled migrations leave official receipts and installed versions unchanged", () => {
+  const f = fixture();
+  try {
+    const id = connection(f.store);
+    const { next, updated } = nextOfficialBundle("peek/ical");
+    f.store.provision(next);
+    const raw = new Database(f.path);
+    const receipts = () =>
+      raw.query("SELECT * FROM extension_defaults ORDER BY id").all();
+    try {
+      const before = receipts();
+      const review = f.store.stage([updated], [updated.manifest.id]);
+      f.store.confirm(review.id);
+      const op = f.store.pending()!;
+      expect(() =>
+        f.store.commitInstall(op, f.store.installInput(op).affected, {
+          [id]: { settings: { intervalSeconds: -1 }, state: null },
+        }),
+      ).toThrow();
+      expect(receipts()).toEqual(before);
+      expect(f.store.status().packages.every((p) => p.official)).toBe(true);
+      expect(f.store.getPackage(updated.manifest.id).manifest.version).not.toBe(
+        updated.manifest.version,
+      );
+    } finally {
+      raw.close();
+    }
+  } finally {
+    f.close();
+  }
+});
+
+test("provisioning repairs exact installed bundle receipts without another installation", () => {
+  const f = fixture();
+  try {
+    const { next, updated } = nextOfficialBundle("peek/meetings");
+    const review = f.store.stage([updated], [updated.manifest.id]);
+    f.store.confirm(review.id);
+    f.store.commitInstall(f.store.pending()!, [], {});
+    expect(
+      f.store
+        .status()
+        .packages.find((p) => p.manifest.id === updated.manifest.id)!.official,
+    ).toBe(false);
+    f.store.provision(next);
+    expect(f.store.status().packages.every((p) => p.official)).toBe(true);
+    expect(f.store.pending()).toBeNull();
+    f.store.rollback();
+    expect(f.store.status().packages.every((p) => p.official)).toBe(true);
   } finally {
     f.close();
   }
