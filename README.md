@@ -137,4 +137,15 @@ bun run extensions:npm-smoke
 
 Tests cover scheduling boundaries, bindings, profile ownership, persistence, destructive MVP reset, encrypted secrets, stale publications, package provenance, recurrence/DST and container execution. The official Docker integration test uses a deterministic transport fixture; it exercises the bundled parser and both official scenarios without contacting a calendar account. CI also checks Compose startup, restart and backup restoration.
 
+UI regressions run in CI against a separate database. To run them locally, build the app,
+start it with an absolute temporary `PEEK_DATABASE_PATH`, then run
+`uv run --with playwright==1.64.1 python -m playwright install chromium` and
+`uv run --with playwright==1.64.1 python tests/ui_smoke.py http://127.0.0.1:3217`
+(use your server's port). The check creates/deletes test profiles and screens and changes
+locale/theme; never point it at your household database. Extension UI uses API fixtures.
+
+Editors lock during saves and warn before leaving with unsaved changes. Cancel explicitly
+discards a draft. Back/Forward warnings require a browser with the Navigation API;
+older browsers still warn for links and reloads.
+
 See [Extensions](docs/extensions.md) for the public SDK, manifests, package lifecycle and npm releases. The [MVP plan](docs/mvp-plan.md), [design decisions](docs/design.md), and [future ideas](docs/future-ideas.md) contain the product background. A distribution license has not been selected yet.

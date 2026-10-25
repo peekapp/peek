@@ -168,9 +168,7 @@ export function manifest(input: unknown): Manifest {
   }
   return m;
 }
-export function compatible(version: string, range: string) {
-  return semver.satisfies(version, range);
-}
+export { compatible } from "./compatibility";
 export function boundedJson(value: unknown, bytes: number) {
   const text = JSON.stringify(value);
   if (text === undefined || Buffer.byteLength(text) > bytes)

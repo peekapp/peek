@@ -231,6 +231,8 @@ export function ScreenEditor({
         }
       />
       <EditorForm
+        draft={{ id, config }}
+        locale={locale}
         layout="preview"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -246,8 +248,10 @@ export function ScreenEditor({
             setStatus("saved");
             if (!screen || screen.id !== result.id)
               router.replace(`/screens/${result.id}/edit`);
+            return true;
           } catch (error) {
             setStatus(error instanceof Error ? error.message : "error");
+            return false;
           }
         }}
       >
@@ -450,7 +454,9 @@ export function ScreenEditor({
         <EditorActions>
           <Button disabled={busy}>{busy ? t.saving : t.save}</Button>
           <Button variant="ghost" asChild>
-            <Link href="/screens">{t.cancel}</Link>
+            <Link href="/screens" data-discard-changes>
+              {t.cancel}
+            </Link>
           </Button>
           {screen ? (
             <DeleteButton

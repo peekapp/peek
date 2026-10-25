@@ -33,6 +33,7 @@
   --color-overlay: var(--ui-overlay);
   --color-destructive-foreground: var(--ui-destructive-foreground);
   --color-destructive: var(--ui-destructive);
+  --color-destructive-background: #c73535;
   --color-success: var(--ui-success);
   --color-success-foreground: var(--ui-success-foreground);
   --color-status-error: var(--ui-status-error);

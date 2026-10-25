@@ -15,7 +15,7 @@ const alertVariants = cva(
         error:
           "border-status-error-foreground/20 bg-status-error text-status-error-foreground *:data-[slot=alert-description]:text-status-error-foreground",
         destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 [&>svg]:text-current",
+          "bg-card text-status-error-foreground *:data-[slot=alert-description]:text-status-error-foreground [&>svg]:text-current",
       },
     },
     defaultVariants: {

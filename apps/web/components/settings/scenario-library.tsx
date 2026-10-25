@@ -249,7 +249,7 @@ export function ScenarioLibrary({
             </details>
           </CatalogSection>
         </CatalogPanel>
-        <CatalogPanel value="downloaded" empty>
+        <CatalogPanel value="downloaded" empty={downloaded.length === 0}>
           {downloaded.length ? (
             downloaded.map(renderScenario)
           ) : (

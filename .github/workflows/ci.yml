@@ -26,6 +26,23 @@ jobs:
       - run: bun run test
       - run: bun typecheck
       - run: bun run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install playwright==1.64.1 && python -m playwright install --with-deps chromium
+      - name: Browser UI regressions (isolated database)
+        env:
+          PEEK_DATABASE_PATH: ${{ runner.temp }}/peek-ui/peek.sqlite
+        run: |
+          bun run db:migrate
+          bun run --cwd apps/web start --port 3217 > "$RUNNER_TEMP/peek-ui.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3217/api/settings > /dev/null; then break; fi
+            sleep 1
+          done
+          python tests/ui_smoke.py http://127.0.0.1:3217
       - run: bun run extensions:npm-smoke
 
   containers:

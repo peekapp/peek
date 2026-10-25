@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./archive": "./src/archive.ts",
+    "./compatibility": "./src/compatibility.ts",
     "./validation": "./src/validation.ts",
     "./store": "./src/store.ts",
     "./schema": "./src/schema.ts",

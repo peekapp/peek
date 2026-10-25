@@ -79,7 +79,10 @@ function CardDescription({
   return (
     <Comp
       data-slot="card-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn(
+        "text-sm text-muted-foreground group-data-[variant=resource]/card:wrap-anywhere",
+        className,
+      )}
       {...props}
     />
   );
@@ -103,7 +106,7 @@ function CardContent({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-content"
       className={cn(
-        "px-6 group-data-[variant=preview]/card:px-0 group-data-[variant=choice]/card:px-0 group-data-[variant=resource]/card:flex group-data-[variant=resource]/card:flex-col group-data-[variant=resource]/card:gap-3 group-data-[variant=resource]/card:text-sm group-data-[variant=resource]/card:text-muted-foreground",
+        "px-6 group-data-[variant=resource]/card:wrap-anywhere group-data-[variant=preview]/card:px-0 group-data-[variant=choice]/card:px-0 group-data-[variant=resource]/card:flex group-data-[variant=resource]/card:flex-col group-data-[variant=resource]/card:gap-3 group-data-[variant=resource]/card:text-sm group-data-[variant=resource]/card:text-muted-foreground",
         className,
       )}
       {...props}

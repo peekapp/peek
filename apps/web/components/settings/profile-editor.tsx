@@ -49,6 +49,8 @@ export function ProfileEditor({
         <p>{t.systemProfile}</p>
       ) : (
         <EditorForm
+          draft={{ name, color }}
+          locale={locale}
           onSubmit={async (e) => {
             e.preventDefault();
             setStatus("saving");
@@ -61,8 +63,10 @@ export function ProfileEditor({
               await refresh();
               setStatus("saved");
               if (!profile) router.replace(`/profiles/${result.id}`);
+              return true;
             } catch (e) {
               setStatus(e instanceof Error ? e.message : "error");
+              return false;
             }
           }}
         >
@@ -137,7 +141,9 @@ export function ProfileEditor({
               {status === "saving" ? t.saving : t.save}
             </Button>
             <Button variant="ghost" asChild>
-              <Link href="/profiles">{t.cancel}</Link>
+              <Link href="/profiles" data-discard-changes>
+                {t.cancel}
+              </Link>
             </Button>
             {profile ? (
               <DeleteButton

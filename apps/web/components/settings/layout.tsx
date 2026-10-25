@@ -130,9 +130,11 @@ export function SettingsCard({
 export function SettingsEmpty({
   title,
   description,
+  action,
 }: {
   title: string;
   description?: string;
+  action?: ReactNode;
 }) {
   return (
     <Empty className="border">
@@ -142,6 +144,7 @@ export function SettingsEmpty({
           <EmptyDescription>{description}</EmptyDescription>
         ) : null}
       </EmptyHeader>
+      {action}
     </Empty>
   );
 }
@@ -266,22 +269,7 @@ export function SettingsNavigation({
     </NavigationMenu>
   );
 }
-const editorFormVariants = cva("min-w-0", {
-  variants: { layout: { default: "max-w-2xl", preview: "w-full" } },
-  defaultVariants: { layout: "default" },
-});
-export function EditorForm({
-  className,
-  layout,
-  ...props
-}: React.ComponentProps<"form"> & { layout?: "default" | "preview" }) {
-  return (
-    <form
-      className={cn(editorFormVariants({ layout }), className)}
-      {...props}
-    />
-  );
-}
+export { EditorForm } from "./editor-form";
 export function EditorGrid(props: React.ComponentProps<typeof FieldGroup>) {
   return (
     <FieldGroup className="grid items-start gap-6 sm:grid-cols-2" {...props} />
@@ -290,7 +278,9 @@ export function EditorGrid(props: React.ComponentProps<typeof FieldGroup>) {
 const feedbackVariants = cva(
   "text-sm leading-relaxed wrap-anywhere empty:hidden",
   {
-    variants: { tone: { default: "text-primary", error: "text-destructive" } },
+    variants: {
+      tone: { default: "text-primary", error: "text-status-error-foreground" },
+    },
     defaultVariants: { tone: "default" },
   },
 );

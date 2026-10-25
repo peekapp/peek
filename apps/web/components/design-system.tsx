@@ -1,5 +1,6 @@
 "use client";
 import {
+  EditorForm,
   EditorSection,
   EditorActions,
   LoadingState,
@@ -76,6 +77,7 @@ const roles = [
 /** A read-only catalogue: example actions never mutate application data. */
 export function DesignSystem() {
   const [query, setQuery] = useState("");
+  const [draftName, setDraftName] = useState("Пример профиля");
   return (
     <AppShell locale="ru" section="design-system">
       <SettingsPage lang="ru">
@@ -98,12 +100,12 @@ export function DesignSystem() {
             <ColorPair
               name="Ошибка"
               background="color-background"
-              foreground="color-destructive"
+              foreground="color-status-error-foreground"
             />
             <ColorPair
               name="Опасное действие"
-              background="color-destructive"
-              foreground="color-white"
+              background="color-destructive-background"
+              foreground="color-destructive-foreground"
             />
           </div>
           <p>
@@ -330,9 +332,10 @@ export function DesignSystem() {
             ) ? (
               <SettingsCard
                 title="Очень длинное название экрана для проверки переноса текста без переполнения"
-                description="Одна композиция для экранов, профилей, сценариев и подключений."
+                description={"package/" + "long-identifier".repeat(12)}
               >
                 <ProfileIdentity name="Александра" color="pink" />
+                <p>{"https://example.test/" + "error-detail".repeat(20)}</p>
               </SettingsCard>
             ) : null}
           </SettingsGrid>
@@ -341,20 +344,39 @@ export function DesignSystem() {
             backHref="#compositions-title"
             backLabel="К списку"
           />
-          <EditorSection title="Общие секции редактора">
+          <EditorForm draft={draftName} locale="ru" onSubmit={async () => true}>
+            <EditorSection title="Общие секции редактора">
+              <Field>
+                <FieldLabel htmlFor="example-draft-name">
+                  Пример имени
+                </FieldLabel>
+                <Input
+                  id="example-draft-name"
+                  value={draftName}
+                  onChange={(event) => setDraftName(event.target.value)}
+                />
+                <FieldDescription>
+                  Измените имя и перейдите в другой раздел, чтобы проверить
+                  защиту несохранённых изменений. Сохранение действует только в
+                  этом примере.
+                </FieldDescription>
+              </Field>
+            </EditorSection>
             <EditorActions>
-              <Button type="button">Сохранить</Button>
-              <Button type="button" variant="ghost">
-                Отмена
-              </Button>
+              <Button>Сохранить пример</Button>
             </EditorActions>
-            <FormFeedback>Изменения сохранены</FormFeedback>
-          </EditorSection>
+            <FormFeedback>Пример сообщения после сохранения</FormFeedback>
+          </EditorForm>
           <LoadingState>Загрузка…</LoadingState>
           <ErrorState>Не удалось загрузить данные.</ErrorState>
           <SettingsEmpty
             title="Пока нет экранов"
             description="Добавьте экран с помощью кнопки в заголовке раздела."
+            action={
+              <Button asChild>
+                <Link href="/screens/new">Добавить экран</Link>
+              </Button>
+            }
           />
         </section>
         <Separator />

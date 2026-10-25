@@ -12,7 +12,12 @@ import { Input } from "../ui/input";
 import { Checkbox } from "../ui/checkbox";
 import { SettingsSelect } from "./select";
 import { SelectItem } from "../ui/select";
-import { FieldGroup, FieldSet, FieldLegend } from "../ui/field";
+import {
+  FieldGroup,
+  FieldSet,
+  FieldLegend,
+  FieldDescription,
+} from "../ui/field";
 import { SettingsField } from "./form-field";
 import {
   Card,
@@ -39,6 +44,7 @@ import {
 import { ProfileLabel } from "../profile-label";
 import type { Profile } from "@peek/core/profiles";
 import { DeleteButton, ConfirmAction } from "./delete-button";
+import { compatible } from "@peek/extensions/compatibility";
 import { numericSetting } from "./numeric-setting";
 type Binding = { connectionId: string; dataset: string };
 type Item = {
@@ -285,7 +291,6 @@ export function Extensions({
             connections={data.connections}
             profiles={profiles}
             locale={locale}
-            cancel={() => router.push(`/${section}`)}
             save={async (instance) => {
               await api({ action: "save", instance });
               router.push(`/${section}`);
@@ -744,7 +749,6 @@ function InstanceEditor({
   connections,
   profiles,
   locale,
-  cancel,
   save,
 }: {
   manifest: Manifest;
@@ -752,7 +756,6 @@ function InstanceEditor({
   connections: Status["connections"];
   profiles: Profile[];
   locale: "en" | "ru";
-  cancel: () => void;
   save: (v: unknown) => Promise<void>;
 }) {
   const t = (en: string, ru: string) => (locale === "ru" ? ru : en);
@@ -771,6 +774,34 @@ function InstanceEditor({
     ),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const inputs = Object.entries(m.inputs ?? {}).map(([input, requirement]) => ({
+    input,
+    requirement,
+    choices: connections.flatMap((connection) =>
+      Object.entries(connection.contracts)
+        .filter(
+          ([, contract]) =>
+            contract.id === requirement.contract &&
+            compatible(contract.version, requirement.version),
+        )
+        .map(([dataset]) => ({
+          connectionId: connection.id,
+          name: connection.name,
+          dataset,
+        })),
+    ),
+  }));
+  const missingInput = inputs.find(
+    ({ input, requirement, choices }) =>
+      !requirement.optional &&
+      !choices.some((choice) =>
+        (bindings[input] ?? []).some(
+          (binding) =>
+            binding.connectionId === choice.connectionId &&
+            binding.dataset === choice.dataset,
+        ),
+      ),
+  );
   return (
     <div>
       <EditorHeader
@@ -781,8 +812,27 @@ function InstanceEditor({
       />
       <EditorForm
         id="extension-instance"
+        draft={{
+          name,
+          profile,
+          enabled,
+          settings,
+          secrets,
+          changeSecrets,
+          bindings,
+        }}
+        locale={locale}
         onSubmit={async (e) => {
           e.preventDefault();
+          if (missingInput) {
+            setError(
+              t(
+                "Choose a compatible connection for",
+                "Выберите совместимое подключение для",
+              ) + ` ${missingInput.input}.`,
+            );
+            return false;
+          }
           setBusy(true);
           setError("");
           try {
@@ -796,8 +846,10 @@ function InstanceEditor({
               bindings,
               ...(changeSecrets ? { secrets } : {}),
             });
+            return true;
           } catch (e) {
             setError(e instanceof Error ? e.message : String(e));
+            return false;
           } finally {
             setBusy(false);
           }
@@ -856,52 +908,83 @@ function InstanceEditor({
                 ) : null}
               </>
             ) : null}
-            {Object.entries(m.inputs ?? {}).map(([input, requirement]) => (
-              <FieldSet key={input}>
+            {inputs.map(({ input, requirement, choices }) => (
+              <FieldSet key={input} aria-describedby={`input-${input}-hint`}>
                 <FieldLegend>
                   {t("Connections", "Подключения")} ({input}){" "}
                   {requirement.optional
                     ? t("(optional)", "(необязательно)")
                     : ""}
                 </FieldLegend>
-                {connections.flatMap((c) =>
-                  Object.entries(c.contracts)
-                    .filter(
-                      ([, contract]) => contract.id === requirement.contract,
-                    )
-                    .map(([dataset]) => {
-                      const checked = (bindings[input] ?? []).some(
-                        (b) => b.connectionId === c.id && b.dataset === dataset,
-                      );
-                      return (
-                        <label
-                          className="flex items-center gap-2"
-                          key={`${c.id}:${dataset}`}
-                        >
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={(v) => {
-                              const rest = (bindings[input] ?? []).filter(
-                                (b) =>
-                                  b.connectionId !== c.id ||
-                                  b.dataset !== dataset,
-                              );
-                              setBindings({
-                                ...bindings,
-                                [input]:
-                                  v === true
-                                    ? [
-                                        ...(requirement.multiple ? rest : []),
-                                        { connectionId: c.id, dataset },
-                                      ]
-                                    : rest,
-                              });
-                            }}
-                          />
-                          {c.name}
-                        </label>
-                      );
-                    }),
+                <FieldDescription id={`input-${input}-hint`}>
+                  {requirement.optional
+                    ? t("Optional connection.", "Необязательное подключение.")
+                    : t(
+                        "Select a compatible connection to save this scenario.",
+                        "Выберите совместимое подключение, чтобы сохранить сценарий.",
+                      )}
+                </FieldDescription>
+                {!choices.length ? (
+                  <SettingsEmpty
+                    title={t(
+                      "No compatible connections",
+                      "Нет совместимых подключений",
+                    )}
+                    description={
+                      t(
+                        "Add a connection that provides",
+                        "Добавьте подключение, предоставляющее",
+                      ) + ` ${requirement.contract} (${requirement.version}).`
+                    }
+                    action={
+                      <Button variant="outline" asChild>
+                        <Link href="/connections">
+                          {t("Add connection", "Добавить подключение")}
+                        </Link>
+                      </Button>
+                    }
+                  />
+                ) : (
+                  choices.map((choice) => (
+                    <SettingsField
+                      key={`${choice.connectionId}:${choice.dataset}`}
+                      label={choice.name}
+                    >
+                      <Checkbox
+                        checked={(bindings[input] ?? []).some(
+                          (binding) =>
+                            binding.connectionId === choice.connectionId &&
+                            binding.dataset === choice.dataset,
+                        )}
+                        onCheckedChange={(checked) => {
+                          const rest = (bindings[input] ?? []).filter(
+                            (binding) =>
+                              (binding.connectionId !== choice.connectionId ||
+                                binding.dataset !== choice.dataset) &&
+                              choices.some(
+                                (option) =>
+                                  option.connectionId ===
+                                    binding.connectionId &&
+                                  option.dataset === binding.dataset,
+                              ),
+                          );
+                          setBindings({
+                            ...bindings,
+                            [input]:
+                              checked === true
+                                ? [
+                                    ...(requirement.multiple ? rest : []),
+                                    {
+                                      connectionId: choice.connectionId,
+                                      dataset: choice.dataset,
+                                    },
+                                  ]
+                                : rest,
+                          });
+                        }}
+                      />
+                    </SettingsField>
+                  ))
                 )}
               </FieldSet>
             ))}
@@ -909,11 +992,20 @@ function InstanceEditor({
           </FieldGroup>
         </EditorSection>
         <EditorActions>
-          <Button type="submit" form="extension-instance" disabled={busy}>
-            {t("Save", "Сохранить")}
+          <Button
+            type="submit"
+            form="extension-instance"
+            disabled={busy || !!missingInput}
+          >
+            {busy ? t("Saving…", "Сохранение…") : t("Save", "Сохранить")}
           </Button>
-          <Button type="button" variant="ghost" onClick={cancel}>
-            {t("Cancel", "Отмена")}
+          <Button variant="ghost" asChild>
+            <Link
+              href={`/${m.kind === "scenario" ? "scenarios" : "connections"}`}
+              data-discard-changes
+            >
+              {t("Cancel", "Отмена")}
+            </Link>
           </Button>
         </EditorActions>
       </EditorForm>
