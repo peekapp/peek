@@ -24,7 +24,7 @@ import { ScreenEditor, ScreenList } from "./settings/screen-editor";
 import { profileName, type Profile } from "@peek/core/profiles";
 import { ProfileEditor } from "./settings/profile-editor";
 import { ProfileLabel } from "./profile-label";
-import { SettingsGrid, SettingsCard, PreferenceRow } from "./settings/layout";
+import { SettingsList, SettingsRow, PreferenceRow } from "./settings/layout";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
@@ -267,7 +267,7 @@ export function Settings({
                   }
                 />
                 {!data && !error ? (
-                  <LoadingState>{t.loading}</LoadingState>
+                  <LoadingState layout="list">{t.loading}</LoadingState>
                 ) : null}
                 {data &&
                 data.profiles.every(
@@ -275,11 +275,11 @@ export function Settings({
                 ) ? (
                   <SearchEmpty locale={locale} />
                 ) : null}
-                <SettingsGrid>
+                <SettingsList>
                   {data?.profiles
                     .filter((p) => matchesSearch(query, profileName(p, locale)))
                     .map((p) => (
-                      <SettingsCard
+                      <SettingsRow
                         key={p.id}
                         title={
                           <Link href={`/profiles/${p.id}`}>
@@ -307,9 +307,9 @@ export function Settings({
                               .length
                           }
                         </div>
-                      </SettingsCard>
+                      </SettingsRow>
                     ))}
-                </SettingsGrid>
+                </SettingsList>
               </SettingsCollection>
             )
           ) : tab === "extensions" ? (

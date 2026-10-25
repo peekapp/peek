@@ -35,9 +35,9 @@ import {
   SettingsCollection,
   matchesSearch,
   SearchEmpty,
-  SettingsGrid,
-  SettingsCard,
-  SettingsCardDetails,
+  SettingsList,
+  SettingsRow,
+  SettingsRowDetails,
   SettingsEmpty,
   EditorHeader,
   EditorSection,
@@ -536,7 +536,7 @@ export function Extensions({
             </Alert>
           ))}
         {!data && !error && !loadError ? (
-          <LoadingState>{t("Loading…", "Загрузка…")}</LoadingState>
+          <LoadingState layout="list">{t("Loading…", "Загрузка…")}</LoadingState>
         ) : null}
         {kind &&
           data &&
@@ -585,7 +585,7 @@ export function Extensions({
                 )}
               />
             ) : null}
-            <SettingsGrid>
+            <SettingsList>
               {data?.packages
                 .filter(
                   (p) =>
@@ -598,7 +598,7 @@ export function Extensions({
                     ),
                 )
                 .map((p) => (
-                  <SettingsCard
+                  <SettingsRow
                     key={p.manifest.id}
                     title={p.manifest.name}
                     description={`${p.manifest.id} · ${p.manifest.version} · ${p.manifest.author}`}
@@ -644,9 +644,9 @@ export function Extensions({
                         )}
                       </p>
                     ) : null}
-                  </SettingsCard>
+                  </SettingsRow>
                 ))}
-            </SettingsGrid>
+            </SettingsList>
             <SettingsHeading
               title={t(
                 "Configured scenarios and connections",
@@ -655,7 +655,7 @@ export function Extensions({
             />
           </>
         ) : null}
-        <SettingsGrid>
+        <SettingsList>
           {data?.instances
             .filter(
               (i) =>
@@ -663,7 +663,7 @@ export function Extensions({
                 matchesSearch(query, i.name, i.package_id),
             )
             .map((i) => (
-              <SettingsCard
+              <SettingsRow
                 key={i.id}
                 title={
                   <Link
@@ -734,7 +734,7 @@ export function Extensions({
                     <AlertDescription>{i.last_error}</AlertDescription>
                   </Alert>
                 ) : null}
-                <SettingsCardDetails label={t("Troubleshooting", "Диагностика")}>
+                <SettingsRowDetails label={t("Troubleshooting", "Диагностика")}>
                   <dl className="grid gap-4">
                     <div className="grid gap-1">
                       <dt>{t("Last updated", "Последнее обновление")}</dt>
@@ -756,10 +756,10 @@ export function Extensions({
                       ? t("Update cards", "Обновить карточки")
                       : t("Refresh data", "Обновить данные")}
                   </Button>
-                </SettingsCardDetails>
-              </SettingsCard>
+                </SettingsRowDetails>
+              </SettingsRow>
             ))}
-        </SettingsGrid>
+        </SettingsList>
         {!kind && data?.canRollback ? (
           <ConfirmAction
             locale={locale}

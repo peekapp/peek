@@ -25,7 +25,7 @@ and theme compatibility.
 - Use existing shadcn primitives. Extend their variants rather than overriding
   their internals from a page or adding a parallel implementation.
 - Reuse SettingsPage, SettingsNavigation, SettingsHeading, SettingsGrid,
-  SettingsCard, EditorForm, EditorSection, EditorActions, SettingsField,
+  SettingsCard (screens only), SettingsList, SettingsRow, SettingsRowDetails, EditorForm, EditorSection, EditorActions, SettingsField,
   FormFeedback, LoadingState, ErrorState and SettingsEmpty.
 - Keep dynamic inline styles only for runtime values (profile colors, screen
   scale). Static styling belongs in Tailwind. Use semantic colors for every theme.

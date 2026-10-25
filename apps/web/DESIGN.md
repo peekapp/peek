@@ -19,15 +19,16 @@ Consistency is implemented in components, not achieved by copying classes.
 | Collection layout       | `SettingsCollection`             | Owns the 16px gap between toolbar and content across all resource lists     |
 | Collection toolbar      | `SettingsToolbar`                | Search input and primary action; filters by name with a shared no-results state |
 | Section heading         | `SettingsHeading`                | h2, description below, primary action to the right; wraps on narrow screens |
-| Resource collection     | `SettingsGrid`                   | Two equal columns, one on small screens, 24px gap                           |
-| Resource card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
-| Scenario/connection status | `SettingsCard` status + `SettingsCardDetails` | Green Enabled badge beside the name; profile, connections and errors visible; last successful update and manual refresh in an expandable Troubleshooting disclosure; no next-update timestamp; no package icons until extensions provide them |
+| Screen collection | `SettingsGrid` + `SettingsCard` | Preview cards in two equal columns, one on small screens, 24px gap |
+| Text resource collection | `SettingsList` + `SettingsRow` | Profiles, scenarios, connections, and installed extensions use shadcn Item rows in one bordered list with separators; metadata left, actions right, stacked on mobile |
+| Screen card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
+| Scenario/connection status | `SettingsRow` status + `SettingsRowDetails` | Green Enabled badge beside the name; profile, connections and errors visible; last successful update and manual refresh in an expandable Troubleshooting disclosure; no next-update timestamp; no package icons until extensions provide them |
 | Empty collection        | `SettingsEmpty`                  | Shared shadcn Empty composition with next-step copy                         |
 | Editor heading          | `EditorHeader`                   | Back link, shared section heading, optional description/action              |
 | Editor section          | `EditorSection`                  | Common field spacing and section typography                                 |
 | Editor actions          | `EditorActions`                  | Save first, ghost Cancel second, destructive action at the end              |
 | Labeled control         | `SettingsField` / shadcn `Field` | Label above control; hint below; linked IDs                                 |
-| Profile                 | `ProfileLabel`                   | Localized name and the same color dot, including selectors and cards        |
+| Profile                 | `ProfileLabel`                   | Localized name and the same color dot, including selectors, rows and cards        |
 | Unsaved profile preview | `ProfileIdentity`                | Same identity component, with draft name/color                              |
 | Confirmation            | `ConfirmAction` / `DeleteButton` | Red text trigger, solid destructive confirmation in Radix AlertDialog; never native confirm() |
 
@@ -74,7 +75,7 @@ then verify aliases and dependencies; never accept an accidental `cn` npm depend
 
 ## Audit completed in October 2026
 
-Unified Screens, Profiles, Scenarios, Connections and package cards; brought Extensions
+Kept preview cards for Screens; unified Profiles, Scenarios, Connections and installed packages into shared shadcn Item lists; brought Extensions
 inside the settings shell; unified General heading placement; shared editor headers,
 sections and actions; shared profile identities across settings and dashboard;
 replaced native extension confirmations and raw schema textareas. Catalog navigation
@@ -106,3 +107,5 @@ Editors keep their loaded record and schema stable until save or navigation; do 
 poll these out from under a draft. Catalog/status lists and independent profile choices
 may refresh without remounting editors or resetting search and installation inputs.
 Load extension schemas and profile choices independently.
+
+Text resource loading uses `LoadingState layout="list"`; screen loading retains the card grid. Keep errors visible in rows and troubleshooting expandable. Preserve real title links, separate actions, and wrapping names/metadata without horizontal scrolling.

@@ -6,7 +6,16 @@ import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
 import { FieldGroup } from "../ui/field";
 import { NavigationMenu, NavigationMenuList } from "../ui/navigation-menu";
-import type { ReactNode } from "react";
+import { Children, Fragment, type ReactNode } from "react";
+import {
+  Item,
+  ItemGroup,
+  ItemSeparator,
+  ItemContent,
+  ItemTitle,
+  ItemDescription,
+  ItemActions,
+} from "../ui/item";
 import Link from "next/link";
 import {
   Card,
@@ -101,6 +110,60 @@ export function SearchEmpty({ locale }: { locale: Locale }) {
     </div>
   );
 }
+/** Shared text-resource lists; screen previews keep their card grid. */
+export function SettingsList({ children }: { children: ReactNode }) {
+  return (
+    <ItemGroup className="overflow-hidden rounded-md border border-border empty:hidden">
+      {Children.toArray(children).map((child, index) => (
+        <Fragment key={(child as React.ReactElement).key ?? index}>
+          {index > 0 ? <ItemSeparator /> : null}
+          {child}
+        </Fragment>
+      ))}
+    </ItemGroup>
+  );
+}
+export function SettingsRow({
+  title,
+  description,
+  children,
+  actions,
+  status,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  children?: ReactNode;
+  actions?: ReactNode;
+  status?: ReactNode;
+}) {
+  return (
+    <Item role="listitem" variant="resource" className="flex-col sm:flex-row">
+      <ItemContent className="w-full gap-2 sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2">
+          <ItemTitle>
+            <h3>{title}</h3>
+          </ItemTitle>
+          {status}
+        </div>
+        {description ? (
+          <ItemDescription className="line-clamp-none wrap-anywhere">
+            {description}
+          </ItemDescription>
+        ) : null}
+        {children ? (
+          <div className="flex min-w-0 flex-col items-start gap-2 text-sm text-muted-foreground wrap-anywhere [&>*]:max-w-full">
+            {children}
+          </div>
+        ) : null}
+      </ItemContent>
+      {actions ? (
+        <ItemActions className="max-w-full flex-wrap sm:shrink-0">
+          {actions}
+        </ItemActions>
+      ) : null}
+    </Item>
+  );
+}
 export function SettingsGrid({ children }: { children: ReactNode }) {
   return (
     <div className="grid items-stretch gap-6 empty:hidden md:grid-cols-2">
@@ -138,7 +201,7 @@ export function SettingsCard({
     </Card>
   );
 }
-export function SettingsCardDetails({
+export function SettingsRowDetails({
   label,
   children,
 }: {
@@ -329,7 +392,7 @@ export function LoadingState({
   layout = "collection",
 }: {
   children: ReactNode;
-  layout?: "collection" | "editor" | "fields";
+  layout?: "collection" | "list" | "editor" | "fields";
 }) {
   const placeholder = (
     <div aria-hidden="true" className="flex flex-col gap-4">
@@ -341,7 +404,26 @@ export function LoadingState({
   return (
     <div role="status">
       <span className="sr-only">{children}</span>
-      {layout === "collection" ? (
+      {layout === "list" ? (
+        <SettingsList>
+          {[0, 1, 2].map((key) => (
+            <Item
+              key={key}
+              role="listitem"
+              variant="resource"
+              aria-hidden="true"
+            >
+              <ItemContent className="gap-2">
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-4 w-2/3" />
+              </ItemContent>
+              <ItemActions>
+                <Skeleton className="h-9 w-16" />
+              </ItemActions>
+            </Item>
+          ))}
+        </SettingsList>
+      ) : layout === "collection" ? (
         <SettingsGrid>
           <Card>
             <CardContent>{placeholder}</CardContent>
