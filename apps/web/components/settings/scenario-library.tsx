@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CalendarClock,
-  Flag,
   Library,
   Download,
   Users,
@@ -68,10 +67,6 @@ function CatalogHeading(props: React.ComponentProps<"h3">) {
   );
 }
 type Definition = { id: string; title: string; description: string };
-const icons: Record<string, typeof CalendarClock> = {
-  "peek/meetings": CalendarClock,
-  "peek/deadlines": Flag,
-};
 const favoritesKey = "peek:scenario-favorites:v2";
 
 export function ScenarioLibrary({
@@ -138,7 +133,6 @@ export function ScenarioLibrary({
   }
 
   function renderScenario(definition: Definition) {
-    const Icon = icons[definition.id] ?? Library;
     const favorite = favorites.includes(definition.id);
     return (
       <div
@@ -150,9 +144,6 @@ export function ScenarioLibrary({
           href={`/scenarios/new?package=${encodeURIComponent(definition.id)}`}
           onClick={onSelect}
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary sm:size-10 [&>svg]:size-5">
-            <Icon aria-hidden="true" />
-          </span>
           <span className="flex min-w-0 flex-1 flex-col gap-1 wrap-anywhere">
             <strong className="flex flex-wrap items-center gap-2">
               {definition.title}

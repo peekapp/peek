@@ -41,7 +41,7 @@ export function ConfirmAction({
       <AlertDialogTrigger asChild>
         <Button
           type="button"
-          variant="ghost"
+          variant="destructive-ghost"
           className="ml-auto"
           disabled={disabled || pending}
         >

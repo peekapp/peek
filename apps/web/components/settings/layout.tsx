@@ -15,6 +15,7 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
+  CardAction,
 } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "../ui/empty";
@@ -113,12 +114,14 @@ export function SettingsCard({
   children,
   actions,
   preview,
+  status,
 }: {
   title: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
   actions?: ReactNode;
   preview?: ReactNode;
+  status?: ReactNode;
 }) {
   return (
     <Card variant="resource">
@@ -128,10 +131,27 @@ export function SettingsCard({
           <h3>{title}</h3>
         </CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
+        {status ? <CardAction>{status}</CardAction> : null}
       </CardHeader>
       {children ? <CardContent>{children}</CardContent> : null}
       {actions ? <CardFooter>{actions}</CardFooter> : null}
     </Card>
+  );
+}
+export function SettingsCardDetails({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <details>
+      <summary className="w-fit cursor-pointer rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {label}
+      </summary>
+      <div className="pt-4">{children}</div>
+    </details>
   );
 }
 export function SettingsEmpty({

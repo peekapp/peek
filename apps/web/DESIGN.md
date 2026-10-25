@@ -21,6 +21,7 @@ Consistency is implemented in components, not achieved by copying classes.
 | Section heading         | `SettingsHeading`                | h2, description below, primary action to the right; wraps on narrow screens |
 | Resource collection     | `SettingsGrid`                   | Two equal columns, one on small screens, 24px gap                           |
 | Resource card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
+| Scenario/connection status | `SettingsCard` status + `SettingsCardDetails` | Green Enabled badge beside the name; profile, connections and errors visible; update timestamps in an expandable disclosure; no package icons until extensions provide them |
 | Empty collection        | `SettingsEmpty`                  | Shared shadcn Empty composition with next-step copy                         |
 | Editor heading          | `EditorHeader`                   | Back link, shared section heading, optional description/action              |
 | Editor section          | `EditorSection`                  | Common field spacing and section typography                                 |
@@ -28,7 +29,7 @@ Consistency is implemented in components, not achieved by copying classes.
 | Labeled control         | `SettingsField` / shadcn `Field` | Label above control; hint below; linked IDs                                 |
 | Profile                 | `ProfileLabel`                   | Localized name and the same color dot, including selectors and cards        |
 | Unsaved profile preview | `ProfileIdentity`                | Same identity component, with draft name/color                              |
-| Confirmation            | `ConfirmAction` / `DeleteButton` | Radix AlertDialog; never native confirm()                                   |
+| Confirmation            | `ConfirmAction` / `DeleteButton` | Red text trigger, solid destructive confirmation in Radix AlertDialog; never native confirm() |
 
 Use one-column forms for short editors. A screen editor can add a preview aside:
 this is a functional difference, not a separate heading, field, or action style.

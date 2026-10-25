@@ -37,6 +37,7 @@ import {
   SearchEmpty,
   SettingsGrid,
   SettingsCard,
+  SettingsCardDetails,
   SettingsEmpty,
   EditorHeader,
   EditorSection,
@@ -672,16 +673,15 @@ export function Extensions({
                   </Link>
                 }
                 description={
-                  <>
-                    {
-                      data.packages.find((p) => p.manifest.id === i.package_id)
-                        ?.manifest.name
-                    }{" "}
-                    ·{" "}
+                  data.packages.find((p) => p.manifest.id === i.package_id)
+                    ?.manifest.name ?? i.package_id
+                }
+                status={
+                  <Badge variant={i.enabled ? "success" : "inactive"}>
                     {i.enabled
                       ? t("Enabled", "Включено")
                       : t("Disabled", "Выключено")}
-                  </>
+                  </Badge>
                 }
                 actions={
                   <>
@@ -699,7 +699,9 @@ export function Extensions({
                         void perform(() => api({ action: "run", id: i.id }))
                       }
                     >
-                      {t("Run now", "Запустить сейчас")}
+                      {i.kind === "scenario"
+                        ? t("Update cards", "Обновить карточки")
+                        : t("Refresh data", "Обновить данные")}
                     </Button>
                     <DeleteButton
                       locale={locale}
@@ -738,21 +740,33 @@ export function Extensions({
                     ].join(" · ")}
                   </p>
                 ) : null}
-                {i.last_error ? <p role="status">{i.last_error}</p> : null}
-                <p>
-                  {t("Last successful run", "Последний успешный запуск")}:{" "}
-                  {i.last_success
-                    ? new Date(i.last_success).toLocaleString(locale)
-                    : "—"}
-                </p>
-                {i.enabled ? (
-                  <p>
-                    {t("Next run", "Следующий запуск")}:{" "}
-                    {i.next_run_at
-                      ? new Date(i.next_run_at).toLocaleString(locale)
-                      : t("Waiting for updates", "Ожидание обновлений")}
-                  </p>
+                {i.last_error ? (
+                  <Alert variant="destructive" role="status">
+                    <AlertDescription>{i.last_error}</AlertDescription>
+                  </Alert>
                 ) : null}
+                <SettingsCardDetails label={t("Update details", "Подробности обновления")}>
+                  <dl className="grid gap-4">
+                    <div className="grid gap-1">
+                      <dt>{t("Last updated", "Последнее обновление")}</dt>
+                      <dd className="text-foreground">
+                        {i.last_success
+                          ? new Date(i.last_success).toLocaleString(locale)
+                          : t("Not updated yet", "Ещё не обновлялось")}
+                      </dd>
+                    </div>
+                    {i.enabled ? (
+                      <div className="grid gap-1">
+                        <dt>{t("Next update", "Следующее обновление")}</dt>
+                        <dd className="text-foreground">
+                          {i.next_run_at
+                            ? new Date(i.next_run_at).toLocaleString(locale)
+                            : t("Waiting for updates", "Ожидание обновлений")}
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </SettingsCardDetails>
               </SettingsCard>
             ))}
         </SettingsGrid>

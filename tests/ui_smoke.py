@@ -355,6 +355,31 @@ with sync_playwright() as p:
     expect(search).to_have_value("unmatched-package")
     expect(release_url).to_have_value("https://example.com/unfinished")
 
+    # Instance cards keep context and errors visible, with timestamps on demand.
+    status["packages"].append(
+        {"manifest": integration, "explicit": True, "unused": False, "official": False}
+    )
+    for package, package_id in zip(status["packages"], ["peek/meetings", "peek/deadlines", "peek/ical"]):
+        package["manifest"]["id"] = package_id
+    status["instances"] = [
+        {
+            "id": f"card-{kind}-{enabled}",
+            "package_id": "peek/deadlines" if kind == "scenario" and not enabled else package_id,
+            "kind": kind,
+            "name": name,
+            "profile_id": "shared",
+            "enabled": enabled,
+            "settings": {},
+            "bindings": {"events": [{"connectionId": "new", "dataset": "events"}]},
+            "hasSecret": False,
+            "last_error": None if enabled else "Calendar unavailable. Check connection settings.",
+            "last_success": 1792872000000 if enabled else None,
+            "next_run_at": None,
+        }
+        for kind, package_id in [("scenario", "peek/meetings"), ("integration", "peek/ical")]
+        for enabled, name in [(1, "Family calendar"), (0, "A very long household calendar name for school, work and weekend activities")]
+    ]
+
     # Both locales and palettes, narrow resource layouts, real shared styles.
     for locale, theme in [("en", "night"), ("ru", "day")]:
         for action, value in [("locale", locale), ("theme", theme)]:
@@ -366,8 +391,29 @@ with sync_playwright() as p:
             assert response.ok, response.text()
         for width in [390, 1280]:
             page.set_viewport_size({"width": width, "height": 844})
-            for path in ["/screens", "/profiles", "/settings"]:
+            for path in ["/screens", "/profiles", "/settings", "/scenarios", "/connections"]:
                 visit(page, path)
+                if path in ["/scenarios", "/connections"]:
+                    cards = page.locator('[data-variant="resource"]')
+                    expect(cards).to_have_count(2)
+                    expect(cards.nth(1).get_by_role("status")).to_contain_text("Calendar unavailable")
+                    details = cards.first.locator("details")
+                    expect(details).not_to_have_attribute("open", "")
+                    expect(details.locator("dl")).not_to_be_visible()
+                    details.locator("summary").focus()
+                    page.keyboard.press("Enter")
+                    expect(details.locator("dl")).to_be_visible()
+                    page.keyboard.press("Enter")
+                    expect(details.locator("dl")).not_to_be_visible()
+                    update_label = (
+                        ("Update cards" if locale == "en" else "Обновить карточки")
+                        if path == "/scenarios"
+                        else ("Refresh data" if locale == "en" else "Обновить данные")
+                    )
+                    expect(cards.nth(1).get_by_role("button", name=update_label)).to_be_disabled()
+                    expect(cards.first.locator('[data-slot="badge"]')).to_have_attribute("data-variant", "success")
+                    expect(cards.first.get_by_role("button", name="Delete" if locale == "en" else "Удалить", exact=True)).to_have_attribute("data-variant", "destructive-ghost")
+                    page.screenshot(path=f"/tmp/peek-cards-{path[1:]}-{locale}-{width}.png", full_page=True)
                 no_overflow(page)
                 for card in page.locator('[data-variant="resource"]').all():
                     assert card.evaluate(

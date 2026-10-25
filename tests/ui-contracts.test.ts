@@ -33,6 +33,9 @@ test("destructive labels meet normal-text contrast in every palette and hover st
     const destructive = rgb(
       css.match(/--color-destructive-background: (#[0-9a-f]{6});/)![1],
     );
+    expect(
+      contrast(color("ui-status-error-foreground"), color("ui-status-error")),
+    ).toBeGreaterThanOrEqual(4.5);
     for (const backdrop of [color("background"), color("ui-card")]) {
       const hover = destructive.map((c, i) => c * 0.9 + backdrop[i] * 0.1);
       expect(contrast(rgb("#ffffff"), destructive)).toBeGreaterThanOrEqual(4.5);
