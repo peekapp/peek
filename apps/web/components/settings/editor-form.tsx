@@ -10,7 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import type { Locale } from "@peek/core/i18n";
+import { messages, type Locale } from "@peek/core/i18n";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -42,6 +42,7 @@ export function EditorForm({
   locale: Locale;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
 }) {
+  const t = messages(locale);
   const router = useRouter();
   const serialized = JSON.stringify(draft);
   const [saved, setSaved] = useState(serialized);
@@ -51,7 +52,6 @@ export function EditorForm({
   const [destination, setDestination] = useState<(() => void) | null>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   const dirty = serialized !== saved;
-  const ru = locale === "ru";
 
   useEffect(() => {
     if (!dirty && !pending) return;
@@ -168,23 +168,13 @@ export function EditorForm({
           }}
         >
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {ru ? "Выйти из редактора?" : "Leave editor?"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{t.leaveEditor}</AlertDialogTitle>
             <AlertDialogDescription>
-              {pending
-                ? ru
-                  ? "Дождитесь завершения сохранения."
-                  : "Wait for the save to finish."
-                : ru
-                  ? "Несохранённые изменения будут потеряны."
-                  : "Unsaved changes will be lost."}
+              {pending ? t.waitForSave : t.unsavedChangesWarning}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              {ru ? "Остаться" : "Keep editing"}
-            </AlertDialogCancel>
+            <AlertDialogCancel>{t.keepEditing}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               disabled={pending}
@@ -193,7 +183,7 @@ export function EditorForm({
                 destination?.();
               }}
             >
-              {ru ? "Выйти" : "Leave"}
+              {t.leave}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

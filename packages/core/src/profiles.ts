@@ -1,6 +1,6 @@
 import { isProfileColor } from "./colors";
 import type { Owner } from "./cards";
-import type { Locale } from "./i18n";
+import { messages, type Locale } from "./i18n";
 export type Profile = {
   id: string;
   name: string;
@@ -8,7 +8,7 @@ export type Profile = {
   system: boolean;
 };
 export function profileName(profile: Profile, locale: Locale) {
-  return profile.system ? (locale === "ru" ? "Общее" : "Shared") : profile.name;
+  return profile.system ? messages(locale).sharedProfile : profile.name;
 }
 export function validateProfile(
   input: unknown,

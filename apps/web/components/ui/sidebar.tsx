@@ -1,5 +1,7 @@
 "use client";
 
+import { messages, type Locale } from "@peek/core/i18n";
+
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -143,6 +145,7 @@ function SidebarProvider({
 }
 
 function Sidebar({
+  locale,
   side = "left",
   variant = "sidebar",
   collapsible = "offcanvas",
@@ -150,6 +153,7 @@ function Sidebar({
   children,
   ...props
 }: React.ComponentProps<"div"> & {
+  locale: Locale;
   side?: "left" | "right";
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
@@ -173,6 +177,7 @@ function Sidebar({
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile}>
         <SheetContent
+          locale={locale}
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
@@ -180,8 +185,10 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+            <SheetTitle>{messages(locale).sidebar}</SheetTitle>
+            <SheetDescription>
+              {messages(locale).mobileSidebarDescription}
+            </SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -238,10 +245,11 @@ function Sidebar({
 }
 
 function SidebarTrigger({
+  locale,
   className,
   onClick,
   ...props
-}: React.ComponentProps<typeof Button>) {
+}: React.ComponentProps<typeof Button> & { locale: Locale }) {
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -258,22 +266,26 @@ function SidebarTrigger({
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{messages(locale).toggleSidebar}</span>
     </Button>
   );
 }
 
-function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
+function SidebarRail({
+  locale,
+  className,
+  ...props
+}: React.ComponentProps<"button"> & { locale: Locale }) {
   const { toggleSidebar } = useSidebar();
 
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Toggle Sidebar"
+      aria-label={messages(locale).toggleSidebar}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      title={messages(locale).toggleSidebar}
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",

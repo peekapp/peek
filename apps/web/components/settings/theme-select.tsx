@@ -5,7 +5,7 @@ import {
   isTheme,
   type ScreenTheme,
 } from "@peek/core/themes";
-import type { Locale } from "@peek/core/i18n";
+import { messages, type Locale } from "@peek/core/i18n";
 import { SettingsSelect } from "./select";
 import { SelectItem } from "../ui/select";
 
@@ -29,7 +29,7 @@ export function ThemeSelect({
       id={id}
       value={value}
       disabled={disabled}
-      aria-label={locale === "ru" ? "Тема оформления" : "Appearance theme"}
+      aria-label={messages(locale).appearanceTheme}
       onValueChange={(value) => {
         if (isTheme(value) || (inherit && value === "inherit"))
           onValueChange(value);

@@ -1,4 +1,4 @@
-import type { Locale } from "./i18n";
+import { messages, type Locale } from "./i18n";
 
 // Keep the original IDs so saved screen configurations remain compatible.
 export const themes = [
@@ -29,36 +29,20 @@ export function resolveTheme(
 ): Theme {
   return screen && screen !== "inherit" ? screen : app;
 }
-const names = {
-  en: {
-    night: "Standard",
-    oled: "OLED",
-    day: "Light",
-    midnight: "Midnight",
-    graphite: "Graphite",
-    forest: "Forest",
-    ocean: "Ocean",
-    plum: "Plum",
-    sand: "Sand",
-    lavender: "Lavender",
-    ice: "Ice",
-    inherit: "Use app theme",
-  },
-  ru: {
-    night: "Стандартная",
-    oled: "OLED",
-    day: "Светлая",
-    midnight: "Тёмно-синяя",
-    graphite: "Графитовая",
-    forest: "Лесная",
-    ocean: "Океан",
-    plum: "Сливовая",
-    sand: "Песочная",
-    lavender: "Лавандовая",
-    ice: "Ледяная",
-    inherit: "Как в приложении",
-  },
-};
+const themeMessageKeys = {
+  night: "themeNight",
+  oled: "themeOled",
+  day: "themeDay",
+  midnight: "themeMidnight",
+  graphite: "themeGraphite",
+  forest: "themeForest",
+  ocean: "themeOcean",
+  plum: "themePlum",
+  sand: "themeSand",
+  lavender: "themeLavender",
+  ice: "themeIce",
+  inherit: "themeInherit",
+} as const;
 export function themeName(theme: ScreenTheme, locale: Locale) {
-  return names[locale][theme];
+  return messages(locale)[themeMessageKeys[theme]];
 }

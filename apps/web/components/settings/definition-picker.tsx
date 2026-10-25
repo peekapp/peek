@@ -44,15 +44,11 @@ export function DefinitionPicker({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" disabled={disabled}>
-          +{" "}
-          {kind === "scenario"
-            ? locale === "ru"
-              ? "Добавить сценарий"
-              : "Add scenario"
-            : t.addConnection}
+          + {kind === "scenario" ? t.add : t.addConnection}
         </Button>
       </DialogTrigger>
       <DialogContent
+        locale={locale}
         variant={kind === "scenario" ? "catalog" : "default"}
         showCloseButton={false}
         aria-describedby={undefined}
@@ -83,13 +79,7 @@ export function DefinitionPicker({
           />
         ) : (
           <div className="grid gap-3">
-            {!choices.length ? (
-              <p>
-                {locale === "ru"
-                  ? "Нет доступных подключений."
-                  : "No connections available."}
-              </p>
-            ) : null}
+            {!choices.length ? <p>{t.noConnectionsAvailable}</p> : null}
             {choices.map((choice) => (
               <Card variant="choice" asChild key={choice.id}>
                 <Link href={choice.href} onClick={() => setOpen(false)}>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Ellipsis, Pencil, Trash2, Pause, Play } from "lucide-react";
-import type { Locale } from "@peek/core/i18n";
+import { messages, type Locale } from "@peek/core/i18n";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -29,15 +29,11 @@ export function SettingsRowMenu({
   enabled: boolean;
   onToggle: () => Promise<void>;
 }) {
-  const remove = locale === "ru" ? "Удалить" : "Delete";
+  const t = messages(locale);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={locale === "ru" ? "Действия" : "Actions"}
-        >
+        <Button variant="ghost" size="icon" aria-label={t.actions}>
           <Ellipsis />
         </Button>
       </DropdownMenuTrigger>
@@ -46,7 +42,7 @@ export function SettingsRowMenu({
           <DropdownMenuItem asChild>
             <Link href={href}>
               <Pencil aria-hidden="true" />
-              {locale === "ru" ? "Изменить" : "Edit"}
+              {t.edit}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -58,23 +54,13 @@ export function SettingsRowMenu({
             ) : (
               <Play aria-hidden="true" />
             )}
-            {enabled
-              ? locale === "ru"
-                ? "Выключить"
-                : "Disable"
-              : locale === "ru"
-                ? "Включить"
-                : "Enable"}
+            {enabled ? t.disable : t.enable}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <ConfirmAction
             locale={locale}
             disabled={disabled}
-            description={
-              locale === "ru"
-                ? "Удалить этот экземпляр и его локальные данные?"
-                : "Delete this instance and its local data?"
-            }
+            description={t.confirmInstanceDelete}
             onConfirm={onDelete}
             trigger={
               <DropdownMenuItem
@@ -83,7 +69,7 @@ export function SettingsRowMenu({
                 onSelect={(event) => event.preventDefault()}
               >
                 <Trash2 aria-hidden="true" />
-                {remove}
+                {t.remove}
               </DropdownMenuItem>
             }
           />

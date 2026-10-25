@@ -12,3 +12,9 @@ variants and cn() for class composition. globals.css is reserved for Tailwind,
 semantic theme tokens and genuinely global base rules; never add component/page
 selectors or overrides of shadcn internals there. Reuse settings compositions and
 existing shadcn primitives, and migrate every consumer when changing a pattern.
+
+All new and updated components must use the shared `messages(locale)` dictionary
+from `@peek/core/i18n` for UI text, including accessibility labels. Reuse existing
+message keys; add new strings for every supported locale in
+`packages/core/src/i18n.ts`. Do not introduce inline translations, locale-based
+text conditionals, component-local dictionaries, or local translation helpers.

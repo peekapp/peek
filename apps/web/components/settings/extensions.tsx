@@ -1,4 +1,6 @@
 "use client";
+
+import { messages, type Locale } from "@peek/core/i18n";
 import { SettingsRowMenu } from "./row-menu";
 import { SettingsDataTable } from "./data-table";
 import { LoadingState, ErrorState } from "./layout";
@@ -200,14 +202,13 @@ export function Extensions({
 }: {
   initialData?: Status | null;
   initialProfiles?: Profile[] | null;
-  locale: "en" | "ru";
+  locale: Locale;
   kind?: "scenario" | "connection";
   itemId?: string;
   packageId?: string;
 }) {
   const [query, setQuery] = useState("");
-  const ru = locale === "ru",
-    t = (en: string, other: string) => (ru ? other : en);
+  const t = messages(locale);
   const [data, setData] = useState<Status | null>(initialData),
     [error, setError] = useState(""),
     [loadError, setLoadError] = useState(""),
@@ -308,22 +309,15 @@ export function Extensions({
           <>
             <EditorHeader
               backHref={`/${section}`}
-              backLabel={t("Back to list", "Назад к списку")}
-              title={t("Configure", "Настроить")}
+              backLabel={t.backToList}
+              title={t.configure}
             />
             {!loadError ? (
-              <LoadingState layout="editor">
-                {t("Loading…", "Загрузка…")}
-              </LoadingState>
+              <LoadingState layout="editor">{t.loading}</LoadingState>
             ) : null}
           </>
         ) : !manifest || (itemId !== "new" && !item) ? (
-          <p>
-            {t(
-              "Scenario or connection not found.",
-              "Сценарий или подключение не найдено.",
-            )}
-          </p>
+          <p>{t.extensionInstanceNotFound}</p>
         ) : (
           <InstanceEditor
             key={item?.id ?? manifest.id}
@@ -399,11 +393,7 @@ export function Extensions({
                 type="button"
                 disabled={busy}
                 className="cursor-pointer disabled:cursor-wait"
-                aria-label={
-                  i.enabled
-                    ? t("Disable scenario", "Выключить сценарий")
-                    : t("Enable scenario", "Включить сценарий")
-                }
+                aria-label={i.enabled ? t.disableScenario : t.enableScenario}
                 onClick={() =>
                   void perform(() =>
                     api({
@@ -414,16 +404,12 @@ export function Extensions({
                   )
                 }
               >
-                {i.enabled
-                  ? t("Enabled", "Включено")
-                  : t("Disabled", "Выключено")}
+                {i.enabled ? t.statusEnabled : t.statusDisabled}
               </button>
             </Badge>
           ) : (
             <Badge variant={i.enabled ? "success" : "inactive"}>
-              {i.enabled
-                ? t("Enabled", "Включено")
-                : t("Disabled", "Выключено")}
+              {i.enabled ? t.statusEnabled : t.statusDisabled}
             </Badge>
           ),
         actions:
@@ -448,16 +434,13 @@ export function Extensions({
                 <Link
                   href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
                 >
-                  {t("Edit", "Изменить")}
+                  {t.edit}
                 </Link>
               </Button>
               <DeleteButton
                 locale={locale}
                 disabled={busy}
-                description={t(
-                  "Delete this instance and its local data?",
-                  "Удалить этот экземпляр и его локальные данные?",
-                )}
+                description={t.confirmInstanceDelete}
                 onConfirm={() =>
                   perform(() => api({ action: "delete-instance", id: i.id }))
                 }
@@ -503,14 +486,14 @@ export function Extensions({
                 <AlertDescription>{i.last_error}</AlertDescription>
               </Alert>
             ) : null}
-            <SettingsRowDetails label={t("Troubleshooting", "Диагностика")}>
+            <SettingsRowDetails label={t.troubleshooting}>
               <dl className="grid gap-4">
                 <div className="grid gap-1">
-                  <dt>{t("Last updated", "Последнее обновление")}</dt>
+                  <dt>{t.lastUpdated}</dt>
                   <dd className="text-foreground">
                     {i.last_success
                       ? new Date(i.last_success).toLocaleString(locale)
-                      : t("Not updated yet", "Ещё не обновлялось")}
+                      : t.notUpdatedYet}
                   </dd>
                 </div>
               </dl>
@@ -521,9 +504,7 @@ export function Extensions({
                   void perform(() => api({ action: "run", id: i.id }))
                 }
               >
-                {i.kind === "scenario"
-                  ? t("Update cards", "Обновить карточки")
-                  : t("Refresh data", "Обновить данные")}
+                {i.kind === "scenario" ? t.updateCards : t.refreshData}
               </Button>
             </SettingsRowDetails>
           </>
@@ -536,10 +517,10 @@ export function Extensions({
         onQueryChange={setQuery}
         placeholder={
           kind === "scenario"
-            ? t("Search scenarios", "Поиск сценариев")
+            ? t.searchScenarios
             : kind === "connection"
-              ? t("Search connections", "Поиск подключений")
-              : t("Search extensions", "Поиск расширений")
+              ? t.searchConnections
+              : t.searchExtensions
         }
         action={
           kind ? (
@@ -560,11 +541,7 @@ export function Extensions({
       {data && !data.runtime.ready ? (
         <Alert>
           <AlertDescription>
-            {t(
-              "Connections and scenarios are paused because the extension runner is unavailable.",
-              "Подключения и сценарии приостановлены: исполнитель расширений недоступен.",
-            )}{" "}
-            {data.runtime.error}
+            {t.extensionRunnerUnavailable} {data.runtime.error}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -572,19 +549,12 @@ export function Extensions({
         {!kind ? (
           <Card>
             <CardHeader>
-              <CardTitle>
-                {t("Install a package", "Установить пакет")}
-              </CardTitle>
-              <CardDescription>
-                {t(
-                  "Upload a .peek file or use an HTTPS release link. You will review all permissions before installation.",
-                  "Загрузите файл .peek или укажите HTTPS-ссылку на релиз. Перед установкой вы увидите все разрешения.",
-                )}
-              </CardDescription>
+              <CardTitle>{t.installPackage}</CardTitle>
+              <CardDescription>{t.installPackageHint}</CardDescription>
             </CardHeader>
             <CardContent>
               <FieldGroup>
-                <SettingsField label={t("Package file", "Файл пакета")}>
+                <SettingsField label={t.packageFile}>
                   <Input
                     type="file"
                     accept=".peek"
@@ -610,7 +580,7 @@ export function Extensions({
                     }}
                   />
                 </SettingsField>
-                <SettingsField label={t("Release URL", "Ссылка на релиз")}>
+                <SettingsField label={t.releaseUrl}>
                   <Input
                     type="url"
                     value={url}
@@ -629,7 +599,7 @@ export function Extensions({
                   )
                 }
               >
-                {t("Review package", "Проверить пакет")}
+                {t.reviewPackage}
               </Button>
             </CardFooter>
           </Card>
@@ -637,15 +607,8 @@ export function Extensions({
         {review ? (
           <Card>
             <CardHeader>
-              <CardTitle>
-                {t("Review installation", "Проверка установки")}
-              </CardTitle>
-              <CardDescription>
-                {t(
-                  "These packages have not been reviewed by Peek. A connection can use the permissions of the account you connect to it.",
-                  "Эти пакеты не проверены Peek. Подключение сможет использовать права подключённого к ней аккаунта.",
-                )}
-              </CardDescription>
+              <CardTitle>{t.reviewInstallation}</CardTitle>
+              <CardDescription>{t.unreviewedPackagesWarning}</CardDescription>
             </CardHeader>
             <CardContent>
               <ul>
@@ -663,24 +626,14 @@ export function Extensions({
                     <p>{m.description}</p>
                     <p>
                       {m.kind === "scenario"
-                        ? t(
-                          "Scenario: selected data only; no network or secrets.",
-                          "Сценарий: только выбранные данные, без сети и секретов.",
-                        )
+                        ? t.scenarioPermissions
                         : m.permissions.internet
-                          ? t(
-                            "Connection: public internet access.",
-                            "Подключение: доступ к публичному интернету.",
-                          )
-                          : t(
-                            "Connection: no public internet access.",
-                            "Подключение: без публичного интернета.",
-                          )}
+                          ? t.connectionInternetAccess
+                          : t.connectionNoInternet}
                     </p>
                     {m.permissions.local?.map((x) => (
                       <p key={`${x.address}:${x.port}`}>
-                        {t("Local service", "Локальный сервис")}: {x.address}:
-                        {x.port}
+                        {t.localService}: {x.address}:{x.port}
                       </p>
                     ))}
                     <details>
@@ -701,7 +654,7 @@ export function Extensions({
                   })
                 }
               >
-                {t("Accept and install", "Принять и установить")}
+                {t.acceptAndInstall}
               </Button>
               <Button
                 variant="outline"
@@ -712,7 +665,7 @@ export function Extensions({
                   })
                 }
               >
-                {t("Cancel", "Отмена")}
+                {t.cancel}
               </Button>
             </CardFooter>
           </Card>
@@ -725,32 +678,20 @@ export function Extensions({
               variant={o.status === "failed" ? "destructive" : "default"}
             >
               <AlertDescription>
-                {o.status}:{" "}
-                {o.error ??
-                  t(
-                    "Waiting for the extension runner",
-                    "Ожидание исполнителя расширений",
-                  )}
+                {o.status}: {o.error ?? t.waitingForTheExtensionRunner}
               </AlertDescription>
             </Alert>
           ))}
         {!data && !error && !loadError ? (
-          <LoadingState layout="list">{t("Loading…", "Загрузка…")}</LoadingState>
+          <LoadingState layout="list">{t.loading}</LoadingState>
         ) : null}
         {kind &&
           data &&
           !query.trim() &&
           !data.instances.some((i) => i.kind === kind) ? (
           <SettingsEmpty
-            title={
-              kind === "scenario"
-                ? t("No scenarios yet", "Пока нет сценариев")
-                : t("No connections yet", "Пока нет подключений")
-            }
-            description={t(
-              "Use the add button to choose from the library.",
-              "Нажмите кнопку добавления, чтобы выбрать из каталога.",
-            )}
+            title={kind === "scenario" ? t.noScenariosYet : t.noConnectionsYet}
+            description={t.addFromLibraryHint}
           />
         ) : null}
         {data &&
@@ -773,16 +714,9 @@ export function Extensions({
         ) : null}
         {!kind ? (
           <>
-            <SettingsHeading
-              title={t("Installed packages", "Установленные пакеты")}
-            />
+            <SettingsHeading title={t.installedPackages} />
             {data?.packages.length === 0 && !query.trim() ? (
-              <SettingsEmpty
-                title={t(
-                  "No packages installed yet.",
-                  "Пакеты пока не установлены.",
-                )}
-              />
+              <SettingsEmpty title={t.noPackagesInstalledYet} />
             ) : null}
             <SettingsList>
               {data?.packages
@@ -813,17 +747,14 @@ export function Extensions({
                         <Button variant="outline" asChild>
                           <Link href={createHref(p.manifest)}>
                             {p.manifest.kind === "scenario"
-                              ? t("Create scenario", "Создать сценарий")
-                              : t("Add connection", "Добавить подключение")}
+                              ? t.createScenario
+                              : t.addConnection}
                           </Link>
                         </Button>
                         <DeleteButton
                           locale={locale}
                           disabled={busy || !p.unused}
-                          description={t(
-                            "Remove this unused package?",
-                            "Удалить этот неиспользуемый пакет?",
-                          )}
+                          description={t.confirmPackageDelete}
                           onConfirm={() =>
                             perform(() =>
                               api({
@@ -837,28 +768,16 @@ export function Extensions({
                     }
                   >
                     <Badge variant="outline">
-                      {p.official
-                        ? t("Official", "Официальное")
-                        : t("Unreviewed", "Не проверено")}
+                      {p.official ? t.official : t.unreviewed}
                     </Badge>
                     <p>{p.manifest.description}</p>
                     {p.unused && !p.explicit ? (
-                      <p>
-                        {t(
-                          "Unused dependency — can be removed.",
-                          "Неиспользуемая зависимость — можно удалить.",
-                        )}
-                      </p>
+                      <p>{t.unusedDependencyCanBeRemoved}</p>
                     ) : null}
                   </SettingsRow>
                 ))}
             </SettingsList>
-            <SettingsHeading
-              title={t(
-                "Configured scenarios and connections",
-                "Настроенные сценарии и подключения",
-              )}
-            />
+            <SettingsHeading title={t.configuredScenariosAndConnections} />
           </>
         ) : null}
         {kind === "scenario" ? (
@@ -874,14 +793,8 @@ export function Extensions({
           <ConfirmAction
             locale={locale}
             disabled={busy}
-            label={t(
-              "Restore previous installation",
-              "Восстановить предыдущую установку",
-            )}
-            description={t(
-              "Restore the previous package set and its saved settings and state? Later configuration changes will be lost.",
-              "Восстановить прежний набор пакетов, его настройки и состояние? Последующие изменения настроек будут потеряны.",
-            )}
+            label={t.restorePreviousInstallation}
+            description={t.confirmRestoreInstallation}
             onConfirm={() => perform(() => api({ action: "rollback" }))}
           />
         ) : null}
@@ -909,10 +822,10 @@ function InstanceEditor({
   connections: Status["connections"];
   profiles: Profile[] | null;
   profilesError: string;
-  locale: "en" | "ru";
+  locale: Locale;
   save: (v: unknown) => Promise<void>;
 }) {
-  const t = (en: string, ru: string) => (locale === "ru" ? ru : en);
+  const t = messages(locale);
   const [name, setName] = useState(item?.name ?? m.name),
     [profile, setProfile] = useState(item?.profile_id ?? "shared"),
     [enabled, setEnabled] = useState(item ? !!item.enabled : true);
@@ -962,11 +875,13 @@ function InstanceEditor({
   return (
     <div>
       <EditorHeader
-        media={<ExtensionIcon kind={m.kind} src={iconDataUrl} color={m.iconColor} />}
-        title={item?.name ?? `${t("Configure", "Настроить")} ${m.name}`}
+        media={
+          <ExtensionIcon kind={m.kind} src={iconDataUrl} color={m.iconColor} />
+        }
+        title={item?.name ?? `${t.configure} ${m.name}`}
         description={m.description}
         backHref={`/${m.kind === "scenario" ? "scenarios" : "connections"}`}
-        backLabel={t("Back to list", "Назад к списку")}
+        backLabel={t.backToList}
       />
       <EditorForm
         id="extension-instance"
@@ -984,10 +899,7 @@ function InstanceEditor({
           e.preventDefault();
           if (missingInput) {
             setError(
-              t(
-                "Choose a compatible connection for",
-                "Выберите совместимое подключение для",
-              ) + ` ${missingInput.input}.`,
+              t.chooseACompatibleConnectionFor + ` ${missingInput.input}.`,
             );
             return false;
           }
@@ -1015,7 +927,7 @@ function InstanceEditor({
       >
         <EditorSection>
           <FieldGroup>
-            <SettingsField label={t("Name", "Название")}>
+            <SettingsField label={t.name}>
               <Input
                 required
                 maxLength={100}
@@ -1023,7 +935,7 @@ function InstanceEditor({
                 onChange={(e) => setName(e.target.value)}
               />
             </SettingsField>
-            <SettingsField label={t("Profile", "Профиль")}>
+            <SettingsField label={t.profile}>
               {profiles ? (
                 <SettingsSelect value={profile} onValueChange={setProfile}>
                   {profiles.map((p) => (
@@ -1035,10 +947,10 @@ function InstanceEditor({
               ) : profilesError ? (
                 <ErrorState>{profilesError}</ErrorState>
               ) : (
-                <LoadingState layout="fields">{t("Loading profiles…", "Загрузка профилей…")}</LoadingState>
+                <LoadingState layout="fields">{t.loadingProfiles}</LoadingState>
               )}
             </SettingsField>
-            <SettingsField label={t("Enabled", "Включено")}>
+            <SettingsField label={t.statusEnabled}>
               <Checkbox
                 checked={enabled}
                 onCheckedChange={(v) => setEnabled(v === true)}
@@ -1051,12 +963,7 @@ function InstanceEditor({
             />
             {m.secrets ? (
               <>
-                <SettingsField
-                  label={t(
-                    "Set credentials (leave unchecked to keep saved credentials)",
-                    "Задать секреты (снимите флажок, чтобы сохранить текущие)",
-                  )}
-                >
+                <SettingsField label={t.setCredentialsHint}>
                   <Checkbox
                     checked={changeSecrets}
                     onCheckedChange={(v) => setChangeSecrets(v === true)}
@@ -1075,36 +982,24 @@ function InstanceEditor({
             {inputs.map(({ input, requirement, choices }) => (
               <FieldSet key={input} aria-describedby={`input-${input}-hint`}>
                 <FieldLegend>
-                  {t("Connections", "Подключения")} ({input}){" "}
-                  {requirement.optional
-                    ? t("(optional)", "(необязательно)")
-                    : ""}
+                  {t.connections} ({input}){" "}
+                  {requirement.optional ? t.optional : ""}
                 </FieldLegend>
                 <FieldDescription id={`input-${input}-hint`}>
                   {requirement.optional
-                    ? t("Optional connection.", "Необязательное подключение.")
-                    : t(
-                      "Select a compatible connection to save this scenario.",
-                      "Выберите совместимое подключение, чтобы сохранить сценарий.",
-                    )}
+                    ? t.optionalConnection
+                    : t.compatibleConnectionRequired}
                 </FieldDescription>
                 {!choices.length ? (
                   <SettingsEmpty
-                    title={t(
-                      "No compatible connections",
-                      "Нет совместимых подключений",
-                    )}
+                    title={t.noCompatibleConnections}
                     description={
-                      t(
-                        "Add a connection that provides",
-                        "Добавьте подключение, предоставляющее",
-                      ) + ` ${requirement.contract} (${requirement.version}).`
+                      t.addAConnectionThatProvides +
+                      ` ${requirement.contract} (${requirement.version}).`
                     }
                     action={
                       <Button variant="outline" asChild>
-                        <Link href="/connections">
-                          {t("Add connection", "Добавить подключение")}
-                        </Link>
+                        <Link href="/connections">{t.addConnection}</Link>
                       </Button>
                     }
                   />
@@ -1169,14 +1064,14 @@ function InstanceEditor({
             form="extension-instance"
             disabled={busy || !!missingInput}
           >
-            {busy ? t("Saving…", "Сохранение…") : t("Save", "Сохранить")}
+            {busy ? t.saving : t.save}
           </Button>
           <Button variant="ghost" asChild>
             <Link
               href={`/${m.kind === "scenario" ? "scenarios" : "connections"}`}
               data-discard-changes
             >
-              {t("Cancel", "Отмена")}
+              {t.cancel}
             </Link>
           </Button>
         </EditorActions>

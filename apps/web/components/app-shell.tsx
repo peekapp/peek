@@ -61,7 +61,7 @@ function AppSidebar({ locale, section }: { locale: Locale; section: Section }) {
     );
   }
   return (
-    <Sidebar>
+    <Sidebar locale={locale}>
       <SidebarHeader className="p-4">
         <Link
           href="/screens"
@@ -74,11 +74,7 @@ function AppSidebar({ locale, section }: { locale: Locale; section: Section }) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <nav
-              aria-label={
-                locale === "ru" ? "Основная навигация" : "Main navigation"
-              }
-            >
+            <nav aria-label={messages(locale).mainNavigation}>
               {menu(destinations.slice(0, 4))}
             </nav>
           </SidebarGroupContent>
@@ -104,7 +100,8 @@ export function AppShell({
       <div className="min-w-0 flex-1">
         <header className="grid h-14 grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-4 border-b px-4 text-center">
           <SidebarTrigger
-            aria-label={locale === "ru" ? "Переключить меню" : "Toggle sidebar"}
+            locale={locale}
+            aria-label={messages(locale).toggleSidebar}
           />
           <SettingsTitle>{messages(locale)[section]}</SettingsTitle>
         </header>

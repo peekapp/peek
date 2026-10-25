@@ -107,7 +107,7 @@ export function ScreenList({
       <SettingsToolbar
         query={query}
         onQueryChange={setQuery}
-        placeholder={locale === "ru" ? "Поиск экранов" : "Search screens"}
+        placeholder={t.searchScreens}
         action={
           <Button asChild>
             <Link href="/screens/new">+ {t.addScreen}</Link>
@@ -134,9 +134,7 @@ export function ScreenList({
             actions={
               <>
                 <Button variant="outline" asChild>
-                  <Link href={`/screens/${screen.id}/edit`}>
-                    {t.editScreen}
-                  </Link>
+                  <Link href={`/screens/${screen.id}/edit`}>{t.edit}</Link>
                 </Button>
                 <Button variant="ghost" asChild>
                   <Link

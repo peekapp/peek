@@ -1,5 +1,7 @@
 "use client";
 
+import { messages, type Locale } from "@peek/core/i18n";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
@@ -44,12 +46,14 @@ function SheetOverlay({
 }
 
 function SheetContent({
+  locale,
   className,
   children,
   side = "right",
   showCloseButton = true,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
+  locale: Locale;
   side?: "top" | "right" | "bottom" | "left";
   showCloseButton?: boolean;
 }) {
@@ -76,7 +80,7 @@ function SheetContent({
         {showCloseButton && (
           <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
             <XIcon className="size-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{messages(locale).close}</span>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Content>

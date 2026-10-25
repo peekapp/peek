@@ -8,7 +8,7 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import type { Locale } from "@peek/core/i18n";
+import { messages, type Locale } from "@peek/core/i18n";
 import type { SettingsRow } from "./layout";
 import {
   Table,
@@ -41,7 +41,6 @@ const column = createColumnHelper<typeof features, ResourceRow>();
 const columns = column.columns([
   column.display({
     id: "name",
-    header: "Name",
     cell: ({ row: { original: row } }) => (
       <div className="flex items-start gap-3">
         {row.media}
@@ -54,14 +53,12 @@ const columns = column.columns([
   }),
   column.display({
     id: "status",
-    header: "Status",
     cell: ({ row }) => (
       <div className="relative z-10 w-fit">{row.original.status}</div>
     ),
   }),
   column.display({
     id: "profile",
-    header: "Profile",
     cell: ({ row }) => (
       <div className="flex min-w-0 flex-col items-start gap-2 text-muted-foreground [&>*]:max-w-full">
         {row.original.profile}
@@ -70,7 +67,6 @@ const columns = column.columns([
   }),
   column.display({
     id: "actions",
-    header: "Actions",
     cell: ({ row }) => (
       <div className="relative z-10 flex justify-end">
         {row.original.actions}
@@ -85,6 +81,7 @@ export function SettingsDataTable({
   rows: ResourceRow[];
   locale: Locale;
 }) {
+  const t = messages(locale);
   const table = useTable({
     features,
     data: rows,
@@ -95,10 +92,7 @@ export function SettingsDataTable({
   if (!rows.length) return null;
   return (
     <div className="overflow-hidden rounded-md border">
-      <Table
-        className="table-fixed"
-        aria-label={locale === "ru" ? "Сценарии" : "Scenarios"}
-      >
+      <Table className="table-fixed" aria-label={t.scenarios}>
         <colgroup className="hidden md:table-column-group">
           <col />
           <col className="w-36" />
@@ -119,16 +113,12 @@ export function SettingsDataTable({
                     }),
                   )}
                 >
-                  {locale === "ru" ? (
-                    {
-                      name: "Название",
-                      status: "Статус",
-                      profile: "Профиль",
-                      actions: "Действия",
-                    }[header.id as "name" | "status" | "profile" | "actions"]
-                  ) : (
-                    <table.FlexRender header={header} />
-                  )}
+                  {
+                    t[
+                      header.column.id as
+                        "name" | "status" | "profile" | "actions"
+                    ]
+                  }
                 </TableHead>
               ))}
             </TableRow>

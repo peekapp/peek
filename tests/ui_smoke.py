@@ -443,6 +443,12 @@ with sync_playwright() as p:
             page.set_viewport_size({"width": width, "height": 844})
             for path in ["/screens", "/profiles", "/settings", "/scenarios", "/connections"]:
                 visit(page, path)
+                if path == "/screens" and width == 390:
+                    page.get_by_role("button", name="Toggle sidebar" if locale == "en" else "Переключить меню", exact=True).click()
+                    sidebar = page.get_by_role("dialog", name="Sidebar" if locale == "en" else "Боковая панель", exact=True)
+                    expect(sidebar).to_be_visible()
+                    sidebar.get_by_role("button", name="Close" if locale == "en" else "Закрыть", exact=True).click()
+                    expect(sidebar).not_to_be_visible()
                 if path in ["/scenarios", "/connections"]:
                     cards = page.locator('tbody tr' if path == "/scenarios" else '[data-variant="resource"]')
                     expect(cards).to_have_count(2)

@@ -1,7 +1,7 @@
 import { Skeleton } from "../ui/skeleton";
 import { Input } from "../ui/input";
 import { SearchIcon } from "lucide-react";
-import type { Locale } from "@peek/core/i18n";
+import { messages, type Locale } from "@peek/core/i18n";
 import { cn } from "@/lib/utils";
 import { cva } from "class-variance-authority";
 import { FieldGroup } from "../ui/field";
@@ -106,12 +106,8 @@ export function SearchEmpty({ locale }: { locale: Locale }) {
   return (
     <div role="status">
       <SettingsEmpty
-        title={locale === "ru" ? "Ничего не найдено" : "No results found"}
-        description={
-          locale === "ru"
-            ? "Попробуйте другой запрос."
-            : "Try a different search."
-        }
+        title={messages(locale).noResultsFound}
+        description={messages(locale).tryADifferentSearch}
       />
     </div>
   );

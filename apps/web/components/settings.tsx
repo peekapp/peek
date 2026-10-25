@@ -191,8 +191,8 @@ export function Settings({
                     }
                   }}
                 >
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="ru">Русский</SelectItem>
+                  <SelectItem value="en">{t.languageEnglish}</SelectItem>
+                  <SelectItem value="ru">{t.languageRussian}</SelectItem>
                 </SettingsSelect>
               </PreferenceRow>
             </>
@@ -212,7 +212,7 @@ export function Settings({
                   <EditorHeader
                     backHref="/screens"
                     backLabel={t.backToScreens}
-                    title={t.editScreen}
+                    title={t.edit}
                   />
                   {!error ? (
                     <LoadingState layout="editor">{t.loading}</LoadingState>
@@ -257,9 +257,7 @@ export function Settings({
                 <SettingsToolbar
                   query={query}
                   onQueryChange={setQuery}
-                  placeholder={
-                    locale === "ru" ? "Поиск профилей" : "Search profiles"
-                  }
+                  placeholder={t.searchProfiles}
                   action={
                     <Button asChild>
                       <Link href="/profiles/new">+ {t.addProfile}</Link>
@@ -289,9 +287,7 @@ export function Settings({
                         description={p.system ? t.systemProfile : t.profiles}
                         actions={
                           <Button variant="outline" asChild>
-                            <Link href={`/profiles/${p.id}`}>
-                              {locale === "ru" ? "Изменить" : "Edit"}
-                            </Link>
+                            <Link href={`/profiles/${p.id}`}>{t.edit}</Link>
                           </Button>
                         }
                       >
