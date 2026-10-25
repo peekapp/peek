@@ -35,7 +35,7 @@ const destinations = [
   { key: "settings", href: "/settings", icon: SettingsIcon },
 ] as const;
 
-type Section = (typeof destinations)[number]["key"] | "design-system";
+type Section = (typeof destinations)[number]["key"];
 
 function AppSidebar({ locale, section }: { locale: Locale; section: Section }) {
   const t = messages(locale);
@@ -106,11 +106,7 @@ export function AppShell({
           <SidebarTrigger
             aria-label={locale === "ru" ? "Переключить меню" : "Toggle sidebar"}
           />
-          <SettingsTitle>
-            {section === "design-system"
-              ? "Дизайн-система Peek"
-              : messages(locale)[section]}
-          </SettingsTitle>
+          <SettingsTitle>{messages(locale)[section]}</SettingsTitle>
         </header>
         {children}
       </div>

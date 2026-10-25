@@ -36,7 +36,7 @@ The display dashboard has a different information density from settings but shar
 identity, theme tokens, controls, and accessible states.
 
 AppShell owns the logo header, resource links with icons, and Settings footer.
-Use it in Settings and /design-system. / redirects to /screens. Resources live at
+Use it in Settings. / redirects to /screens. Resources live at
 /screens, /scenarios, /connections and /profiles; /settings is only General and
 Extensions. Screen editors use /screens/new and /screens/[id]/edit; display URLs
 (/screens/[id]) remain fullscreen. Legacy settings resource URLs redirect, preserving
@@ -65,18 +65,17 @@ then verify aliases and dependencies; never accept an accidental `cn` npm depend
 
 1. Identify the existing composition before writing page markup.
 2. Change the shared composition first; migrate all matching consumers.
-3. Update `/design-system` with real production components, not lookalikes.
-4. Run web typecheck and relevant tests. Inspect lists, create/edit screens, dialogs,
+3. Run web typecheck and relevant tests. Inspect lists, create/edit screens, dialogs,
    long names, loading/errors, empty states, both locales, and narrow layouts.
-5. Preserve save/delete behavior, keyboard access, and selected-profile identity.
+4. Preserve save/delete behavior, keyboard access, and selected-profile identity.
 
 ## Audit completed in October 2026
 
 Unified Screens, Profiles, Scenarios, Connections and package cards; brought Extensions
 inside the settings shell; unified General heading placement; shared editor headers,
 sections and actions; shared profile identities across settings and dashboard;
-replaced native extension confirmations and raw schema textareas; updated the live
-component gallery. Catalog navigation and screen previews remain purpose-specific.
+replaced native extension confirmations and raw schema textareas. Catalog navigation
+and screen previews remain purpose-specific.
 
 ## Verification
 
@@ -84,7 +83,6 @@ Run `bun run build`, `bun run typecheck`, and `bun run test`. Browser checks mus
 use a separate absolute `PEEK_DATABASE_PATH`. Exercise actual profile/screen saves,
 confirmation cancellation and deletion, catalog navigation, loading/error/empty
 states, long names, both locales and light/dark palettes at desktop/mobile widths.
-The gallery renders production components and must remain scrollable on mobile.
 An unavailable extension runner does not validate extension execution: use isolated
 API fixtures for its UI and report that limitation separately.
 

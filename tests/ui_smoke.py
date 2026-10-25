@@ -342,7 +342,7 @@ with sync_playwright() as p:
     expect(search).to_have_value("unmatched-package")
     expect(release_url).to_have_value("https://example.com/unfinished")
 
-    # Both locales and palettes, narrow resource/gallery layouts, real shared styles.
+    # Both locales and palettes, narrow resource layouts, real shared styles.
     for locale, theme in [("en", "night"), ("ru", "day")]:
         for action, value in [("locale", locale), ("theme", theme)]:
             response = context.request.post(
@@ -353,22 +353,14 @@ with sync_playwright() as p:
             assert response.ok, response.text()
         for width in [390, 1280]:
             page.set_viewport_size({"width": width, "height": 844})
-            for path in ["/screens", "/profiles", "/settings", "/design-system"]:
+            for path in ["/screens", "/profiles", "/settings"]:
                 visit(page, path)
                 no_overflow(page)
-            for card in page.locator('[data-variant="resource"]').all():
-                assert card.evaluate(
-                    "el => el.scrollWidth <= el.clientWidth"
-                ), "Long card content is clipped"
+                for card in page.locator('[data-variant="resource"]').all():
+                    assert card.evaluate(
+                        "el => el.scrollWidth <= el.clientWidth"
+                    ), "Long card content is clipped"
             page.screenshot(path=f"/tmp/peek-ui-{locale}-{width}.png", full_page=True)
-            page.locator("#compositions-title").scroll_into_view_if_needed()
-            page.screenshot(path=f"/tmp/peek-ui-compositions-{locale}-{width}.png")
-            page.get_by_label("Пример имени", exact=True).fill("Несохранённый пример")
-            page.get_by_role("link", name="Добавить экран", exact=True).click()
-            expect(page.get_by_role("alertdialog")).to_be_visible()
-            page.get_by_role("button", name="Остаться", exact=True).click()
-            page.get_by_role("button", name="Сохранить пример", exact=True).click()
-            expect(page.locator("form")).to_have_attribute("aria-busy", "false")
     assert not errors, errors
     browser.close()
     print(

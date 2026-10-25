@@ -573,15 +573,3 @@
     transition-duration: 0.01ms !important;
   }
 }
-/* The gallery exercises production utility states without overriding primitives. */
-@custom-variant hover {
-  @media (hover: hover) {
-    &:hover {
-      @slot;
-    }
-  }
-  &[data-preview="hover"] {
-    @slot;
-  }
-}
-@custom-variant focus-visible (&:focus-visible, &[data-preview="focus"]);

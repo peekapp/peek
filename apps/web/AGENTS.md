@@ -14,8 +14,8 @@ Read `DESIGN.md` before any UI change. All settings routes, including Extensions
 render through `Settings`. Compose lists and editors from `components/settings/layout.tsx`;
 use `ProfileLabel` / `ProfileIdentity` everywhere a profile is displayed. Extend
 shared components when a pattern needs to change instead of styling individual pages.
-Keep `/design-system` aligned with production components. Verify affected lists,
-create/edit flows, empty/error states, narrow viewports, and theme compatibility.
+Verify affected lists, create/edit flows, empty/error states, narrow viewports,
+and theme compatibility.
 
 ## Styling architecture
 
@@ -30,4 +30,4 @@ create/edit flows, empty/error states, narrow viewports, and theme compatibility
 - Keep dynamic inline styles only for runtime values (profile colors, screen
   scale). Static styling belongs in Tailwind. Use semantic colors for every theme.
 - Verify production build, types, tests and browser layouts in light/dark themes
-  at wide/narrow sizes using isolated data. Include /design-system and dialogs.
+  at wide/narrow sizes using isolated data. Include dialogs.
