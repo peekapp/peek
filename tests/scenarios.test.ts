@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 import { openStore } from "../packages/db/src";
+import { activeCards, countdown, priorityAt } from "../packages/core/src/cards";
 import {
   officialStore,
   connection,
@@ -54,7 +55,7 @@ test("official manifests validate settings and share a versioned calendar contra
   ).toThrow();
   expect(m.inputs!.events.contract).toBe("peek/events");
 });
-test("SDK scenarios schedule visibility, urgency, start and expiry; filter titles and all-day events", () => {
+test("SDK scenarios schedule card creation only; filter titles and all-day events", () => {
   const now = 1_000_000,
     startAt = now + 20 * 60000;
   const context = {
@@ -83,14 +84,10 @@ test("SDK scenarios schedule visibility, urgency, start and expiry; filter title
     cards: [],
     nextRunAt: startAt - 600000,
   });
-  for (const [at, next] of [
-    [startAt - 600000, startAt - 60000],
-    [startAt - 60000, startAt],
-    [startAt, startAt + 300000],
-  ]) {
+  for (const at of [startAt - 600000, startAt - 60000, startAt]) {
     const r = meeting.evaluate({ ...context, now: at });
     expect(r.cards).toHaveLength(1);
-    expect(r.nextRunAt).toBe(next);
+    expect(r.nextRunAt).toBeNull();
   }
   expect(meeting.evaluate({ ...context, now: startAt + 300000 })).toEqual({
     cards: [],
@@ -166,6 +163,45 @@ test("SDK scenarios schedule visibility, urgency, start and expiry; filter title
     },
   };
   expect(meeting.evaluate(early).cards[0].expiresAt).toBe(startAt + 1000);
+});
+test("stored calendar cards complete their lifecycle without scenario reruns", () => {
+  const f = fixture();
+  try {
+    const now = Date.now(),
+      startAt = now + 5 * 60000,
+      futureStart = now + 30 * 60000,
+      source = connection(f.store);
+    publish(f.store, source, [
+      { id: "future", title: "Later", startAt: futureStart },
+      { id: "current", title: "Current", startAt },
+    ]);
+    for (const kind of ["meetings", "deadlines"] as const) {
+      const id = scenario(f.store, [source], "shared", kind);
+      evaluate(f.store, id, now);
+      expect(f.store.instance(id)!.next_run_at).toBe(futureStart - 600000);
+    }
+    const cards = f.main.snapshot(now).cards;
+    expect(cards).toHaveLength(2);
+    for (const card of cards) {
+      expect(priorityAt(card, card.urgentAt - 1)).toBe(card.priority);
+      expect(priorityAt(card, card.urgentAt)).toBe(card.urgentPriority);
+      expect(countdown(card, startAt).value).toBe(
+        card.kind === "meeting" ? "Started" : "Overdue",
+      );
+    }
+    const expiresAt = startAt + 300000;
+    expect(activeCards(cards, expiresAt - 1)).toHaveLength(2);
+    expect(activeCards(cards, expiresAt)).toHaveLength(0);
+    f.main.tick(expiresAt);
+    expect(f.main.snapshot(expiresAt).cards).toHaveLength(0);
+    for (const instance of f.store.instances().filter((i) => i.kind === "scenario")) {
+      evaluate(f.store, instance.id, futureStart - 600000);
+      expect(f.store.instance(instance.id)!.next_run_at).toBeNull();
+    }
+    expect(f.main.snapshot(futureStart - 600000).cards).toHaveLength(2);
+  } finally {
+    f.close();
+  }
 });
 test("common store binds multiple calendars, rejects stale results, retains data on failure and removes missing events", () => {
   const f = fixture();

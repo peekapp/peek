@@ -21,7 +21,7 @@ Consistency is implemented in components, not achieved by copying classes.
 | Section heading         | `SettingsHeading`                | h2, description below, primary action to the right; wraps on narrow screens |
 | Resource collection     | `SettingsGrid`                   | Two equal columns, one on small screens, 24px gap                           |
 | Resource card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
-| Scenario/connection status | `SettingsCard` status + `SettingsCardDetails` | Green Enabled badge beside the name; profile, connections and errors visible; update timestamps in an expandable disclosure; no package icons until extensions provide them |
+| Scenario/connection status | `SettingsCard` status + `SettingsCardDetails` | Green Enabled badge beside the name; profile, connections and errors visible; last successful update and manual refresh in an expandable Troubleshooting disclosure; no next-update timestamp; no package icons until extensions provide them |
 | Empty collection        | `SettingsEmpty`                  | Shared shadcn Empty composition with next-step copy                         |
 | Editor heading          | `EditorHeader`                   | Back link, shared section heading, optional description/action              |
 | Editor section          | `EditorSection`                  | Common field spacing and section typography                                 |

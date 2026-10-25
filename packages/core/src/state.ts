@@ -11,6 +11,8 @@ export type ScreenState = {
   scenarioErrors?: number;
   connectionErrors?: number;
 };
+export type ScreenHeartbeat = Pick<ScreenState, "serverTime" | "heartbeat">;
+
 export function workerHealthy(heartbeat: number | null, now: number) {
   return heartbeat !== null && now - heartbeat <= 30_000;
 }

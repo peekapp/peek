@@ -21,7 +21,7 @@ extensions/official/   iCalendar, Meetings and Deadlines source packages
 extensions/dist/       Generated .peek packages and official bundle
 ```
 
-The web process reads consistent SQLite snapshots and streams them over SSE. Settings writes configuration in short transactions. The runner evaluates due scenarios and starts connections; the screen worker expires cards and writes a heartbeat every five seconds. Only one web process, one screen worker, and one runner per installation are supported.
+The web process polls consistent SQLite snapshots every second. SSE sends a full snapshot on connection/reconnection and when screen content changes; otherwise a lightweight heartbeat carries server time and worker health every five seconds. Screens handle countdowns and card timing locally. Settings writes configuration in short transactions. The runner evaluates due scenarios and starts connections; the screen worker expires cards and writes a heartbeat every five seconds. Only one web process, one screen worker, and one runner per installation are supported.
 
 **MVP schema v11 intentionally resets older databases.** Existing connections, scenarios, packages, cards, profiles and screen settings are discarded. There are no legacy calendar/scenario tables or compatibility adapters. Re-running migration on v11 preserves data.
 
@@ -81,6 +81,8 @@ The same forms also support installed external packages. **Settings → Extensio
 Bundled defaults are installed once. Removing an unused official package does not cause it to reappear on restart. Package updates are explicit: upload the newly built `.peek` archive and use the normal migration/rollback path. Rebuilding the application does not silently update installed packages.
 
 Scenarios configure visibility lead time, urgency and retention in minutes, and an optional case-insensitive title filter. Lead time must exceed urgency; retention is at most 24 hours. Meetings omit all-day events and expire at the earlier of meeting end and configured retention. Deadlines use the event's start time, or the end of its start date for all-day events.
+
+Official calendar scenarios emit currently visible cards and schedule their next run only when another event becomes visible. Screens handle urgency, countdowns and hiding expired cards from their timestamps; the screen worker deletes expired records. This avoids publishing the full 90-day event window as cards or rerunning scenarios for display-only transitions.
 
 Each scenario replaces only its own cards and persists its next-run timestamp atomically. Event identity includes the connection, so identical provider IDs in different calendars remain distinct. Input publications and configuration changes schedule re-evaluation. Disabling or deleting a scenario removes its cards. Failed executions retain prior cards until expiry and retry after 60 seconds. Stale results from edited or deleted instances are rejected.
 
@@ -142,7 +144,7 @@ start it with an absolute temporary `PEEK_DATABASE_PATH`, then run
 `uv run --with playwright==1.64.1 python -m playwright install chromium` and
 `uv run --with playwright==1.64.1 python tests/ui_smoke.py http://127.0.0.1:3217`
 (use your server's port). The check creates/deletes test profiles and screens and changes
-locale/theme; never point it at your household database. Extension UI uses API fixtures.
+locale/theme; never point it at your household database. Extension UI uses API fixtures. Run `uv run --with playwright==1.64.1 python tests/screen_stream_ui.py http://127.0.0.1:3217` against the same isolated server to check heartbeat handling and local card timing with deterministic stream messages.
 
 Editors lock during saves and warn before leaving with unsaved changes. Cancel explicitly
 discards a draft. Back/Forward warnings require a browser with the Navigation API;

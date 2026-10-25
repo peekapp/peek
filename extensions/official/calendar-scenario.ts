@@ -38,9 +38,9 @@ export function calendarScenario(kind: "meeting" | "deadline") {
               ? (event.endAt ?? Infinity)
               : Infinity,
           );
-          for (const boundary of [visibleFrom, urgentAt, targetAt, expiresAt])
-            if (boundary > now && (nextRunAt === null || boundary < nextRunAt))
-              nextRunAt = boundary;
+          // Existing cards handle their own timing; run again only to create future cards.
+          if (visibleFrom > now && (nextRunAt === null || visibleFrom < nextRunAt))
+            nextRunAt = visibleFrom;
           if (visibleFrom <= now && now < expiresAt)
             cards.push({
               // A short stable ID also accommodates long provider UIDs.

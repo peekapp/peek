@@ -1,8 +1,8 @@
 import { databasePath, openStore } from "@peek/db";
-import type { ScreenState } from "@peek/core/state";
+import type { ScreenHeartbeat, ScreenState } from "@peek/core/state";
 const clients = new Map<
   ReadableStreamDefaultController<Uint8Array>,
-  string | undefined
+  { screenId?: string; content?: string; sentAt: number }
 >();
 let timer: ReturnType<typeof setInterval> | undefined;
 const encoder = new TextEncoder();
@@ -15,29 +15,49 @@ function remove(client: ReadableStreamDefaultController<Uint8Array>) {
 }
 function broadcast() {
   let store: ReturnType<typeof openStore> | undefined;
-  const frames = new Map<string | undefined, Uint8Array>();
+  const now = Date.now();
+  const frames = new Map<
+    string | undefined,
+    { content: string; snapshot: Uint8Array; heartbeat: Uint8Array }
+  >();
   try {
     store = openStore(databasePath(), true);
   } catch {}
-  for (const [client, id] of clients) {
+  for (const [client, previous] of clients) {
     if (client.desiredSize !== null && client.desiredSize <= 0) continue;
+    const id = previous.screenId;
     let frame = frames.get(id);
     if (!frame) {
       try {
         if (!store) throw new Error("unavailable");
-        const state: ScreenState = store.snapshot(Date.now(), id);
-        frame = encoder.encode(`data: ${JSON.stringify(state)}\n\n`);
+        const state: ScreenState = store.snapshot(now, id);
+        const { serverTime, heartbeat, revision, ...content } = state;
+        const health: ScreenHeartbeat = { serverTime, heartbeat };
+        frame = {
+          content: JSON.stringify(content),
+          snapshot: encoder.encode(`data: ${JSON.stringify(state)}\n\n`),
+          heartbeat: encoder.encode(`event: heartbeat\ndata: ${JSON.stringify(health)}\n\n`),
+        };
       } catch (error) {
         const event =
           error instanceof Error && error.message === "screen-not-found"
             ? "removed"
             : "unavailable";
-        frame = encoder.encode(`event: ${event}\ndata: {}\n\n`);
+        const errorFrame = encoder.encode(`event: ${event}\ndata: {}\n\n`);
+        frame = { content: event, snapshot: errorFrame, heartbeat: errorFrame };
       }
       frames.set(id, frame);
     }
     try {
-      client.enqueue(frame);
+      if (previous.content !== frame.content) {
+        client.enqueue(frame.snapshot);
+        previous.content = frame.content;
+      } else if (now - previous.sentAt >= 5000) {
+        client.enqueue(frame.heartbeat);
+      } else {
+        continue;
+      }
+      previous.sentAt = now;
     } catch {
       remove(client);
     }
@@ -61,7 +81,7 @@ export function screenStream(request: Request, screenId?: string) {
         controller.close();
         return;
       }
-      clients.set(controller, screenId);
+      clients.set(controller, { screenId, sentAt: 0 });
       broadcast();
       if (!timer) timer = setInterval(broadcast, 1000);
       request.signal.addEventListener("abort", abort, { once: true });

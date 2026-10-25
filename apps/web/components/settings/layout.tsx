@@ -150,7 +150,7 @@ export function SettingsCardDetails({
       <summary className="w-fit cursor-pointer rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {label}
       </summary>
-      <div className="pt-4">{children}</div>
+      <div className="grid justify-items-start gap-4 pt-4">{children}</div>
     </details>
   );
 }

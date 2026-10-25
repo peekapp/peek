@@ -14,7 +14,7 @@ import {
   type Owner as CardOwner,
 } from "@peek/core";
 
-import { workerHealthy, type ScreenState } from "@peek/core/state";
+import { workerHealthy, type ScreenHeartbeat, type ScreenState } from "@peek/core/state";
 
 import { ProfileIdentity } from "./profile-label";
 import Link from "next/link";
@@ -78,14 +78,27 @@ export function Dashboard({
         : "/api/screen/events",
     );
     let lastMessage = Date.now();
-    stream.onmessage = (event) => {
-      const incoming = JSON.parse(event.data) as ScreenState;
+    const received = (incoming: ScreenHeartbeat) => {
       lastMessage = Date.now();
-      offset.current = incoming.serverTime - Date.now();
-      // Restored databases may have lower revisions; SSE frames arrive in order.
-      setSnapshot(incoming);
+      offset.current = incoming.serverTime - lastMessage;
+      setNow(incoming.serverTime);
       setConnection(navigator.onLine ? "connected" : "offline");
     };
+    stream.onmessage = (event) => {
+      const incoming = JSON.parse(event.data) as ScreenState;
+      received(incoming);
+      // Restored databases may have lower revisions; SSE frames arrive in order.
+      setSnapshot(incoming);
+    };
+    stream.addEventListener("heartbeat", (event) => {
+      const incoming = JSON.parse(event.data) as ScreenHeartbeat;
+      received(incoming);
+      setSnapshot((current) => ({
+        ...current,
+        serverTime: incoming.serverTime,
+        heartbeat: incoming.heartbeat,
+      }));
+    });
     const unavailable = () => {
       lastMessage = Date.now();
       setConnection("storage");

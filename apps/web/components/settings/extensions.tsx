@@ -692,17 +692,6 @@ export function Extensions({
                         {t("Edit", "Изменить")}
                       </Link>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      disabled={busy || !i.enabled}
-                      onClick={() =>
-                        void perform(() => api({ action: "run", id: i.id }))
-                      }
-                    >
-                      {i.kind === "scenario"
-                        ? t("Update cards", "Обновить карточки")
-                        : t("Refresh data", "Обновить данные")}
-                    </Button>
                     <DeleteButton
                       locale={locale}
                       disabled={busy}
@@ -745,7 +734,7 @@ export function Extensions({
                     <AlertDescription>{i.last_error}</AlertDescription>
                   </Alert>
                 ) : null}
-                <SettingsCardDetails label={t("Update details", "Подробности обновления")}>
+                <SettingsCardDetails label={t("Troubleshooting", "Диагностика")}>
                   <dl className="grid gap-4">
                     <div className="grid gap-1">
                       <dt>{t("Last updated", "Последнее обновление")}</dt>
@@ -755,17 +744,18 @@ export function Extensions({
                           : t("Not updated yet", "Ещё не обновлялось")}
                       </dd>
                     </div>
-                    {i.enabled ? (
-                      <div className="grid gap-1">
-                        <dt>{t("Next update", "Следующее обновление")}</dt>
-                        <dd className="text-foreground">
-                          {i.next_run_at
-                            ? new Date(i.next_run_at).toLocaleString(locale)
-                            : t("Waiting for updates", "Ожидание обновлений")}
-                        </dd>
-                      </div>
-                    ) : null}
                   </dl>
+                  <Button
+                    variant="ghost"
+                    disabled={busy || !i.enabled}
+                    onClick={() =>
+                      void perform(() => api({ action: "run", id: i.id }))
+                    }
+                  >
+                    {i.kind === "scenario"
+                      ? t("Update cards", "Обновить карточки")
+                      : t("Refresh data", "Обновить данные")}
+                  </Button>
                 </SettingsCardDetails>
               </SettingsCard>
             ))}
