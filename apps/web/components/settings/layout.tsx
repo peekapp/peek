@@ -42,6 +42,10 @@ export function SettingsHeading({
     </div>
   );
 }
+/** Owns toolbar-to-content spacing for every resource collection. */
+export function SettingsCollection({ children }: { children: ReactNode }) {
+  return <section className="flex flex-col gap-4">{children}</section>;
+}
 /** Shared collection controls; search filters the collection in its owner. */
 export function SettingsToolbar({
   query,
@@ -55,7 +59,7 @@ export function SettingsToolbar({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-48 flex-1">
         <SearchIcon
           aria-hidden="true"
@@ -97,7 +101,7 @@ export function SearchEmpty({ locale }: { locale: Locale }) {
 }
 export function SettingsGrid({ children }: { children: ReactNode }) {
   return (
-    <div className="grid items-stretch gap-6 md:grid-cols-2">{children}</div>
+    <div className="grid items-stretch gap-6 empty:hidden md:grid-cols-2">{children}</div>
   );
 }
 export function SettingsCard({

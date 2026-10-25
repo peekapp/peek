@@ -5,6 +5,7 @@ import {
   SettingsNavigation,
   SettingsPage,
   SettingsToolbar,
+  SettingsCollection,
   SearchEmpty,
   matchesSearch,
 } from "./settings/layout";
@@ -210,7 +211,7 @@ export function Settings({
                 <SettingsEmpty title={t.notFound} />
               )
             ) : (
-              <>
+              <SettingsCollection>
                 <SettingsToolbar
                   query={query}
                   onQueryChange={setQuery}
@@ -263,7 +264,7 @@ export function Settings({
                       </SettingsCard>
                     ))}
                 </SettingsGrid>
-              </>
+              </SettingsCollection>
             )
           ) : tab === "extensions" ? (
             <Extensions locale={locale} />

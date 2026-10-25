@@ -32,6 +32,7 @@ import { Badge } from "../ui/badge";
 import {
   SettingsHeading,
   SettingsToolbar,
+  SettingsCollection,
   matchesSearch,
   SearchEmpty,
   SettingsGrid,
@@ -301,7 +302,7 @@ export function Extensions({
     );
   }
   return (
-    <section className="flex flex-col gap-6">
+    <SettingsCollection>
       <SettingsToolbar
         query={query}
         onQueryChange={setQuery}
@@ -338,7 +339,7 @@ export function Extensions({
           </AlertDescription>
         </Alert>
       ) : null}
-      <div className="flex flex-col gap-6">
+      <>
         {!kind ? (
           <Card>
             <CardHeader>
@@ -431,18 +432,18 @@ export function Extensions({
                     <p>
                       {m.kind === "scenario"
                         ? t(
-                            "Scenario: selected data only; no network or secrets.",
-                            "Сценарий: только выбранные данные, без сети и секретов.",
-                          )
+                          "Scenario: selected data only; no network or secrets.",
+                          "Сценарий: только выбранные данные, без сети и секретов.",
+                        )
                         : m.permissions.internet
                           ? t(
-                              "Integration: public internet access.",
-                              "Интеграция: доступ к публичному интернету.",
-                            )
+                            "Integration: public internet access.",
+                            "Интеграция: доступ к публичному интернету.",
+                          )
                           : t(
-                              "Integration: no public internet access.",
-                              "Интеграция: без публичного интернета.",
-                            )}
+                            "Integration: no public internet access.",
+                            "Интеграция: без публичного интернета.",
+                          )}
                     </p>
                     {m.permissions.local?.map((x) => (
                       <p key={`${x.address}:${x.port}`}>
@@ -505,9 +506,9 @@ export function Extensions({
           <LoadingState>{t("Loading…", "Загрузка…")}</LoadingState>
         ) : null}
         {kind &&
-        data &&
-        !query.trim() &&
-        !data.instances.some((i) => i.kind === kind) ? (
+          data &&
+          !query.trim() &&
+          !data.instances.some((i) => i.kind === kind) ? (
           <SettingsEmpty
             title={
               kind === "scenario"
@@ -521,21 +522,21 @@ export function Extensions({
           />
         ) : null}
         {data &&
-        query.trim() &&
-        !data.instances.some(
-          (i) =>
-            (!kind || i.kind === kind) &&
-            matchesSearch(query, i.name, i.package_id),
-        ) &&
-        (kind ||
-          !data.packages.some((p) =>
-            matchesSearch(
-              query,
-              p.manifest.name,
-              p.manifest.id,
-              p.manifest.description,
-            ),
-          )) ? (
+          query.trim() &&
+          !data.instances.some(
+            (i) =>
+              (!kind || i.kind === kind) &&
+              matchesSearch(query, i.name, i.package_id),
+          ) &&
+          (kind ||
+            !data.packages.some((p) =>
+              matchesSearch(
+                query,
+                p.manifest.name,
+                p.manifest.id,
+                p.manifest.description,
+              ),
+            )) ? (
           <SearchEmpty locale={locale} />
         ) : null}
         {!kind ? (
@@ -739,8 +740,8 @@ export function Extensions({
             onConfirm={() => perform(() => api({ action: "rollback" }))}
           />
         ) : null}
-      </div>
-    </section>
+      </>
+    </SettingsCollection>
   );
 }
 function InstanceEditor({
@@ -763,15 +764,15 @@ function InstanceEditor({
     [profile, setProfile] = useState(item?.profile_id ?? "shared"),
     [enabled, setEnabled] = useState(item ? !!item.enabled : true);
   const [settings, setSettings] = useState<Record<string, Json>>(
-      (item?.settings as Record<string, Json>) ?? initial(m.settings),
-    ),
+    (item?.settings as Record<string, Json>) ?? initial(m.settings),
+  ),
     [secrets, setSecrets] = useState<Record<string, Json>>(
       initial(m.secrets ?? {}),
     ),
     [changeSecrets, setChangeSecrets] = useState(!item?.hasSecret);
   const [bindings, setBindings] = useState<Record<string, Binding[]>>(
-      item?.bindings ?? {},
-    ),
+    item?.bindings ?? {},
+  ),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const inputs = Object.entries(m.inputs ?? {}).map(([input, requirement]) => ({
@@ -920,9 +921,9 @@ function InstanceEditor({
                   {requirement.optional
                     ? t("Optional connection.", "Необязательное подключение.")
                     : t(
-                        "Select a compatible connection to save this scenario.",
-                        "Выберите совместимое подключение, чтобы сохранить сценарий.",
-                      )}
+                      "Select a compatible connection to save this scenario.",
+                      "Выберите совместимое подключение, чтобы сохранить сценарий.",
+                    )}
                 </FieldDescription>
                 {!choices.length ? (
                   <SettingsEmpty
@@ -964,7 +965,7 @@ function InstanceEditor({
                               choices.some(
                                 (option) =>
                                   option.connectionId ===
-                                    binding.connectionId &&
+                                  binding.connectionId &&
                                   option.dataset === binding.dataset,
                               ),
                           );
@@ -973,12 +974,12 @@ function InstanceEditor({
                             [input]:
                               checked === true
                                 ? [
-                                    ...(requirement.multiple ? rest : []),
-                                    {
-                                      connectionId: choice.connectionId,
-                                      dataset: choice.dataset,
-                                    },
-                                  ]
+                                  ...(requirement.multiple ? rest : []),
+                                  {
+                                    connectionId: choice.connectionId,
+                                    dataset: choice.dataset,
+                                  },
+                                ]
                                 : rest,
                           });
                         }}

@@ -16,6 +16,7 @@ Consistency is implemented in components, not achieved by copying classes.
 | Purpose                 | Component                        | Contract                                                                    |
 | ----------------------- | -------------------------------- | --------------------------------------------------------------------------- |
 | Settings navigation     | `Settings`                       | AppShell sidebar for resources; General/Extensions tabs; one centered compact page h1 in the top bar                             |
+| Collection layout       | `SettingsCollection`             | Owns the 16px gap between toolbar and content across all resource lists     |
 | Collection toolbar      | `SettingsToolbar`                | Search input and primary action; filters by name with a shared no-results state |
 | Section heading         | `SettingsHeading`                | h2, description below, primary action to the right; wraps on narrow screens |
 | Resource collection     | `SettingsGrid`                   | Two equal columns, one on small screens, 24px gap                           |

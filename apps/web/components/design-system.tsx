@@ -12,6 +12,7 @@ import {
   SettingsNavigation,
   SettingsPage,
   SettingsToolbar,
+  SettingsCollection,
   matchesSearch,
   SearchEmpty,
 } from "./settings/layout";
@@ -303,42 +304,44 @@ export function DesignSystem() {
               </NavigationMenuItem>
             ))}
           </SettingsNavigation>
-          <SettingsToolbar
-            query={query}
-            onQueryChange={setQuery}
-            placeholder="Поиск сценариев"
-            action={<Button>+ Добавить сценарий</Button>}
-          />
-          {![
-            "Встречи команды",
-            "Очень длинное название экрана для проверки переноса текста без переполнения",
-          ].some((name) => matchesSearch(query, name)) ? (
-            <SearchEmpty locale="ru" />
-          ) : null}
-          <SettingsGrid>
-            {matchesSearch(query, "Встречи команды") ? (
-              <SettingsCard
-                title="Встречи команды"
-                description="Встречи · Включено"
-                actions={<Button variant="outline">Изменить</Button>}
-              >
-                <ProfileIdentity name="Общее" color="blue" />
-                <p>Рабочий календарь</p>
-              </SettingsCard>
-            ) : null}
-            {matchesSearch(
-              query,
+          <SettingsCollection>
+            <SettingsToolbar
+              query={query}
+              onQueryChange={setQuery}
+              placeholder="Поиск сценариев"
+              action={<Button>+ Добавить сценарий</Button>}
+            />
+            {![
+              "Встречи команды",
               "Очень длинное название экрана для проверки переноса текста без переполнения",
-            ) ? (
-              <SettingsCard
-                title="Очень длинное название экрана для проверки переноса текста без переполнения"
-                description={"package/" + "long-identifier".repeat(12)}
-              >
-                <ProfileIdentity name="Александра" color="pink" />
-                <p>{"https://example.test/" + "error-detail".repeat(20)}</p>
-              </SettingsCard>
+            ].some((name) => matchesSearch(query, name)) ? (
+              <SearchEmpty locale="ru" />
             ) : null}
-          </SettingsGrid>
+            <SettingsGrid>
+              {matchesSearch(query, "Встречи команды") ? (
+                <SettingsCard
+                  title="Встречи команды"
+                  description="Встречи · Включено"
+                  actions={<Button variant="outline">Изменить</Button>}
+                >
+                  <ProfileIdentity name="Общее" color="blue" />
+                  <p>Рабочий календарь</p>
+                </SettingsCard>
+              ) : null}
+              {matchesSearch(
+                query,
+                "Очень длинное название экрана для проверки переноса текста без переполнения",
+              ) ? (
+                <SettingsCard
+                  title="Очень длинное название экрана для проверки переноса текста без переполнения"
+                  description={"package/" + "long-identifier".repeat(12)}
+                >
+                  <ProfileIdentity name="Александра" color="pink" />
+                  <p>{"https://example.test/" + "error-detail".repeat(20)}</p>
+                </SettingsCard>
+              ) : null}
+            </SettingsGrid>
+          </SettingsCollection>
           <EditorHeader
             title="Новый профиль"
             backHref="#compositions-title"

@@ -33,6 +33,7 @@ import { type Profile } from "@peek/core/profiles";
 import { ProfileLabel } from "../profile-label";
 import {
   SettingsToolbar,
+  SettingsCollection,
   matchesSearch,
   SearchEmpty,
   SettingsGrid,
@@ -99,7 +100,7 @@ export function ScreenList({
     matchesSearch(query, screen.name, screen.id),
   );
   return (
-    <>
+    <SettingsCollection>
       <SettingsToolbar
         query={query}
         onQueryChange={setQuery}
@@ -168,7 +169,7 @@ export function ScreenList({
           description={t.screensDescription}
         />
       ) : null}
-    </>
+    </SettingsCollection>
   );
 }
 export function ScreenEditor({
