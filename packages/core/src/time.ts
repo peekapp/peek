@@ -119,3 +119,13 @@ export function relativeEventTime(
           : `${p.day} ${months[locale][p.month - 1]}${p.year !== current.year ? ` ${p.year}` : ""}`;
   return `${label}, ${p.clock}`;
 }
+
+export function relativeUpdateTime(timestamp: number | null, now: number, locale: Locale) {
+  const t = messages(locale);
+  if (timestamp === null) return t.notUpdatedYet;
+  const minutes = Math.max(0, Math.floor((now - timestamp) / 60000));
+  if (minutes === 0) return t.justNow;
+  if (minutes < 60) return t.minutesAgo.replace("{count}", String(minutes));
+  if (minutes < 1440) return t.hoursAgo.replace("{count}", String(Math.floor(minutes / 60)));
+  return t.daysAgo.replace("{count}", String(Math.floor(minutes / 1440)));
+}

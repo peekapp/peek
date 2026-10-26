@@ -14,8 +14,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
   TableRow,
 } from "../ui/table";
 
@@ -23,14 +21,15 @@ type ResourceRow = ComponentProps<typeof SettingsRow> & {
   id: string;
   profile: ReactNode;
   error: ReactNode;
+  health: ReactNode;
 };
 const columnVariants = cva("px-4", {
   variants: {
     column: {
-      name: "min-w-0 py-4 pr-2 md:py-2 md:pr-4",
-      status: "py-4 pl-2 md:w-36 md:py-2 md:pl-4",
-      profile: "flex h-full items-center border-t bg-background md:table-cell md:w-24 md:border-t-0 md:bg-transparent",
-      actions: "content-center self-stretch border-t bg-background md:w-24 md:border-t-0 md:bg-transparent",
+      name: "col-span-1 min-w-0 py-4 pr-2 lg:py-2 lg:pr-4",
+      health: "col-span-1 self-start py-4 pl-2 lg:w-40 lg:py-2 lg:pl-4",
+      profile: "flex h-full items-center border-t bg-background lg:table-cell lg:w-16 lg:border-t-0 lg:bg-transparent lg:px-4",
+      actions: "content-center self-stretch border-t bg-background pl-2 lg:w-16 lg:border-t-0 lg:bg-transparent lg:pl-4",
     },
   },
 });
@@ -51,12 +50,7 @@ const columns = column.columns([
       </div>
     ),
   }),
-  column.display({
-    id: "status",
-    cell: ({ row }) => (
-      <div className="relative z-10 w-fit">{row.original.status}</div>
-    ),
-  }),
+  column.display({ id: "health", cell: ({ row }) => row.original.health }),
   column.display({
     id: "profile",
     cell: ({ row }) => (
@@ -91,44 +85,19 @@ export function SettingsDataTable({
 
   if (!rows.length) return null;
   return (
-    <div className="md:overflow-hidden md:rounded-md md:border">
-      <Table className="block md:table md:table-fixed" aria-label={t.scenarios}>
-        <colgroup className="hidden md:table-column-group">
+    <div className="lg:overflow-hidden lg:rounded-md lg:border">
+      <Table className="block lg:table lg:table-fixed" aria-label={t.scenarios}>
+        <colgroup className="hidden lg:table-column-group">
           <col />
-          <col className="w-36" />
-          <col className="w-24" />
-          <col className="w-24" />
+          <col className="w-32" />
+          <col className="w-16" />
+          <col className="w-16" />
         </colgroup>
-        <TableHeader className="sr-only">
-          {table.getHeaderGroups().map((group) => (
-            <TableRow key={group.id}>
-              {group.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  scope="col"
-                  className={cn(
-                    columnVariants({
-                      column: header.column.id as
-                        "name" | "status" | "profile" | "actions",
-                    }),
-                  )}
-                >
-                  {
-                    t[
-                    header.column.id as
-                    "name" | "status" | "profile" | "actions"
-                    ]
-                  }
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody className="grid gap-4 md:table-row-group [&_tr:last-child]:border md:[&_tr:last-child]:border-0">
+        <TableBody className="grid gap-4 lg:table-row-group [&_tr:last-child]:border lg:[&_tr:last-child]:border-0">
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className="relative grid grid-cols-[minmax(0,1fr)_auto] cursor-pointer items-center overflow-hidden rounded-md border has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ring md:table-row md:overflow-visible md:rounded-none md:border-x-0 md:border-t-0"
+              className="relative grid grid-cols-[minmax(0,1fr)_auto] cursor-pointer items-center overflow-hidden rounded-md border has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ring lg:table-row lg:overflow-visible lg:rounded-none lg:border-x-0 lg:border-t-0"
             >
               {row.getAllCells().map((cell) => (
                 <TableCell
@@ -136,7 +105,7 @@ export function SettingsDataTable({
                   className={cn(
                     columnVariants({
                       column: cell.column.id as
-                        "name" | "status" | "profile" | "actions",
+                        "name" | "health" | "profile" | "actions",
                     }),
                     "align-middle whitespace-normal wrap-anywhere",
                   )}

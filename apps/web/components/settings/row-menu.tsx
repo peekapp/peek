@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Ellipsis, Pencil, Trash2, Pause, Play } from "lucide-react";
+import { Ellipsis, Pencil, Trash2, Pause, Play, RefreshCw } from "lucide-react";
 import { messages, type Locale } from "@peek/core/i18n";
 import { Button } from "../ui/button";
 import {
@@ -21,6 +21,8 @@ export function SettingsRowMenu({
   onDelete,
   enabled,
   onToggle,
+  onRefresh,
+  refreshDisabled,
 }: {
   href: string;
   locale: Locale;
@@ -28,6 +30,8 @@ export function SettingsRowMenu({
   onDelete: () => Promise<void>;
   enabled: boolean;
   onToggle: () => Promise<void>;
+  onRefresh: () => Promise<void>;
+  refreshDisabled: boolean;
 }) {
   const t = messages(locale);
   return (
@@ -55,6 +59,10 @@ export function SettingsRowMenu({
               <Play aria-hidden="true" />
             )}
             {enabled ? t.disable : t.enable}
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={refreshDisabled} onSelect={() => void onRefresh()}>
+            <RefreshCw aria-hidden="true" />
+            {t.updateCards}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <ConfirmAction

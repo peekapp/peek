@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   formatTime as format,
   relativeEventTime as relative,
+  relativeUpdateTime,
 } from "../packages/core/src/time";
 const formatTime = (timestamp: number) =>
   format(timestamp, "en", "Europe/Moscow");
@@ -32,4 +33,17 @@ it("uses calendar dates rather than a rolling 24-hour window", () => {
     relativeEventTime(Date.UTC(2027, 0, 2, 9), now, "ru"),
     "2 января 2027, 12:00",
   );
+});
+
+it("formats successful update ages compactly in both locales", () => {
+  const now = Date.UTC(2026, 9, 26, 12);
+  assert.equal(relativeUpdateTime(null, now, "en"), "Not updated yet");
+  assert.equal(relativeUpdateTime(now, now, "en"), "Just now");
+  assert.equal(relativeUpdateTime(now + 60000, now, "en"), "Just now");
+  assert.equal(relativeUpdateTime(now - 39 * 60000, now, "en"), "39m ago");
+  assert.equal(relativeUpdateTime(now - 60 * 60000, now, "en"), "1h ago");
+  assert.equal(relativeUpdateTime(now - 1440 * 60000, now, "en"), "1d ago");
+  assert.equal(relativeUpdateTime(now - 39 * 60000, now, "ru"), "39 мин назад");
+  assert.equal(relativeUpdateTime(now - 60 * 60000, now, "ru"), "1 ч назад");
+  assert.equal(relativeUpdateTime(now - 1440 * 60000, now, "ru"), "1 д назад");
 });

@@ -2,6 +2,7 @@
 
 import { messages, type Locale } from "@peek/core/i18n";
 import { SettingsRowMenu } from "./row-menu";
+import { ScenarioHealth } from "./scenario-health";
 import { SettingsDataTable } from "./data-table";
 import { LoadingState, ErrorState } from "./layout";
 import { EditorForm } from "./layout";
@@ -353,6 +354,9 @@ export function Extensions({
           .map((p) => (
             <ProfileLabel key={p.id} profile={p} locale={locale} avatarOnly />
           )),
+        health: (
+          <ScenarioHealth enabled={!!i.enabled} error={i.last_error} lastSuccess={i.last_success} ready={data.runtime.ready} locale={locale} />
+        ),
         error: i.last_error ? (
           <Alert variant="destructive" role="status">
             <AlertDescription>{i.last_error}</AlertDescription>
@@ -387,35 +391,16 @@ export function Extensions({
         description:
           data.packages.find((p) => p.manifest.id === i.package_id)?.manifest
             .name ?? i.package_id,
-        status:
-          kind === "scenario" ? (
-            <Badge variant={i.enabled ? "success" : "inactive"} asChild>
-              <button
-                type="button"
-                disabled={busy}
-                className="cursor-pointer disabled:cursor-wait"
-                aria-label={i.enabled ? t.disableScenario : t.enableScenario}
-                onClick={() =>
-                  void perform(() =>
-                    api({
-                      action: "set-enabled",
-                      id: i.id,
-                      enabled: !i.enabled,
-                    }),
-                  )
-                }
-              >
-                {i.enabled ? t.statusEnabled : t.statusDisabled}
-              </button>
-            </Badge>
-          ) : (
-            <Badge variant={i.last_error ? "error" : i.last_success !== null ? "success" : "inactive"}>
-              {i.last_error ? t.needsAttention : i.last_success !== null ? t.connected : t.pending}
-            </Badge>
-          ),
+        status: kind === "scenario" ? null : (
+          <Badge variant={i.last_error ? "error" : i.last_success !== null ? "success" : "inactive"}>
+            {i.last_error ? t.needsAttention : i.last_success !== null ? t.connected : t.pending}
+          </Badge>
+        ),
         actions:
           kind === "scenario" ? (
             <SettingsRowMenu
+              refreshDisabled={busy || !i.enabled || !data.runtime.ready}
+              onRefresh={() => perform(() => api({ action: "run", id: i.id }))}
               enabled={!!i.enabled}
               onToggle={() =>
                 perform(() =>

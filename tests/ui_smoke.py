@@ -275,9 +275,12 @@ with sync_playwright() as p:
         "canRollback": False,
     }
     status["packages"][0]["manifest"]["iconColor"] = "theme"
+    run_requests = []
     def extension_route(route):
         if route.request.method == "POST":
             body = route.request.post_data_json
+            if body.get("action") == "run":
+                run_requests.append(body["id"])
             if body.get("action") == "set-enabled":
                 instance = next(i for i in status["instances"] if i["id"] == body["id"])
                 instance["enabled"] = int(body["enabled"])
@@ -464,8 +467,8 @@ with sync_playwright() as p:
                         first, second = cards.nth(0).bounding_box(), cards.nth(1).bounding_box()
                         assert second["y"] - (first["y"] + first["height"]) >= 15
                         cells = cards.first.locator("td")
-                        name, status_cell, profile, actions = [cells.nth(i).bounding_box() for i in range(4)]
-                        assert abs(name["y"] + name["height"] / 2 - status_cell["y"] - status_cell["height"] / 2) < 2
+                        name, health, profile, actions = [cells.nth(i).bounding_box() for i in range(4)]
+                        assert abs(name["y"] - health["y"]) < 2
                         assert profile["y"] >= name["y"] + name["height"]
                         assert abs(profile["y"] - actions["y"]) < 2
                         expect(cards.last).to_have_css("border-bottom-width", "1px")
@@ -507,17 +510,39 @@ with sync_playwright() as p:
                         expect(cards.locator("details")).to_have_count(0)
                         expect(cards.get_by_text("Compatible calendar", exact=True)).to_have_count(0)
                         expect(cards.get_by_role("button", name="Delete" if locale == "en" else "Удалить", exact=True)).to_have_count(0)
-                        avatar = cards.first.locator('[data-slot="tooltip-trigger"]')
+                        expect(cards.first.locator("td")).to_have_count(4)
+                        expect(cards.first.get_by_text("Cards refreshed", exact=False)).to_have_count(0)
+                        menu = cards.first.get_by_role("button", name="Actions" if locale == "en" else "Действия", exact=True)
+                        menu.click()
+                        refresh = page.get_by_role("menuitem", name="Refresh cards" if locale == "en" else "Обновить карточки", exact=True)
+                        previous_runs = len(run_requests)
+                        with page.expect_response(lambda response: response.url.endswith("/api/extensions") and response.request.method == "POST"):
+                            refresh.click()
+                        assert len(run_requests) == previous_runs + 1
+                        assert run_requests[-1] == "card-scenario-1"
+                        cards.nth(1).get_by_role("button", name="Actions" if locale == "en" else "Действия", exact=True).click()
+                        expect(page.get_by_role("menuitem", name="Refresh cards" if locale == "en" else "Обновить карточки", exact=True)).to_be_disabled()
+                        page.keyboard.press("Escape")
+                        expect(cards.nth(1).get_by_role("button", name="Actions" if locale == "en" else "Действия", exact=True)).to_be_focused()
+                        health = cards.first.get_by_role("button", name="Health: Healthy" if locale == "en" else "Состояние: Работает", exact=True)
+                        health.focus()
+                        expect(page.get_by_role("tooltip")).to_contain_text("Last success" if locale == "en" else "Успешный запуск")
+                        expect(page.get_by_role("tooltip")).to_contain_text("2026")
+                        expect(page.locator('[data-slot="tooltip-content"]')).to_have_css("font-size", "11px")
+                        expect(page.get_by_role("tooltip")).not_to_contain_text("Refresh cards in the menu")
+                        expect(page.locator('[data-slot="tooltip-content"] time')).to_have_attribute("datetime", "2026-10-24T20:00:00.000Z")
+                        avatar = cards.first.locator("td").nth(2).locator('[data-slot="tooltip-trigger"]')
                         avatar.focus()
                         expect(page.get_by_role("tooltip")).to_have_text("Shared" if locale == "en" else "Общее")
                         menu = cards.first.get_by_role("button", name="Actions" if locale == "en" else "Действия", exact=True)
                         expect(cards.first.get_by_text("Downloaded Alpha", exact=True)).to_have_count(0)
-                        toggle = cards.first.get_by_role("button", name="Disable scenario" if locale == "en" else "Выключить сценарий", exact=True)
-                        toggle.click()
-                        expect(cards.first.get_by_role("button", name="Enable scenario" if locale == "en" else "Включить сценарий", exact=True)).to_be_visible()
+                        expect(cards.get_by_role("button", name="Disable scenario" if locale == "en" else "Выключить сценарий", exact=True)).to_have_count(0)
+                        menu.click()
+                        page.get_by_role("menuitem", name="Disable" if locale == "en" else "Выключить", exact=True).click()
+                        expect(cards.first.get_by_role("button", name="Health: Paused" if locale == "en" else "Состояние: Приостановлен", exact=True)).to_be_visible()
                         menu.click()
                         page.get_by_role("menuitem", name="Enable" if locale == "en" else "Включить", exact=True).click()
-                        expect(toggle).to_be_visible()
+                        expect(health).to_be_visible()
                         menu.click()
                         # A server poll must update cells without remounting the open menu.
                         with page.expect_response(lambda r: r.url.endswith("/api/extensions") and r.request.method == "GET"):
