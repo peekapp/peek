@@ -6,15 +6,17 @@
 @source "./";
 @custom-variant dark (&:where(.dark, .dark *));
 @theme static inline {
-  --color-sidebar: var(--ui-card);
-  --color-sidebar-foreground: var(--foreground);
+  --color-sidebar: var(--ui-sidebar);
+  --color-sidebar-foreground: var(--ui-sidebar-foreground);
   --color-sidebar-primary: var(--ui-primary);
   --color-sidebar-primary-foreground: var(--ui-primary-foreground);
-  --color-sidebar-accent: var(--ui-accent);
+  --color-sidebar-accent: var(--ui-sidebar-accent);
   --color-sidebar-accent-foreground: var(--ui-accent-foreground);
   --color-sidebar-border: var(--ui-border);
   --color-sidebar-ring: var(--ui-ring);
 
+  --color-surface: var(--ui-surface);
+  --color-row-highlight: var(--ui-row-highlight);
   --color-background: var(--background);
   --color-profile-foreground: #17201e;
   --color-foreground: var(--foreground);
@@ -55,6 +57,11 @@
 /* Resolve semantic aliases at each boundary, including nested screen previews. */
 :root,
 [data-theme] {
+  --ui-sidebar: var(--ui-card);
+  --ui-sidebar-foreground: var(--foreground);
+  --ui-sidebar-accent: var(--ui-accent);
+  --ui-surface: transparent;
+  --ui-row-highlight: color-mix(in oklab, var(--ui-muted) 50%, transparent);
   --color-card: var(--ui-card);
   --color-popover: var(--ui-popover);
   --color-primary: var(--ui-primary);
@@ -75,6 +82,8 @@
   --color-warning-foreground: var(--ui-warning-foreground);
   --color-secondary: var(--ui-secondary);
   --color-secondary-foreground: var(--ui-secondary-foreground);
+  --color-surface: var(--ui-surface);
+  --color-row-highlight: var(--ui-row-highlight);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card-foreground: var(--foreground);
@@ -115,31 +124,36 @@
   --brand-filter: invert(1);
 }
 [data-theme="oled"] {
+  --ui-sidebar: #000000;
+  --ui-sidebar-foreground: #a1a1a1;
+  --ui-sidebar-accent: #1f1f1f;
+  --ui-surface: #0a0a0a;
+  --ui-row-highlight: #1a1a1a;
   color-scheme: dark;
-  --ui-card: #000000;
+  --ui-card: #0a0a0a;
   --ui-popover: #0a0a0a;
   --ui-primary: #ededed;
   --ui-primary-foreground: #000000;
-  --ui-muted: #141414;
-  --ui-muted-foreground: #a8a8a8;
-  --ui-accent: #242424;
+  --ui-muted: #1a1a1a;
+  --ui-muted-foreground: #a1a1a1;
+  --ui-accent: #1a1a1a;
   --ui-accent-foreground: #ededed;
-  --ui-border: #333333;
-  --ui-input: #444444;
-  --ui-ring: #b8b8b8;
-  --ui-destructive: #dc4949;
-  --ui-success: #243d35;
-  --ui-success-foreground: #a5d9b5;
-  --ui-status-error: #472c33;
-  --ui-status-error-foreground: #f2afb5;
-  --ui-warning: #4c3a29;
-  --ui-warning-foreground: #f0d3ae;
-  --ui-secondary: #141414;
+  --ui-border: #242424;
+  --ui-input: #212121;
+  --ui-ring: #a1a1a1;
+  --ui-destructive: #ff6166;
+  --ui-success: #102b25;
+  --ui-success-foreground: #50e3c2;
+  --ui-status-error: #2a1314;
+  --ui-status-error-foreground: #ff6166;
+  --ui-warning: #291d10;
+  --ui-warning-foreground: #f5a623;
+  --ui-secondary: #0a0a0a;
   --ui-secondary-foreground: #ededed;
   --background: #000000;
   --foreground: #ededed;
   --timer: #ededed;
-  --due: #dcc19e;
+  --due: #f5a623;
   --brand-filter: invert(1);
 }
 [data-theme="day"] {

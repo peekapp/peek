@@ -431,7 +431,7 @@ with sync_playwright() as p:
 
     theme_colors = {}
     # Both locales and palettes, narrow resource layouts, real shared styles.
-    for locale, theme in [("en", "night"), ("ru", "day")]:
+    for locale, theme in [("en", "night"), ("ru", "day"), ("en", "oled")]:
         for action, value in [("locale", locale), ("theme", theme)]:
             response = context.request.post(
                 base + "/api/settings",
@@ -452,6 +452,24 @@ with sync_playwright() as p:
                 if path in ["/scenarios", "/connections"]:
                     cards = page.locator('tbody tr' if path == "/scenarios" else '[data-variant="resource"]')
                     expect(cards).to_have_count(2)
+                    if path == "/scenarios" and theme == "oled":
+                        page.mouse.move(0, 0)
+                        expect(cards.first).to_have_css("background-color", "rgb(10, 10, 10)")
+                        expect(cards.first).to_have_css("border-bottom-color", "rgb(36, 36, 36)")
+                        assert "rgb(36, 36, 36) 0px -1px 0px 0px inset" in cards.first.evaluate("el => getComputedStyle(el).boxShadow")
+                        search = page.locator('input[type="search"]')
+                        expect(search).to_have_css("background-color", "rgb(10, 10, 10)")
+                        expect(search).to_have_css("border-color", "rgb(33, 33, 33)")
+                        if width == 1280:
+                            active = page.locator('[data-sidebar="menu-button"][data-active="true"]')
+                            expect(active).to_have_css("background-color", "rgb(31, 31, 31)")
+                            expect(active).to_have_css("color", "rgb(237, 237, 237)")
+                            inactive = page.locator('[data-sidebar="menu-button"][data-active="false"]').first
+                            expect(inactive).to_have_css("color", "rgb(161, 161, 161)")
+                            expect(page.locator('[data-slot="sidebar-inner"]')).to_have_css("background-color", "rgb(0, 0, 0)")
+                        cards.first.hover()
+                        expect(cards.first).to_have_css("background-color", "rgb(26, 26, 26)")
+                        page.mouse.move(0, 0)
                     expect(cards.first.locator('[data-slot="extension-icon"]').first).to_be_visible()
                     if path == "/scenarios":
                         mask = cards.first.locator('[data-icon-color="theme"]').first
@@ -530,7 +548,7 @@ with sync_playwright() as p:
     assert theme_colors["night"] != theme_colors["day"], theme_colors
     # Real package upload previews bundled SVG before any runner installation.
     page.unroute("**/api/extensions")
-    for locale, theme in [("en", "night"), ("ru", "day")]:
+    for locale, theme in [("en", "night"), ("ru", "day"), ("en", "oled")]:
         for action, value in [("locale", locale), ("theme", theme)]:
             response = context.request.post(base + "/api/settings", headers={"Origin": base}, data={"action": action, action: value})
             assert response.ok, response.text()
