@@ -203,6 +203,8 @@ test("publishing validates data, scopes cards and rejects stale and deleted resu
       bindings,
       enabled: true,
     });
+    const count = () => f.store.status().instances.find((i) => i.id === s)!.cardCount;
+    expect(count()).toBe(0);
     const stale = f.store.instance(s)!;
     f.store.publish(f.store.instance(c)!, { datasets: { items: ["a"] } });
     expect(f.store.context(f.store.instance(s)!).inputs.items[0].data).toEqual([
@@ -225,6 +227,22 @@ test("publishing validates data, scopes cards and rejects stale and deleted resu
     expect(f.store.due().some((i) => i.id === s)).toBe(true);
     expect(f.store.publish(f.store.instance(s)!, result)).toBe(true);
     expect(f.main.snapshot().cards[0].title).toBe("A");
+    expect(count()).toBe(1);
+    // Future and expired cards count too: this is generated output, not screen visibility.
+    f.store.publish(f.store.instance(s)!, {
+      cards: [
+        { ...result.cards[0], id: "future", visibleFrom: now + 60000, expiresAt: now + 120000 },
+        { ...result.cards[0], id: "expired", visibleFrom: now - 120000, expiresAt: now - 60000 },
+      ],
+      nextRunAt: null,
+    });
+    expect(count()).toBe(2);
+    expect(f.store.status().instances.find((i) => i.id === c)!.cardCount).toBe(0);
+    expect(() => f.store.publish(f.store.instance(s)!, { cards: [{ ...result.cards[0], title: "" }], nextRunAt: null })).toThrow();
+    expect(count()).toBe(2);
+    f.store.publish(f.store.instance(s)!, { cards: [], nextRunAt: null });
+    expect(count()).toBe(0);
+
     expect(() =>
       f.store.publish(f.store.instance(c)!, { datasets: { items: [42] } }),
     ).toThrow();

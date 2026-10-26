@@ -2,6 +2,7 @@
 
 import { messages, type Locale } from "@peek/core/i18n";
 import { SettingsRowMenu } from "./row-menu";
+import { ScenarioCardCount } from "./card-count";
 import { ScenarioHealth } from "./scenario-health";
 import { SettingsDataTable } from "./data-table";
 import { LoadingState, ErrorState } from "./layout";
@@ -67,6 +68,7 @@ type Item = {
   hasSecret: boolean;
   last_error: string | null;
   last_success: number | null;
+  cardCount: number;
   next_run_at: number | null;
 };
 export type Status = {
@@ -354,6 +356,7 @@ export function Extensions({
           .map((p) => (
             <ProfileLabel key={p.id} profile={p} locale={locale} avatarOnly />
           )),
+        cardCount: <ScenarioCardCount count={i.cardCount} locale={locale} />,
         health: (
           <ScenarioHealth enabled={!!i.enabled} error={i.last_error} lastSuccess={i.last_success} ready={data.runtime.ready} locale={locale} />
         ),

@@ -427,6 +427,7 @@ with sync_playwright() as p:
             "hasSecret": False,
             "last_error": None if enabled else "Calendar unavailable. Check connection settings.",
             "last_success": 1792872000000 if enabled else None,
+            "cardCount": 3 if enabled else 0,
             "next_run_at": None,
         }
         for kind, package_id in [("scenario", "peek/meetings"), ("connection", "peek/ical")]
@@ -467,13 +468,13 @@ with sync_playwright() as p:
                         first, second = cards.nth(0).bounding_box(), cards.nth(1).bounding_box()
                         assert second["y"] - (first["y"] + first["height"]) >= 15
                         cells = cards.first.locator("td")
-                        name, health, profile, actions = [cells.nth(i).bounding_box() for i in range(4)]
+                        name, health, card_count, profile, actions = [cells.nth(i).bounding_box() for i in range(5)]
                         assert abs(name["y"] - health["y"]) < 2
                         assert profile["y"] >= name["y"] + name["height"]
                         assert abs(profile["y"] - actions["y"]) < 2
                         expect(cards.last).to_have_css("border-bottom-width", "1px")
                         background = page.locator("body").evaluate("el => getComputedStyle(el).backgroundColor")
-                        expect(cells.nth(2)).to_have_css("background-color", background)
+                        expect(cells.nth(4)).to_have_css("background-color", background)
                         expect(cells.nth(3)).to_have_css("background-color", background)
                         page.screenshot(path=f"/tmp/peek-scenario-cards-{locale}-{theme}.png")
                     if path == "/connections":
@@ -510,7 +511,9 @@ with sync_playwright() as p:
                         expect(cards.locator("details")).to_have_count(0)
                         expect(cards.get_by_text("Compatible calendar", exact=True)).to_have_count(0)
                         expect(cards.get_by_role("button", name="Delete" if locale == "en" else "Удалить", exact=True)).to_have_count(0)
-                        expect(cards.first.locator("td")).to_have_count(4)
+                        expect(cards.first.locator("td")).to_have_count(5)
+                        expect(cards.first.get_by_text("3 cards" if locale == "en" else "3 карточки", exact=True)).to_be_visible()
+                        expect(cards.nth(1).get_by_text("0 cards" if locale == "en" else "0 карточек", exact=True)).to_be_visible()
                         expect(cards.first.get_by_text("Cards refreshed", exact=False)).to_have_count(0)
                         menu = cards.first.get_by_role("button", name="Actions" if locale == "en" else "Действия", exact=True)
                         menu.click()
@@ -531,7 +534,7 @@ with sync_playwright() as p:
                         expect(page.locator('[data-slot="tooltip-content"]')).to_have_css("font-size", "11px")
                         expect(page.get_by_role("tooltip")).not_to_contain_text("Refresh cards in the menu")
                         expect(page.locator('[data-slot="tooltip-content"] time')).to_have_attribute("datetime", "2026-10-24T20:00:00.000Z")
-                        avatar = cards.first.locator("td").nth(2).locator('[data-slot="tooltip-trigger"]')
+                        avatar = cards.first.locator("td").nth(3).locator('[data-slot="tooltip-trigger"]')
                         avatar.focus()
                         expect(page.get_by_role("tooltip")).to_have_text("Shared" if locale == "en" else "Общее")
                         menu = cards.first.get_by_role("button", name="Actions" if locale == "en" else "Действия", exact=True)

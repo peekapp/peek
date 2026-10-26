@@ -351,6 +351,11 @@ export function openExtensions(path: string) {
       );
     },
     status() {
+      const cardCounts = new Map(
+        db.query<{ scenario_id: string; count: number }, []>(
+          "SELECT scenario_id, COUNT(*) AS count FROM cards WHERE scenario_id IS NOT NULL GROUP BY scenario_id",
+        ).all().map((row) => [row.scenario_id, row.count]),
+      );
       const runtime = db
         .query<
           { heartbeat: number; error: string | null },
@@ -380,6 +385,7 @@ export function openExtensions(path: string) {
         instances: instances().map(({ secret, state, snapshots, ...i }) => ({
           ...i,
           hasSecret: !!secret,
+          cardCount: cardCounts.get(i.id) ?? 0,
           settings: JSON.parse(i.settings),
           bindings: JSON.parse(i.bindings),
         })),

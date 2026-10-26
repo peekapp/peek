@@ -22,12 +22,14 @@ type ResourceRow = ComponentProps<typeof SettingsRow> & {
   profile: ReactNode;
   error: ReactNode;
   health: ReactNode;
+  cardCount: ReactNode;
 };
 const columnVariants = cva("px-4", {
   variants: {
     column: {
       name: "col-span-1 min-w-0 py-4 pr-2 lg:py-2 lg:pr-4",
-      health: "col-span-1 self-start py-4 pl-2 lg:w-40 lg:py-2 lg:pl-4",
+      health: "col-span-2 self-start py-4 pl-2 lg:w-40 lg:py-2 lg:pl-4",
+      cardCount: "content-center self-stretch border-t bg-background lg:w-32 lg:border-t-0 lg:bg-transparent",
       profile: "flex h-full items-center border-t bg-background lg:table-cell lg:w-16 lg:border-t-0 lg:bg-transparent lg:px-4",
       actions: "content-center self-stretch border-t bg-background pl-2 lg:w-16 lg:border-t-0 lg:bg-transparent lg:pl-4",
     },
@@ -51,6 +53,7 @@ const columns = column.columns([
     ),
   }),
   column.display({ id: "health", cell: ({ row }) => row.original.health }),
+  column.display({ id: "cardCount", cell: ({ row }) => row.original.cardCount }),
   column.display({
     id: "profile",
     cell: ({ row }) => (
@@ -90,6 +93,7 @@ export function SettingsDataTable({
         <colgroup className="hidden lg:table-column-group">
           <col />
           <col className="w-32" />
+          <col className="w-32" />
           <col className="w-16" />
           <col className="w-16" />
         </colgroup>
@@ -97,7 +101,7 @@ export function SettingsDataTable({
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className="relative grid grid-cols-[minmax(0,1fr)_auto] cursor-pointer items-center overflow-hidden rounded-md border has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ring lg:table-row lg:overflow-visible lg:rounded-none lg:border-x-0 lg:border-t-0"
+              className="relative grid grid-cols-[minmax(0,1fr)_auto_auto] cursor-pointer items-center overflow-hidden rounded-md border has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ring lg:table-row lg:overflow-visible lg:rounded-none lg:border-x-0 lg:border-t-0"
             >
               {row.getAllCells().map((cell) => (
                 <TableCell
@@ -105,7 +109,7 @@ export function SettingsDataTable({
                   className={cn(
                     columnVariants({
                       column: cell.column.id as
-                        "name" | "health" | "profile" | "actions",
+                        "name" | "health" | "cardCount" | "profile" | "actions",
                     }),
                     "align-middle whitespace-normal wrap-anywhere",
                   )}
