@@ -45,7 +45,7 @@ const columns = column.columns([
       <div className="flex items-start gap-3">
         {row.media}
         <div className="min-w-0 flex-1">
-          <div className="font-medium">{row.title}</div>
+          <div>{row.title}</div>
           {row.error}
         </div>
       </div>
@@ -115,8 +115,8 @@ export function SettingsDataTable({
                 >
                   {
                     t[
-                      header.column.id as
-                        "name" | "status" | "profile" | "actions"
+                    header.column.id as
+                    "name" | "status" | "profile" | "actions"
                     ]
                   }
                 </TableHead>
@@ -138,7 +138,7 @@ export function SettingsDataTable({
                       column: cell.column.id as
                         "name" | "status" | "profile" | "actions",
                     }),
-                    "block py-2 align-middle whitespace-normal wrap-anywhere md:table-cell md:py-4",
+                    "block align-middle whitespace-normal wrap-anywhere md:table-cell",
                   )}
                 >
                   <table.FlexRender cell={cell} />

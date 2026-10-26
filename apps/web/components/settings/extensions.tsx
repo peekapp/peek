@@ -369,6 +369,7 @@ export function Extensions({
               data.packages.find((p) => p.manifest.id === i.package_id)
                 ?.iconDataUrl
             }
+            size="compact"
           />
         ),
         title: (
