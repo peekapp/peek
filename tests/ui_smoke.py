@@ -370,6 +370,7 @@ with sync_playwright() as p:
     page.goto(base + "/connections/new?package=test%2Fconnection")
     name_field = page.get_by_role("textbox", name="Name", exact=True)
     expect(name_field).to_be_visible()
+    expect(page.get_by_text("Enabled", exact=True)).to_have_count(0)
     name_field.fill("Unsaved connection")
     expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
     while held_profiles:
@@ -417,7 +418,7 @@ with sync_playwright() as p:
             "kind": kind,
             "name": name,
             "profile_id": "shared",
-            "enabled": enabled,
+            "enabled": 1 if kind == "connection" else enabled,
             "settings": {},
             "bindings": {"events": [{"connectionId": "new", "dataset": "events"}]},
             "hasSecret": False,
@@ -443,6 +444,13 @@ with sync_playwright() as p:
             page.set_viewport_size({"width": width, "height": 844})
             for path in ["/screens", "/profiles", "/settings", "/scenarios", "/connections"]:
                 visit(page, path)
+                if width == 390 and path != "/settings":
+                    search = page.locator('input[type="search"]')
+                    toolbar = search.locator("../..")
+                    action = toolbar.locator("a, button").first.bounding_box()
+                    field = search.bounding_box()
+                    assert action["y"] + action["height"] < field["y"]
+                    assert abs(action["width"] - field["width"]) < 2
                 if path == "/screens" and width == 390:
                     page.get_by_role("button", name="Toggle sidebar" if locale == "en" else "Переключить меню", exact=True).click()
                     sidebar = page.get_by_role("dialog", name="Sidebar" if locale == "en" else "Боковая панель", exact=True)
@@ -452,6 +460,22 @@ with sync_playwright() as p:
                 if path in ["/scenarios", "/connections"]:
                     cards = page.locator('tbody tr' if path == "/scenarios" else '[data-variant="resource"]')
                     expect(cards).to_have_count(2)
+                    if path == "/scenarios" and width == 390:
+                        first, second = cards.nth(0).bounding_box(), cards.nth(1).bounding_box()
+                        assert second["y"] - (first["y"] + first["height"]) >= 15
+                        cells = cards.first.locator("td")
+                        name, status_cell, profile, actions = [cells.nth(i).bounding_box() for i in range(4)]
+                        assert abs(name["y"] + name["height"] / 2 - status_cell["y"] - status_cell["height"] / 2) < 2
+                        assert profile["y"] >= name["y"] + name["height"]
+                        assert abs(profile["y"] - actions["y"]) < 2
+                        expect(cards.last).to_have_css("border-bottom-width", "1px")
+                        background = page.locator("body").evaluate("el => getComputedStyle(el).backgroundColor")
+                        expect(cells.nth(2)).to_have_css("background-color", background)
+                        expect(cells.nth(3)).to_have_css("background-color", background)
+                        page.screenshot(path=f"/tmp/peek-scenario-cards-{locale}-{theme}.png")
+                    if path == "/connections":
+                        expect(page.get_by_text("Connected" if locale == "en" else "Подключён", exact=True)).to_be_visible()
+                        expect(page.get_by_text("Needs attention" if locale == "en" else "Требует внимания", exact=True)).to_be_visible()
                     if path == "/scenarios" and theme == "oled":
                         page.mouse.move(0, 0)
                         expect(cards.first).to_have_css("background-color", "rgb(10, 10, 10)")

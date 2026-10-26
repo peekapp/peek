@@ -409,8 +409,8 @@ export function Extensions({
               </button>
             </Badge>
           ) : (
-            <Badge variant={i.enabled ? "success" : "inactive"}>
-              {i.enabled ? t.statusEnabled : t.statusDisabled}
+            <Badge variant={i.last_error ? "error" : i.last_success !== null ? "success" : "inactive"}>
+              {i.last_error ? t.needsAttention : i.last_success !== null ? t.connected : t.pending}
             </Badge>
           ),
         actions:
@@ -500,7 +500,7 @@ export function Extensions({
               </dl>
               <Button
                 variant="ghost"
-                disabled={busy || !i.enabled}
+                disabled={busy || (i.kind === "scenario" && !i.enabled)}
                 onClick={() =>
                   void perform(() => api({ action: "run", id: i.id }))
                 }
@@ -912,7 +912,7 @@ function InstanceEditor({
               packageId: m.id,
               name,
               profileId: profile,
-              enabled,
+              enabled: m.kind === "connection" || enabled,
               settings,
               bindings,
               ...(changeSecrets ? { secrets } : {}),
@@ -951,12 +951,14 @@ function InstanceEditor({
                 <LoadingState layout="fields">{t.loadingProfiles}</LoadingState>
               )}
             </SettingsField>
-            <SettingsField label={t.statusEnabled}>
-              <Checkbox
-                checked={enabled}
-                onCheckedChange={(v) => setEnabled(v === true)}
-              />
-            </SettingsField>
+            {m.kind === "scenario" && (
+              <SettingsField label={t.statusEnabled}>
+                <Checkbox
+                  checked={enabled}
+                  onCheckedChange={(v) => setEnabled(v === true)}
+                />
+              </SettingsField>
+            )}
             <SchemaFields
               schema={m.settings}
               value={settings}

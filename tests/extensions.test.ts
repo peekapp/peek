@@ -433,7 +433,7 @@ test("bindings reject duplicate datasets and malformed entries before saving", (
   }
 });
 
-test("rollback schedules using the current enabled state", () => {
+test("rollback keeps connections active", () => {
   for (const enabled of [true, false]) {
     const f = fixture();
     try {
@@ -453,9 +453,9 @@ test("rollback schedules using the current enabled state", () => {
       const stale = f.store.instance(id)!;
       f.store.rollback();
       const restored = f.store.instance(id)!;
-      expect(restored.enabled).toBe(Number(!enabled));
-      expect(restored.next_run_at !== null).toBe(!enabled);
-      expect(f.store.due().some((i) => i.id === id)).toBe(!enabled);
+      expect(restored.enabled).toBe(1);
+      expect(restored.next_run_at !== null).toBe(true);
+      expect(f.store.due().some((i) => i.id === id)).toBe(true);
       expect(f.store.publish(stale, { datasets: { items: [] } })).toBe(false);
     } finally {
       f.close();
@@ -544,7 +544,7 @@ test("live updates coalesce without cancelling in-flight results; configuration 
     );
     f.store.save({ ...input, id: s });
     const beforeSourceChange = f.store.instance(s)!;
-    f.store.save({ ...sourceInput(), id: c, enabled: false });
+    f.store.save({ ...sourceInput(), id: c, settings: { label: "changed" } });
     expect(
       f.store.publish(beforeSourceChange, { cards: [], nextRunAt: null }),
     ).toBe(false);
@@ -917,11 +917,39 @@ test("enable changes preserve current configuration and invalidate in-flight res
     expect(f.store.instance(id)!.enabled).toBe(1);
     expect(f.store.due().some((i) => i.id === id)).toBe(true);
     const secret = f.store.context(f.store.instance(connection)!).secrets;
-    f.store.setEnabled(connection, false);
+    expect(() => f.store.setEnabled(connection, false)).toThrow("connection-always-active");
+    f.store.save({ ...sourceInput(), id: connection, enabled: false });
+    expect(f.store.instance(connection)!.enabled).toBe(1);
+    expect(f.store.due().some((i) => i.id === connection)).toBe(true);
     expect(f.store.context(f.store.instance(connection)!).secrets).toEqual(secret);
     expect(() => f.store.setEnabled("missing", true)).toThrow("instance-not-found");
     expect(() => f.store.setEnabled(id, "false" as unknown as boolean)).toThrow("invalid-instance");
   } finally {
     f.close();
   }
+});
+
+test("migration reactivates connections without changing saved data or scenarios", () => {
+  const f = fixture();
+  try {
+    install(f.store, [pkg("connection"), pkg("scenario")]);
+    const connection = f.store.save(sourceInput());
+    const scenario = f.store.save({ ...scenarioInput(connection), enabled: false });
+    const before = f.store.instance(connection)!;
+    const db = new Database(f.path);
+    db.run("UPDATE extension_instances SET enabled=0,next_run_at=NULL WHERE id=?", [connection]);
+    db.exec("PRAGMA user_version = 12");
+    db.close();
+    f.main.migrate();
+    const after = f.store.instance(connection)!;
+    expect(after.enabled).toBe(1);
+    expect(after.generation).toBe(before.generation + 1);
+    expect(after.next_run_at).not.toBeNull();
+    expect(after.secret).toBe(before.secret);
+    expect(after.settings).toBe(before.settings);
+    expect(after.snapshots).toBe(before.snapshots);
+    expect(f.store.instance(scenario)!.enabled).toBe(0);
+    f.main.migrate();
+    expect(f.store.instance(connection)).toEqual(after);
+  } finally { f.close(); }
 });

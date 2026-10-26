@@ -63,9 +63,14 @@ export function openStore(path: string, readonly = false) {
           const { user_version: version } = sqlite
             .query("PRAGMA user_version")
             .get() as { user_version: number };
-          if (version > 12)
+          if (version > 13)
             throw new Error("Database schema is newer than this application");
-          if (version === 12) return;
+          if (version === 13) return;
+          if (version === 12) {
+            sqlite.query("UPDATE extension_instances SET enabled=1,generation=generation+1,next_run_at=? WHERE kind='connection' AND enabled=0").run(Date.now());
+            sqlite.exec("PRAGMA user_version = 13;");
+            return;
+          }
           // MVP reset: the old built-in model and extension snapshots are intentionally discarded.
           sqlite.exec(`
           DROP TABLE IF EXISTS cards;
@@ -101,7 +106,7 @@ export function openStore(path: string, readonly = false) {
             }),
           );
           migrateExtensions(sqlite);
-          sqlite.exec("PRAGMA user_version = 12;");
+          sqlite.exec("PRAGMA user_version = 13;");
         })
         .immediate();
     },

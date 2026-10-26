@@ -27,10 +27,10 @@ type ResourceRow = ComponentProps<typeof SettingsRow> & {
 const columnVariants = cva("px-4", {
   variants: {
     column: {
-      name: "col-span-3",
-      status: "md:w-36",
-      profile: "md:w-24",
-      actions: "md:w-24",
+      name: "min-w-0 py-4 pr-2 md:py-2 md:pr-4",
+      status: "py-4 pl-2 md:w-36 md:py-2 md:pl-4",
+      profile: "flex h-full items-center border-t bg-background md:table-cell md:w-24 md:border-t-0 md:bg-transparent",
+      actions: "content-center self-stretch border-t bg-background md:w-24 md:border-t-0 md:bg-transparent",
     },
   },
 });
@@ -91,8 +91,8 @@ export function SettingsDataTable({
 
   if (!rows.length) return null;
   return (
-    <div className="overflow-hidden rounded-md border">
-      <Table className="table-fixed" aria-label={t.scenarios}>
+    <div className="md:overflow-hidden md:rounded-md md:border">
+      <Table className="block md:table md:table-fixed" aria-label={t.scenarios}>
         <colgroup className="hidden md:table-column-group">
           <col />
           <col className="w-36" />
@@ -124,11 +124,11 @@ export function SettingsDataTable({
             </TableRow>
           ))}
         </TableHeader>
-        <TableBody>
+        <TableBody className="grid gap-4 md:table-row-group [&_tr:last-child]:border md:[&_tr:last-child]:border-0">
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className="relative grid grid-cols-[minmax(0,1fr)_auto_auto] cursor-pointer items-center py-2 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ring md:table-row md:py-0"
+              className="relative grid grid-cols-[minmax(0,1fr)_auto] cursor-pointer items-center overflow-hidden rounded-md border has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-ring md:table-row md:overflow-visible md:rounded-none md:border-x-0 md:border-t-0"
             >
               {row.getAllCells().map((cell) => (
                 <TableCell
@@ -138,7 +138,7 @@ export function SettingsDataTable({
                       column: cell.column.id as
                         "name" | "status" | "profile" | "actions",
                     }),
-                    "block align-middle whitespace-normal wrap-anywhere md:table-cell",
+                    "align-middle whitespace-normal wrap-anywhere",
                   )}
                 >
                   <table.FlexRender cell={cell} />

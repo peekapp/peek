@@ -76,8 +76,13 @@ export function SettingsToolbar({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-48 flex-1">
+    <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-2">
+      {action ? (
+        <div className="flex gap-2 md:order-last [&>*]:flex-1 md:[&>*]:flex-none">
+          {action}
+        </div>
+      ) : null}
+      <div className="relative w-full min-w-0 md:flex-1">
         <SearchIcon
           aria-hidden="true"
           className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground"
@@ -91,7 +96,6 @@ export function SettingsToolbar({
           className="pl-9"
         />
       </div>
-      {action}
     </div>
   );
 }

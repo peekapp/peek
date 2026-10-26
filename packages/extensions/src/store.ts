@@ -677,6 +677,7 @@ export function openExtensions(path: string) {
               canonicalSchema(
                 old.secret ? JSON.parse(decryptSecret(old.secret, path)) : {},
               ) !== canonicalSchema(secrets));
+          const enabled = p.manifest.kind === "connection" || input.enabled;
           const id = old?.id ?? `ext-${randomUUID()}`;
           db.run(
             `INSERT INTO extension_instances (id,package_id,kind,name,profile_id,settings,secret,bindings,enabled,generation,state,next_run_at,last_success,last_error,snapshots) VALUES (?,?,?,?,?,?,?,?,?,?,?, ?,NULL,NULL,?)
@@ -692,12 +693,12 @@ export function openExtensions(path: string) {
                 ? encryptSecret(JSON.stringify(secrets), path)
                 : null,
               JSON.stringify(input.bindings ?? {}),
-              input.enabled ? 1 : 0,
+              enabled ? 1 : 0,
               (old?.generation ?? 0) + 1,
               p.manifest.kind === "connection" && configChanged
                 ? "null"
                 : (old?.state ?? "null"),
-              input.enabled ? Date.now() : null,
+              enabled ? Date.now() : null,
               configChanged ? "{}" : (old?.snapshots ?? "{}"),
             ],
           );
@@ -730,6 +731,7 @@ export function openExtensions(path: string) {
       return db.transaction(() => {
         const current = instance(id);
         if (!current) throw new Error("instance-not-found");
+        if (current.kind !== "scenario") throw new Error("connection-always-active");
         return this.save({
           id, enabled,
           packageId: current.package_id,
