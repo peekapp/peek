@@ -14,9 +14,10 @@ const dot = cva("size-2 shrink-0 rounded-full", {
   },
 });
 
-export function ScenarioHealth({
-  enabled, error, lastSuccess, ready, locale,
+export function InstanceHealth({
+  enabled, error, lastSuccess, ready, locale, kind,
 }: {
+  kind: "scenario" | "connection";
   enabled: boolean;
   error: string | null;
   lastSuccess: number | null;
@@ -24,9 +25,19 @@ export function ScenarioHealth({
   locale: Locale;
 }) {
   const t = messages(locale);
-  const state = !enabled ? "paused" : error ? "error" : !ready ? "paused" : lastSuccess === null ? "waiting" : "healthy";
-  const label = { error: t.needsAttention, paused: t.paused, waiting: t.pending, healthy: t.healthy }[state];
-  const detail = !enabled ? t.scenarioPaused : error || (!ready ? t.extensionRunnerUnavailable : lastSuccess === null ? t.scenarioWaiting : null);
+  const paused = kind === "scenario" && (!enabled || (!error && !ready));
+  const state = paused ? "paused" : error ? "error" : lastSuccess === null ? "waiting" : "healthy";
+  const label = {
+    error: t.needsAttention,
+    paused: t.paused,
+    waiting: t.pending,
+    healthy: kind === "connection" ? t.connected : t.healthy,
+  }[state];
+  const detail = kind === "scenario" && !enabled
+    ? t.scenarioPaused
+    : error || (!ready ? t.extensionRunnerUnavailable : lastSuccess === null
+      ? (kind === "connection" ? t.pending : t.scenarioWaiting)
+      : null);
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -39,7 +50,7 @@ export function ScenarioHealth({
         {detail ? <p>{detail}</p> : null}
         {lastSuccess !== null ? (
           <>
-            <p>{t.lastSuccessfulRun}: {relativeUpdateTime(lastSuccess, Date.now(), locale)}</p>
+            <p>{kind === "connection" ? t.lastUpdated : t.lastSuccessfulRun}: {relativeUpdateTime(lastSuccess, Date.now(), locale)}</p>
             <time dateTime={new Date(lastSuccess).toISOString()}>
               {new Date(lastSuccess).toLocaleString(locale, {
                 day: "numeric", month: "short", year: "numeric",

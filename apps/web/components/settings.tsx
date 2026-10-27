@@ -23,13 +23,15 @@ import type { Screen } from "@peek/core/screens";
 import { ScreenEditor, ScreenList } from "./settings/screen-editor";
 import { profileName, type Profile } from "@peek/core/profiles";
 import { ProfileEditor } from "./settings/profile-editor";
-import { ProfileLabel } from "./profile-label";
-import { SettingsList, SettingsRow, PreferenceRow } from "./settings/layout";
+import { SettingsGrid } from "./settings/layout";
+import { ProfileCard } from "./settings/profile-card";
+import { SettingsRowMenu } from "./settings/row-menu";
+import { PreferenceRow } from "./settings/layout";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
 import { Extensions, type Status } from "./settings/extensions";
-import { mutate } from "./settings/api";
+import { mutate, errorText } from "./settings/api";
 type Data = {
   theme: Theme;
   screens: Screen[];
@@ -50,6 +52,8 @@ export function Settings({
   packageId?: string;
 }) {
   const [query, setQuery] = useState("");
+  const [profileDeleteError, setProfileDeleteError] = useState("");
+  const [profileDeleting, setProfileDeleting] = useState(false);
   const [locale, setLocale] = useState<Locale>(initialData?.locale ?? "en"),
     [data, setData] = useState<Data | null>(initialData),
     [error, setError] = useState(false);
@@ -273,39 +277,44 @@ export function Settings({
                 ) ? (
                   <SearchEmpty locale={locale} />
                 ) : null}
-                <SettingsList>
+                {profileDeleteError ? (
+                  <Alert variant="destructive" role="status">
+                    <AlertDescription>{errorText(profileDeleteError, locale)}</AlertDescription>
+                  </Alert>
+                ) : null}
+                <SettingsGrid variant="profiles">
                   {data?.profiles
                     .filter((p) => matchesSearch(query, profileName(p, locale)))
                     .map((p) => (
-                      <SettingsRow
+                      <ProfileCard
                         key={p.id}
-                        title={
-                          <Link href={`/profiles/${p.id}`}>
-                            <ProfileLabel profile={p} locale={locale} />
-                          </Link>
-                        }
-                        description={p.system ? t.systemProfile : t.profiles}
+                        profile={p}
+                        locale={locale}
+                        connectionCount={data.connections.filter((c) => c.profileId === p.id).length}
+                        scenarioCount={data.scenarios.filter((s) => s.profileId === p.id).length}
                         actions={
-                          <Button variant="outline" asChild>
-                            <Link href={`/profiles/${p.id}`}>{t.edit}</Link>
-                          </Button>
+                          <SettingsRowMenu
+                          kind="profile"
+                          href={`/profiles/${p.id}`}
+                          locale={locale}
+                          disabled={profileDeleting}
+                          onDelete={p.system ? undefined : async () => {
+                            setProfileDeleting(true);
+                            setProfileDeleteError("");
+                            try {
+                              await mutate({ action: "profile-delete", id: p.id });
+                              await refresh();
+                            } catch (error) {
+                              setProfileDeleteError(error instanceof Error ? error.message : "error");
+                            } finally {
+                              setProfileDeleting(false);
+                            }
+                          }}
+                        />
                         }
-                      >
-                        <div className="text-sm text-muted-foreground wrap-anywhere">
-                          {t.connections}:{" "}
-                          {
-                            data.connections.filter((c) => c.profileId === p.id)
-                              .length
-                          }{" "}
-                          · {t.scenarios}:{" "}
-                          {
-                            data.scenarios.filter((s) => s.profileId === p.id)
-                              .length
-                          }
-                        </div>
-                      </SettingsRow>
+                      />
                     ))}
-                </SettingsList>
+                </SettingsGrid>
               </SettingsCollection>
             )
           ) : tab === "extensions" ? (

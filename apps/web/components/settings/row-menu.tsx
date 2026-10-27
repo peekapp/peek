@@ -23,15 +23,17 @@ export function SettingsRowMenu({
   onToggle,
   onRefresh,
   refreshDisabled,
+  kind,
 }: {
   href: string;
   locale: Locale;
-  disabled: boolean;
-  onDelete: () => Promise<void>;
-  enabled: boolean;
-  onToggle: () => Promise<void>;
-  onRefresh: () => Promise<void>;
-  refreshDisabled: boolean;
+  disabled?: boolean;
+  onDelete?: () => Promise<void>;
+  kind: "scenario" | "connection" | "profile";
+  enabled?: boolean;
+  onToggle?: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
+  refreshDisabled?: boolean;
 }) {
   const t = messages(locale);
   return (
@@ -49,7 +51,7 @@ export function SettingsRowMenu({
               {t.edit}
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem
+          {kind === "scenario" && onToggle ? <DropdownMenuItem
             disabled={disabled}
             onSelect={() => void onToggle()}
           >
@@ -59,16 +61,17 @@ export function SettingsRowMenu({
               <Play aria-hidden="true" />
             )}
             {enabled ? t.disable : t.enable}
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled={refreshDisabled} onSelect={() => void onRefresh()}>
+          </DropdownMenuItem> : null}
+          {onRefresh ? <DropdownMenuItem disabled={refreshDisabled} onSelect={() => void onRefresh()}>
             <RefreshCw aria-hidden="true" />
-            {t.updateCards}
-          </DropdownMenuItem>
+            {kind === "scenario" ? t.updateCards : t.refreshData}
+          </DropdownMenuItem> : null}
+          {onDelete ? <>
           <DropdownMenuSeparator />
           <ConfirmAction
             locale={locale}
             disabled={disabled}
-            description={t.confirmInstanceDelete}
+            description={kind === "profile" ? t.confirmProfileDelete : t.confirmInstanceDelete}
             onConfirm={onDelete}
             trigger={
               <DropdownMenuItem
@@ -81,6 +84,13 @@ export function SettingsRowMenu({
               </DropdownMenuItem>
             }
           />
+          </> : kind === "profile" ? <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" disabled title={t.systemProfile}>
+              <Trash2 aria-hidden="true" />
+              {t.remove}
+            </DropdownMenuItem>
+          </> : null}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

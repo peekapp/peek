@@ -3,7 +3,7 @@
 import { messages, type Locale } from "@peek/core/i18n";
 import { SettingsRowMenu } from "./row-menu";
 import { ScenarioCardCount } from "./card-count";
-import { ScenarioHealth } from "./scenario-health";
+import { InstanceHealth } from "./instance-health";
 import { SettingsDataTable } from "./data-table";
 import { LoadingState, ErrorState } from "./layout";
 import { EditorForm } from "./layout";
@@ -358,7 +358,7 @@ export function Extensions({
           )),
         cardCount: <ScenarioCardCount count={i.cardCount} locale={locale} />,
         health: (
-          <ScenarioHealth enabled={!!i.enabled} error={i.last_error} lastSuccess={i.last_success} ready={data.runtime.ready} locale={locale} />
+          <InstanceHealth kind={i.kind} enabled={!!i.enabled} error={i.last_error} lastSuccess={i.last_success} ready={data.runtime.ready} locale={locale} />
         ),
         error: i.last_error ? (
           <Alert variant="destructive" role="status">
@@ -382,7 +382,7 @@ export function Extensions({
         title: (
           <Link
             className={
-              kind === "scenario"
+              kind
                 ? "after:absolute after:inset-0 focus-visible:outline-none"
                 : undefined
             }
@@ -400,9 +400,10 @@ export function Extensions({
           </Badge>
         ),
         actions:
-          kind === "scenario" ? (
+          kind ? (
             <SettingsRowMenu
-              refreshDisabled={busy || !i.enabled || !data.runtime.ready}
+              kind={i.kind}
+              refreshDisabled={busy || (i.kind === "scenario" && !i.enabled) || !data.runtime.ready}
               onRefresh={() => perform(() => api({ action: "run", id: i.id }))}
               enabled={!!i.enabled}
               onToggle={() =>
@@ -410,7 +411,7 @@ export function Extensions({
                   api({ action: "set-enabled", id: i.id, enabled: !i.enabled }),
                 )
               }
-              href={`/scenarios/${encodeURIComponent(i.id)}`}
+              href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
               locale={locale}
               disabled={busy}
               onDelete={() =>
@@ -769,8 +770,8 @@ export function Extensions({
             <SettingsHeading title={t.configuredScenariosAndConnections} />
           </>
         ) : null}
-        {kind === "scenario" ? (
-          <SettingsDataTable rows={rows} locale={locale} />
+        {kind ? (
+          <SettingsDataTable rows={rows} locale={locale} kind={kind} />
         ) : (
           <SettingsList>
             {rows.map(({ id, ...row }) => (

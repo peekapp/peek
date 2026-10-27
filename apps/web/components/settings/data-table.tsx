@@ -19,10 +19,10 @@ import {
 
 type ResourceRow = ComponentProps<typeof SettingsRow> & {
   id: string;
-  profile: ReactNode;
-  error: ReactNode;
-  health: ReactNode;
-  cardCount: ReactNode;
+  profile?: ReactNode;
+  error?: ReactNode;
+  health?: ReactNode;
+  cardCount?: ReactNode;
 };
 const columnVariants = cva("px-4", {
   variants: {
@@ -71,10 +71,14 @@ const columns = column.columns([
     ),
   }),
 ]);
+const connectionColumns = columns.filter((column) => column.id !== "cardCount");
+
 export function SettingsDataTable({
   rows,
   locale,
+  kind,
 }: {
+  kind: "scenario" | "connection";
   rows: ResourceRow[];
   locale: Locale;
 }) {
@@ -82,18 +86,18 @@ export function SettingsDataTable({
   const table = useTable({
     features,
     data: rows,
-    columns,
+    columns: kind === "connection" ? connectionColumns : columns,
     getRowId: (row) => row.id,
   });
 
   if (!rows.length) return null;
   return (
     <div className="lg:overflow-hidden lg:rounded-md lg:border">
-      <Table className="block lg:table lg:table-fixed" aria-label={t.scenarios}>
+      <Table className="block lg:table lg:table-fixed" aria-label={kind === "scenario" ? t.scenarios : t.connections}>
         <colgroup className="hidden lg:table-column-group">
           <col />
           <col className="w-32" />
-          <col className="w-32" />
+          {kind !== "connection" ? <col className="w-32" /> : null}
           <col className="w-16" />
           <col className="w-16" />
         </colgroup>
@@ -107,6 +111,7 @@ export function SettingsDataTable({
                 <TableCell
                   key={cell.id}
                   className={cn(
+                    kind === "connection" && cell.column.id === "profile" && "col-span-2",
                     columnVariants({
                       column: cell.column.id as
                         "name" | "health" | "cardCount" | "profile" | "actions",

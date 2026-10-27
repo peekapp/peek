@@ -12,6 +12,7 @@ const cardVariants = cva(
           "flex flex-col gap-6 rounded-md border bg-card py-6 text-card-foreground shadow-sm",
         resource:
           "flex flex-col gap-5 overflow-hidden rounded-md border border-border bg-card py-6 text-card-foreground",
+        profile: "relative flex min-h-44 flex-col rounded-md border border-border bg-card p-4 text-card-foreground transition-colors hover:bg-row-highlight has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
         preview: "flex flex-col gap-5 rounded-md border border-border p-6",
         choice:
           "relative grid gap-2 rounded-md border border-border p-5 pr-10 text-foreground no-underline hover:bg-accent hover:text-accent-foreground",

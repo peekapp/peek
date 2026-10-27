@@ -175,12 +175,12 @@ export function SettingsRow({
     </Item>
   );
 }
-export function SettingsGrid({ children }: { children: ReactNode }) {
-  return (
-    <div className="grid items-stretch gap-6 empty:hidden md:grid-cols-2">
-      {children}
-    </div>
-  );
+const gridVariants = cva("grid items-stretch empty:hidden", {
+  variants: { variant: { screens: "gap-6 md:grid-cols-2", profiles: "grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5" } },
+  defaultVariants: { variant: "screens" },
+});
+export function SettingsGrid({ children, variant = "screens" }: { children: ReactNode; variant?: "screens" | "profiles" }) {
+  return <div className={cn(gridVariants({ variant }))}>{children}</div>;
 }
 export function SettingsCard({
   title,
