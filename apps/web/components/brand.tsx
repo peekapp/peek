@@ -1,6 +1,6 @@
 export function Brand() {
   return (
-    <div className="flex shrink-0 items-center gap-2.5">
+    <div className="flex shrink-0 items-center gap-2.5 text-foreground">
       <img
         className="size-6 shrink-0 [filter:var(--brand-filter)]"
         src="/peek-mark.svg"
