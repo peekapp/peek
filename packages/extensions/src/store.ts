@@ -662,13 +662,13 @@ export function openExtensions(path: string) {
           )
             throw new Error("invalid-instance");
           owner(input.profileId);
-          validate(p.manifest.settings, input.settings);
+          validate(p.manifest.settings, input.settings, "settings");
           boundedJson(input.settings, LIMITS.state);
           validateBindings(p.manifest, input.bindings ?? {});
           const secrets =
             input.secrets ??
             (old?.secret ? JSON.parse(decryptSecret(old.secret, path)) : {});
-          if (p.manifest.secrets) validate(p.manifest.secrets, secrets);
+          if (p.manifest.secrets) validate(p.manifest.secrets, secrets, "secrets");
           boundedJson(secrets, LIMITS.state);
           if (p.manifest.kind === "scenario" && Object.keys(secrets).length)
             throw new Error("scenario-secrets-forbidden");

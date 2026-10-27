@@ -63,7 +63,7 @@ import { eventsContract, type Event, type Events } from "@peekapp/sdk/contracts/
 `eventsContract` is the canonical JSON definition of `peek/events@1.0.0`.
 Put it under a connection's `provides.events`, or in a scenario's `contracts`
 array with `inputs.events: { contract: "peek/events", version: "^1.0.0", multiple: true }`.
-New manifests use `format: 2`. Export the JSON to `peek.json` during authoring;
+New manifests use `format: 3`. Export the JSON to `peek.json` during authoring;
 Peek never executes a contract definition. The contract version is independent
 of your package version. See `extensions/examples/events-connection` and
 `events-scenario` in the repository for a complete producer and consumer.
@@ -121,3 +121,45 @@ package digests, installation review, upgrades and rollback; changing an icon
 requires a new package version. Official package artwork also reaches existing
 installations through explicit upgrades, never a silent default replacement.
 See `extensions/examples/connection` for a working authoring example.
+
+## Declarative settings (0.2)
+
+SDK 0.2 requires manifest format 3, `sdk: "^0.2.0"`, and `settingsUi.blocks`.
+`SettingsBlock`, `SettingsControl`, `SettingsText`, and `SettingsIssue` are exported
+from the package root. JSON Schema owns values and validation; blocks own their
+presentation and save grouping. Extension runtime contexts are unchanged.
+
+```json
+{
+  "settings": {
+    "type": "object",
+    "properties": {
+      "leadMinutes": { "type": "integer", "minimum": 0, "default": 60 },
+      "urgentMinutes": { "type": "integer", "minimum": 0, "default": 10 }
+    },
+    "required": ["leadMinutes", "urgentMinutes"],
+    "additionalProperties": false
+  },
+  "settingsUi": {
+    "blocks": [{
+      "id": "timing",
+      "name": { "en": "Timing", "ru": "Время показа" },
+      "description": { "en": "Choose when cards appear and become urgent." },
+      "controls": [
+        { "type": "input", "field": "leadMinutes", "label": { "en": "Show in advance (minutes)" } },
+        { "type": "input", "field": "urgentMinutes", "label": { "en": "Mark urgent (minutes)" } }
+      ],
+      "footer": { "links": [{ "label": { "en": "Documentation" }, "href": "https://example.com/docs" }] }
+    }]
+  }
+}
+```
+
+All configurable properties appear exactly once. Use one separate
+`source: "secrets"` block for connection credentials. Secrets are masked and never
+returned by Peek. Settings support text/numeric inputs, textareas, typed selects,
+radio cards, switches, read-only copyable values, and explanatory text/links.
+
+See the [settings authoring guide](https://github.com/peekapp/peek/blob/main/docs/extensions.md#settings-blocks-sdk-02--format-3)
+for limits, localization, bounded regex syntax, complete scenario/connection
+examples, and the explicit development reset required for older installations.

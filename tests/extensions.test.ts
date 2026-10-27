@@ -25,8 +25,8 @@ function pkg(
 ): ExtensionPackage {
   return {
     manifest: {
-      format: 2,
-      sdk: "^0.1.0",
+      format: 3,
+      sdk: "^0.2.0",
       id: `test/${kind}`,
       version,
       kind,
@@ -35,6 +35,10 @@ function pkg(
       author: "Tests",
       entry: "index.mjs",
       settings: { type: "object", properties: { label: { type: "string" } } },
+      settingsUi: { blocks: [
+        { id: "label", name: { en: "Label" }, description: { en: "Instance label." }, controls: [{ type: "input", field: "label" }] },
+        ...(kind === "connection" ? [{ id: "credentials", name: { en: "Credentials" }, description: { en: "Access token." }, source: "secrets" as const, controls: [{ type: "secret" as const, field: "token" }] }] : []),
+      ] },
       permissions: {},
       ...(kind === "connection"
         ? {
@@ -627,6 +631,10 @@ test("credential-incompatible upgrades fail atomically and never give migrations
     const upgrade = pkg("connection", "0.1.1");
     upgrade.manifest.secrets!.required = ["token", "account"];
     upgrade.manifest.secrets!.properties!.account = { type: "string" };
+    upgrade.manifest.settingsUi.blocks[1].controls = [
+      { type: "secret", field: "token", label: { en: "Token" } },
+      { type: "secret", field: "account", label: { en: "Account" } },
+    ];
     const review = f.store.stage([upgrade], []);
     f.store.confirm(review.id);
     const op = f.store.pending()!;
@@ -662,7 +670,7 @@ test("community definitions work across independent providers and consumers and 
     const a = pkg("connection"),
       b = pkg("connection"),
       consumer = pkg("scenario");
-    a.manifest.format = b.manifest.format = consumer.manifest.format = 2;
+    a.manifest.format = b.manifest.format = consumer.manifest.format = 3;
     b.manifest.id = "other/source";
     b.manifest.provides!.items.schema = {
       items: { type: "string" },

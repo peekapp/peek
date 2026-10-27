@@ -127,3 +127,26 @@ decorative beside visible names. Missing or broken images use WorkflowIcon for
 scenarios and PlugIcon for connections. Both themes use the same asset.
 SettingsRow and EditorHeader expose a shared media slot; keep media beside text
 on mobile while actions stack. Profiles retain their own identity composition.
+
+## Declarative extension settings (SDK 0.2)
+
+Scenario and connection editors share `EditorPanel` and `ExtensionFields`. A package
+block has a required localized name/description, optional controls, and optional
+footer text/links. Editable existing blocks save together; new instances have one
+Create action after all blocks. Informational/read-only blocks omit Save and empty
+body/footer regions. Credentials remain one atomic block and are cleared from the
+browser after successful replacement. Other pending drafts remain guarded.
+
+Use shared Field/Input/InputGroup/Textarea/Select/RadioGroup/Switch primitives.
+Radio cards and input adornments belong in the shared renderer, not feature pages.
+Validation errors appear beside controls with linked accessible descriptions.
+Hidden visual labels still provide accessible names. Disabled controls explain why.
+Official metadata and host UI strings use `messages(locale)`. Third-party package
+metadata may use SDK-owned `{en, ru?}` translations, with English fallback; this is
+the explicit exception to the shared-dictionary rule. No HTML or executable UI.
+
+Settings block footers use 12px top/right/bottom padding, retain aligned left padding,
+and use size="sm" Save buttons. Disabled buttons use muted fill/text with a subtle
+border instead of fading the primary fill. Switches always have visible text
+next to the control, including single-field blocks. Do not show Required text beside
+field labels; retain aria-required and inline validation errors.

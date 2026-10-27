@@ -58,7 +58,7 @@
     },
     "extensions/official/deadlines": {
       "name": "@peekapp/deadlines",
-      "version": "0.2.2",
+      "version": "0.3.0",
       "dependencies": {
         "@peekapp/sdk": "workspace:*",
         "luxon": "3.7.2",
@@ -69,7 +69,7 @@
     },
     "extensions/official/ical": {
       "name": "@peekapp/ical",
-      "version": "0.2.2",
+      "version": "0.3.0",
       "dependencies": {
         "@peekapp/sdk": "workspace:*",
         "ipaddr.js": "2.5.0",
@@ -82,7 +82,7 @@
     },
     "extensions/official/meetings": {
       "name": "@peekapp/meetings",
-      "version": "0.2.2",
+      "version": "0.3.0",
       "dependencies": {
         "@peekapp/sdk": "workspace:*",
         "luxon": "3.7.2",
@@ -93,7 +93,7 @@
     },
     "packages/cli": {
       "name": "@peekapp/cli",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "bin": {
         "peek": "dist/cli.mjs",
       },
@@ -133,7 +133,7 @@
     },
     "packages/sdk": {
       "name": "@peekapp/sdk",
-      "version": "0.1.2",
+      "version": "0.2.0",
     },
   },
   "packages": {

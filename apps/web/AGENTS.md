@@ -31,3 +31,7 @@ and theme compatibility.
   scale, validated extension mask-image URLs). Static styling belongs in Tailwind. Use semantic colors for every theme.
 - Verify production build, types, tests and browser layouts in light/dark themes
   at wide/narrow sizes using isolated data. Include dialogs.
+
+SDK settings metadata exception: third-party extension blocks may supply validated
+`{en, ru?}` text through the shared SDK resolver. Official extension metadata and
+all host UI, including errors and accessibility labels, still use `messages(locale)`.

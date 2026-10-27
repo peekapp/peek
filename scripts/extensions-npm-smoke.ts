@@ -86,7 +86,7 @@ try {
   const m = JSON.parse(
     await readFile(join(dir, "connection/peek.json"), "utf8"),
   );
-  if (m.format !== 2 || m.kind !== "connection")
+  if (m.format !== 3 || m.sdk !== "^0.2.0" || !m.settingsUi?.blocks?.length || m.kind !== "connection")
     throw new Error("incorrect-scaffold");
   await run(["node", cli, "check", "connection"], dir);
   await run(["node", cli, "pack", "connection", "connection.peek"], dir);

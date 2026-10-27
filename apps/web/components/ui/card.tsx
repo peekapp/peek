@@ -9,7 +9,7 @@ const cardVariants = cva(
     variants: {
       variant: {
         settings:
-          "flex flex-col gap-6 overflow-hidden rounded-md border bg-card pt-6 text-card-foreground",
+          "flex flex-col gap-6 overflow-hidden rounded-md border bg-card pt-6 pb-6 has-[[data-slot=card-footer]]:pb-0 text-card-foreground",
         default:
           "flex flex-col gap-6 rounded-md border bg-card py-6 text-card-foreground shadow-sm",
         resource:
@@ -124,7 +124,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-footer"
       className={cn(
-        "group-data-[variant=settings]/card:mt-auto group-data-[variant=settings]/card:flex-wrap group-data-[variant=settings]/card:gap-4 group-data-[variant=settings]/card:border-t group-data-[variant=settings]/card:bg-background group-data-[variant=settings]/card:px-4 group-data-[variant=settings]/card:py-4 group-data-[variant=settings]/card:text-sm group-data-[variant=settings]/card:text-muted-foreground sm:group-data-[variant=settings]/card:px-6",
+        "group-data-[variant=settings]/card:mt-auto group-data-[variant=settings]/card:flex-wrap group-data-[variant=settings]/card:gap-4 group-data-[variant=settings]/card:border-t group-data-[variant=settings]/card:bg-background group-data-[variant=settings]/card:pl-4 group-data-[variant=settings]/card:pr-3 group-data-[variant=settings]/card:py-3 group-data-[variant=settings]/card:text-sm group-data-[variant=settings]/card:text-muted-foreground sm:group-data-[variant=settings]/card:pl-6",
         "flex items-center px-6 [.border-t]:pt-6 group-data-[variant=preview]/card:px-0 group-data-[variant=choice]/card:px-0 group-data-[variant=resource]/card:mt-auto group-data-[variant=resource]/card:flex-wrap group-data-[variant=resource]/card:gap-2",
         className,
       )}

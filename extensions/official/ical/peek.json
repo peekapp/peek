@@ -1,8 +1,8 @@
 {
-  "format": 2,
-  "sdk": "^0.1.0",
+  "format": 3,
+  "sdk": "^0.2.0",
   "id": "peek/ical",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "kind": "connection",
   "name": "iCalendar",
   "description": "Read events from a private HTTPS calendar feed.",
@@ -172,5 +172,61 @@
         }
       }
     }
+  },
+  "settingsUi": {
+    "blocks": [
+      {
+        "id": "time-zone",
+        "name": {
+          "key": "settingsTimezone"
+        },
+        "description": {
+          "key": "settingsTimezoneDescription"
+        },
+        "controls": [
+          {
+            "type": "input",
+            "field": "timeZone"
+          }
+        ]
+      },
+      {
+        "id": "refresh",
+        "name": {
+          "key": "settingsRefresh"
+        },
+        "description": {
+          "key": "settingsRefreshDescription"
+        },
+        "controls": [
+          {
+            "type": "input",
+            "field": "intervalSeconds",
+            "label": {
+              "key": "settingsRefreshLabel"
+            }
+          }
+        ]
+      },
+      {
+        "id": "credentials",
+        "name": {
+          "key": "credentials"
+        },
+        "description": {
+          "key": "settingsCredentialsDescription"
+        },
+        "controls": [
+          {
+            "type": "secret",
+            "field": "url",
+            "label": {
+              "key": "settingsCalendarUrl"
+            }
+          }
+        ],
+        "source": "secrets"
+      }
+    ]
   }
 }

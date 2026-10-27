@@ -25,8 +25,8 @@ def no_overflow(page):
 
 def manifest(name, package_id):
     return {
-        "format": 2,
-        "sdk": "^0.1.0",
+        "format": 3,
+        "sdk": "^0.2.0",
         "id": package_id,
         "version": "1.0.0",
         "kind": "scenario",
@@ -36,6 +36,7 @@ def manifest(name, package_id):
         "entry": "index.mjs",
         "permissions": {},
         "settings": {"type": "object", "properties": {}},
+        "settingsUi": {"blocks": []},
         "contracts": [{"id": "test/events", "version": "2.1.0", "schema": {"type": "array"}}],
         "inputs": {"events": {"contract": "test/events", "version": "^2.0.0"}},
     }
@@ -118,7 +119,7 @@ with sync_playwright() as p:
             page.route("**/api/extensions", lambda route: held_loads.append(route))
             page.goto(base + path)
             if path in ["/scenarios/new", "/connections/new"]:
-                expect(page.get_by_text("Scenario or connection not found.", exact=True)).to_be_visible()
+                expect(page.get_by_text("Scenario or connection not found", exact=True)).to_be_visible()
             else:
                 expect(page.get_by_role("link", name=re.compile("Back to|All screens|All profiles"))).to_be_visible()
             if path == "/profiles/new":
@@ -335,10 +336,10 @@ with sync_playwright() as p:
 
     page.set_viewport_size({"width": 1280, "height": 900})
     visit(page, "/scenarios/new?package=test%2Falpha")
-    expect(page.locator("h2").locator("..").locator("..").locator('[data-slot="extension-icon"] img')).to_be_visible()
+    expect(page.get_by_role("heading", name="Configure Downloaded Alpha", exact=True)).to_be_visible()
     expect(page.get_by_text("No compatible connections", exact=True)).to_be_visible()
     expect(page.get_by_role("link", name="Add connection", exact=True)).to_be_visible()
-    expect(page.get_by_role("button", name="Save", exact=True)).to_be_disabled()
+    expect(page.get_by_role("button", name="Create", exact=True)).to_be_disabled()
     status["connections"] = [
         {
             "id": "old",
@@ -355,8 +356,8 @@ with sync_playwright() as p:
     expect(page.get_by_role("checkbox", name="Compatible calendar")).to_be_visible()
     expect(page.get_by_role("checkbox", name="Incompatible calendar")).to_have_count(0)
     page.get_by_role("checkbox", name="Compatible calendar").check()
-    expect(page.get_by_role("button", name="Save", exact=True)).to_be_enabled()
-    page.get_by_role("link", name="Scenarios", exact=True).click()
+    expect(page.get_by_role("button", name="Create", exact=True)).to_be_enabled()
+    page.get_by_role("navigation", name="Main navigation").get_by_role("link", name="Scenarios", exact=True).click()
     page.get_by_role("button", name="Leave", exact=True).click()
     page.wait_for_url(base + "/scenarios")
 
@@ -381,21 +382,22 @@ with sync_playwright() as p:
     page.unroute("**/api/settings")
     expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
     expect(name_field).to_have_value("Unsaved connection")
-    editor_icon = page.locator('[data-slot="extension-icon"] img').first
-    expect(editor_icon).to_have_attribute("src", icon)
+    editor_title = page.get_by_role("heading", name="Configure Test connection", exact=True)
+    expect(editor_title).to_be_visible()
     # Removing the package remotely must not unmount the open editor.
     status["packages"].pop()
     with page.expect_response("**/api/settings"):
         pass
     expect(name_field).to_have_value("Unsaved connection")
-    expect(editor_icon).to_have_attribute("src", icon)
+    expect(editor_title).to_be_visible()
     page.get_by_role("link", name="Screens", exact=True).click()
     expect(page.get_by_role("alertdialog")).to_be_visible()
     page.get_by_role("button", name="Keep editing").click()
     expect(page.get_by_role("textbox", name="Name", exact=True)).to_have_value(
         "Unsaved connection"
     )
-    page.get_by_role("link", name="Cancel", exact=True).click()
+    page.get_by_role("navigation", name="Main navigation").get_by_role("link", name="Connections", exact=True).click()
+    page.get_by_role("button", name="Leave", exact=True).click()
     page.wait_for_url(base + "/connections")
 
     visit(page, "/settings/extensions")

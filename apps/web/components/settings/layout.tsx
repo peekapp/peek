@@ -304,8 +304,8 @@ export function EditorPanel({
 }: {
   title: string;
   description?: string;
-  children: ReactNode;
-  hint: string;
+  children?: ReactNode;
+  hint?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
@@ -314,11 +314,11 @@ export function EditorPanel({
         <CardTitle asChild><h3>{title}</h3></CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
       </CardHeader>
-      <CardContent><FieldGroup>{children}</FieldGroup></CardContent>
-      <CardFooter>
-        <p className="min-w-0 flex-1 basis-48">{hint}</p>
+      {children ? <CardContent><FieldGroup>{children}</FieldGroup></CardContent> : null}
+      {hint || actions ? <CardFooter>
+        {hint ? <div className="min-w-0 flex-1 basis-48">{hint}</div> : null}
         {actions ? <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div> : null}
-      </CardFooter>
+      </CardFooter> : null}
     </Card>
   );
 }

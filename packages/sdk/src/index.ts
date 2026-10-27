@@ -25,8 +25,8 @@ export type Dependency = {
   sha256?: string;
 };
 export type Manifest = {
-  format: 2;
-  sdk: "^0.1.0";
+  format: 3;
+  sdk: "^0.2.0";
   id: string;
   version: string;
   kind: "scenario" | "connection";
@@ -39,6 +39,7 @@ export type Manifest = {
   /** Preserve artwork colors by default; theme uses its alpha silhouette. */
   iconColor?: "original" | "theme";
   settings: Schema;
+  settingsUi: import("./settings.js").SettingsUi;
   secrets?: Schema;
   permissions: {
     internet?: boolean;
@@ -74,3 +75,5 @@ export type MigrationResult = { settings: Json; state: Json };
 export type Migrator = (
   input: MigrationInput,
 ) => MigrationResult | Promise<MigrationResult>;
+
+export * from "./settings.js";

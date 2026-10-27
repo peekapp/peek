@@ -1,8 +1,8 @@
 {
-  "format": 2,
-  "sdk": "^0.1.0",
+  "format": 3,
+  "sdk": "^0.2.0",
   "id": "peek/deadlines",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "kind": "scenario",
   "name": "Deadlines",
   "description": "Show deadlines from selected calendars, including all-day events.",
@@ -177,5 +177,59 @@
         }
       }
     }
-  ]
+  ],
+  "settingsUi": {
+    "blocks": [
+      {
+        "id": "timing",
+        "name": {
+          "key": "settingsTiming"
+        },
+        "description": {
+          "key": "settingsTimingDescription"
+        },
+        "controls": [
+          {
+            "type": "input",
+            "field": "leadMinutes",
+            "label": {
+              "key": "settingsLead"
+            }
+          },
+          {
+            "type": "input",
+            "field": "urgentMinutes",
+            "label": {
+              "key": "settingsUrgent"
+            }
+          },
+          {
+            "type": "input",
+            "field": "retainMinutes",
+            "label": {
+              "key": "settingsRetain"
+            }
+          }
+        ]
+      },
+      {
+        "id": "filter",
+        "name": {
+          "key": "settingsFilter"
+        },
+        "description": {
+          "key": "settingsFilterDescription"
+        },
+        "controls": [
+          {
+            "type": "input",
+            "field": "filterText",
+            "placeholder": {
+              "key": "settingsFilterPlaceholder"
+            }
+          }
+        ]
+      }
+    ]
+  }
 }

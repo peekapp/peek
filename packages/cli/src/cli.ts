@@ -17,8 +17,8 @@ async function main() {
     const dir = resolve(folder);
     await mkdir(dir, { recursive: false });
     const m = {
-      format: 2,
-      sdk: "^0.1.0",
+      format: 3,
+      sdk: "^0.2.0",
       id: `local/${kind}-example`,
       version: "0.1.0",
       kind,
@@ -31,6 +31,7 @@ async function main() {
         properties: { title: { type: "string", default: "Hello Peek" } },
         additionalProperties: false,
       },
+      settingsUi: { blocks: [{ id: "title", name: { en: "Title" }, description: { en: "Choose the text shown by this extension." }, controls: [{ type: "input", field: "title" }] }] },
       permissions: {},
       ...(kind === "connection"
         ? {
@@ -53,8 +54,8 @@ async function main() {
           private: true,
           type: "module",
           scripts: { check: "peek check", pack: "peek pack" },
-          dependencies: { "@peekapp/sdk": "^0.1.2" },
-          devDependencies: { "@peekapp/cli": "^0.1.2" },
+          dependencies: { "@peekapp/sdk": "^0.2.0" },
+          devDependencies: { "@peekapp/cli": "^0.2.0" },
         },
         null,
         2,

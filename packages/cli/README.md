@@ -58,3 +58,11 @@ package digests, installation review, upgrades and rollback; changing an icon
 requires a new package version. Official package artwork also reaches existing
 installations through explicit upgrades, never a silent default replacement.
 See `extensions/examples/connection` for a working authoring example.
+
+## SDK 0.2 settings
+
+CLI 0.2 scaffolds and validates format 3 manifests with required `settingsUi.blocks`.
+Package validation rejects missing/duplicate field references, incompatible controls,
+invalid translations and options, unsafe links, and unsupported regex patterns.
+Existing format 2 packages must be updated explicitly; there is no generated-layout
+fallback. See the [settings guide](https://github.com/peekapp/peek/blob/main/docs/extensions.md#settings-blocks-sdk-02--format-3).

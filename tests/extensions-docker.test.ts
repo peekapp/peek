@@ -5,8 +5,8 @@ const check = process.env.PEEK_TEST_DOCKER === "1" ? test : test.skip;
 function pkg(code: string, connection = false): ExtensionPackage {
   return {
     manifest: {
-      format: 2,
-      sdk: "^0.1.0",
+      format: 3,
+      sdk: "^0.2.0",
       id: "test/isolation",
       version: "0.1.0",
       kind: connection ? "connection" : "scenario",
@@ -16,6 +16,7 @@ function pkg(code: string, connection = false): ExtensionPackage {
       entry: "index.mjs",
       icon: "assets/icon.svg",
       settings: { type: "object" },
+      settingsUi: { blocks: [] },
       permissions: connection ? { internet: true } : {},
     },
     files: {

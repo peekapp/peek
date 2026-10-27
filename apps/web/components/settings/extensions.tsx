@@ -12,10 +12,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ExtensionIcon, ExtensionLabel } from "../extension-icon";
 import { DefinitionPicker } from "./definition-picker";
-import type { Json, Manifest, Schema } from "@peekapp/sdk";
+import { settingsText, settingsIssues, type SettingsIssue, type Json, type Manifest, type Schema } from "@peekapp/sdk";
+import { ExtensionFields, ExtensionContent } from "./extension-fields";
 import { Button } from "../ui/button";
-import { Textarea } from "../ui/textarea";
 import { Input } from "../ui/input";
+import { Switch } from "../ui/switch";
 import { Checkbox } from "../ui/checkbox";
 import { SettingsSelect } from "./select";
 import { SelectItem } from "../ui/select";
@@ -52,7 +53,6 @@ import { ProfileLabel } from "../profile-label";
 import type { Profile } from "@peek/core/profiles";
 import { DeleteButton, ConfirmAction } from "./delete-button";
 import { acceptsContract } from "@peek/extensions/compatibility";
-import { numericSetting } from "./numeric-setting";
 import { applyInstanceSetting, type InstanceSetting } from "./instance-draft";
 type Binding = { connectionId: string; dataset: string };
 type Item = {
@@ -95,107 +95,14 @@ async function api(body: unknown) {
     body: JSON.stringify(body),
   });
   const data = await r.json();
-  if (!r.ok) throw new Error(data.error);
+  if (!r.ok) throw Object.assign(new Error(data.error), { issues: data.issues });
   return data;
 }
 function initial(schema: Schema): Record<string, Json> {
   return Object.fromEntries(
     Object.entries(schema.properties ?? {})
-      .filter(
-        ([, s]) =>
-          s.default !== undefined || s.enum?.length || s.type === "boolean",
-      )
-      .map(([k, s]) => [k, s.default ?? s.enum?.[0] ?? false]),
-  );
-}
-function SchemaFields({
-  schema,
-  value,
-  onChange,
-  secret = false,
-  labelHidden = false,
-  locale,
-}: {
-  schema: Schema;
-  value: Record<string, Json>;
-  onChange: (v: Record<string, Json>) => void;
-  secret?: boolean;
-  labelHidden?: boolean;
-  locale: Locale;
-}) {
-  return (
-    <>
-      {Object.entries(schema.properties ?? {}).map(([key, s]) => {
-        const update = (v: Json) => onChange({ ...value, [key]: v });
-        const required = schema.required?.includes(key);
-        return (
-          <SettingsField key={key} label={s.title ?? key} labelHidden={labelHidden}>
-            {s.enum ? (
-              <SettingsSelect
-                value={JSON.stringify(value[key] ?? s.enum[0])}
-                onValueChange={(v) => update(JSON.parse(v))}
-              >
-                {s.enum.map((v) => (
-                  <SelectItem key={JSON.stringify(v)} value={JSON.stringify(v)}>
-                    {String(v)}
-                  </SelectItem>
-                ))}
-              </SettingsSelect>
-            ) : s.type === "boolean" ? (
-              <Checkbox
-                checked={value[key] === true}
-                onCheckedChange={(v) => update(v === true)}
-              />
-            ) : ["string", "integer", "number"].includes(s.type ?? "") ? (
-              <Input
-                type={
-                  secret ? "password" : s.type === "string" ? "text" : "number"
-                }
-                step={s.type === "integer" ? 1 : "any"}
-                required={
-                  required &&
-                  (s.type !== "string" ||
-                    (typeof s.minLength === "number" && s.minLength > 0))
-                }
-                min={typeof s.minimum === "number" ? s.minimum : undefined}
-                max={typeof s.maximum === "number" ? s.maximum : undefined}
-                minLength={
-                  typeof s.minLength === "number" ? s.minLength : undefined
-                }
-                maxLength={
-                  typeof s.maxLength === "number" ? s.maxLength : undefined
-                }
-                autoComplete={secret ? "new-password" : "off"}
-                value={String(value[key] ?? "")}
-                onChange={(e) =>
-                  s.type === "string"
-                    ? update(e.target.value)
-                    : onChange(numericSetting(value, key, e.target.value))
-                }
-              />
-            ) : (
-              <Textarea
-                defaultValue={JSON.stringify(
-                  value[key] ?? s.default ?? null,
-                  null,
-                  2,
-                )}
-                rows={4}
-                onBlur={(e) => {
-                  try {
-                    update(JSON.parse(e.target.value));
-                    e.target.setCustomValidity("");
-                  } catch {
-                    e.target.setCustomValidity(messages(locale).invalidJson);
-                    e.target.reportValidity();
-                  }
-                }}
-              />
-            )}
-          </SettingsField>
-        );
-      })}
-    </>
+      .filter(([, s]) => s.default !== undefined)
+      .map(([k, s]) => [k, s.default!]),
   );
 }
 export function Extensions({
@@ -837,6 +744,7 @@ function InstanceEditor({
   useEffect(() => {
     onEditorTitleChange?.(editorTitle);
   }, [editorTitle, onEditorTitleChange]);
+  const [issues, setIssues] = useState<SettingsIssue[]>([]);
   const [activeSetting, setActiveSetting] = useState<InstanceSetting | null>(null);
   const [savedSetting, setSavedSetting] = useState<InstanceSetting | null>(null);
   const inputs = Object.entries(m.inputs ?? {}).map(([input, requirement]) => ({
@@ -870,26 +778,29 @@ function InstanceEditor({
         ),
       ),
   );
-  function panel(setting: InstanceSetting, title: string, children: ReactNode, disabled = false) {
-    const changed = JSON.stringify(applyInstanceSetting(savedDraft, draft, setting)) !== JSON.stringify(savedDraft);
+  function panel(setting: InstanceSetting, title: string, children: ReactNode, disabled = false, description?: string, footer?: ReactNode, editable = true) {
+    const changed = JSON.stringify(applyInstanceSetting(savedDraft, draft, setting, m.settingsUi.blocks)) !== JSON.stringify(savedDraft);
     const Container = item ? "form" : "div";
     return (
       <Container key={setting} data-setting={setting}>
         <EditorPanel
           title={title}
-          hint={item ? t.instanceSettingHint : t.instanceCreateHint}
-          actions={
+          description={description}
+          hint={footer}
+          actions={item && editable ?
             <>
               {savedSetting === setting && !changed ? <span role="status">{t.saved}</span> : null}
-              <Button type="submit" name="setting" value={setting}
+              <Button size="sm" type="submit" formNoValidate name="setting" value={setting}
                 disabled={busy || disabled || (item ? !changed : !!missingInput)}>
                 {busy && activeSetting === setting ? t.saving : t.save}
               </Button>
-            </>
+            </> : undefined
           }
         >
-          {children}
-          {error && activeSetting === setting ? <ErrorState>{error}</ErrorState> : null}
+          {children || (item && error && activeSetting === setting) ? <>
+            {children}
+            {item && error && activeSetting === setting ? <ErrorState>{error}</ErrorState> : null}
+          </> : null}
         </EditorPanel>
       </Container>
     );
@@ -908,13 +819,26 @@ function InstanceEditor({
           const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
           if (!submitter) return false;
           const setting = submitter.value as InstanceSetting;
-          const next = item ? applyInstanceSetting(savedDraft, draft, setting) : draft;
+          const block = m.settingsUi.blocks.find((b) => `block:${b.id}` === setting);
+          const savingSecrets = block?.source === "secrets";
+          const next = item ? applyInstanceSetting(savedDraft, draft, setting, m.settingsUi.blocks) : draft;
           if (missingInput && (!item || setting === `bindings:${missingInput.input}`)) {
             setActiveSetting(setting);
             setError(t.chooseACompatibleConnectionFor + ` ${missingInput.input}.`);
             return false;
           }
           setActiveSetting(setting);
+          const fields = item && block ? (block.controls ?? []).flatMap((c) => c.type === "text" ? [] : [c.field]) : undefined;
+          const nextIssues = [
+            ...(!item || block && !savingSecrets ? settingsIssues(m.settings, next.settings, "settings", fields) : []),
+            ...((!item || savingSecrets) && next.changeSecrets && m.secrets ? settingsIssues(m.secrets, next.secrets, "secrets") : []),
+          ];
+          setIssues(nextIssues);
+          if (nextIssues.length || !next.name.trim() || next.name.length > 100 || !profiles?.some((p) => p.id === next.profile)) {
+            setError(item ? t.settingsSaveError : t.settingsCreateError);
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+            return false;
+          }
           setSavedSetting(null);
           setBusy(true);
           setError("");
@@ -927,13 +851,18 @@ function InstanceEditor({
               enabled: m.kind === "connection" || next.enabled,
               settings: next.settings,
               bindings: next.bindings,
-              ...((!item || setting === "secrets") && next.changeSecrets ? { secrets: next.secrets } : {}),
+              ...((!item || savingSecrets) && next.changeSecrets ? { secrets: next.secrets } : {}),
             });
-            setSavedDraft(next);
+            // Never retain submitted credentials in the saved browser snapshot.
+            const committed = (!item || savingSecrets) && next.changeSecrets ? { ...next, secrets: {}, changeSecrets: false } : next;
+            if (committed !== next) { setSecrets({}); setChangeSecrets(false); }
+            setSavedDraft(committed);
             setSavedSetting(setting);
             return true;
           } catch (e) {
-            setError(e instanceof Error ? e.message : String(e));
+            const serverIssues = (e as { issues?: SettingsIssue[] }).issues;
+            if (serverIssues) setIssues(serverIssues);
+            setError(serverIssues ? (item ? t.settingsSaveError : t.settingsCreateError) : e instanceof Error ? e.message : String(e));
             return false;
           } finally {
             setBusy(false);
@@ -946,10 +875,11 @@ function InstanceEditor({
               <Input
                 required
                 maxLength={100}
+                aria-invalid={!!error && (!name.trim() || name.length > 100)}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
-            </SettingsField>
+            </SettingsField>, false, t.settingsNameDescription
           )}
           {panel("profile", t.profile,
             <SettingsField label={t.profile} labelHidden>
@@ -966,45 +896,29 @@ function InstanceEditor({
               ) : (
                 <LoadingState layout="fields">{t.loadingProfiles}</LoadingState>
               )}
-            </SettingsField>, !profiles
+            </SettingsField>, !profiles, t.settingsProfileDescription
           )}
           {m.kind === "scenario" ? panel("enabled", t.statusEnabled,
               <SettingsField label={t.statusEnabled} labelHidden>
-                <Checkbox
+                <Switch
                   checked={enabled}
                   onCheckedChange={(v) => setEnabled(v === true)}
                 />
-              </SettingsField>
+              </SettingsField>, false, t.settingsEnabledDescription
           ) : null}
-          {Object.entries(m.settings.properties ?? {}).map(([key, schema]) => panel(
-            `settings:${key}`, schema.title ?? key,
-            <SchemaFields
-              locale={locale}
-              labelHidden
-              schema={{ ...m.settings, properties: { [key]: schema } }}
-              value={settings}
-              onChange={setSettings}
-            />,
-          ))}
-            {m.secrets ? panel("secrets", t.credentials,
-              <>
-                <SettingsField label={t.setCredentialsHint}>
-                  <Checkbox
-                    checked={changeSecrets}
-                    onCheckedChange={(v) => setChangeSecrets(v === true)}
-                  />
-                </SettingsField>
-                {changeSecrets ? (
-                  <SchemaFields
-                    locale={locale}
-                    secret
-                    schema={m.secrets}
-                    value={secrets}
-                    onChange={setSecrets}
-                  />
-                ) : null}
-              </>
-            ) : null}
+          {m.settingsUi.blocks.map((block) => {
+            const secret = block.source === "secrets";
+            const editable = (block.controls ?? []).some((c) => c.type !== "text" && c.type !== "readonly" && !c.disabled);
+            return panel(`block:${block.id}`, settingsText(block.name, locale, t),
+              (block.controls?.length ? <>
+                {secret && item ? <SettingsField label={t.setCredentialsHint}>
+                  <Checkbox checked={changeSecrets} onCheckedChange={(v) => { setChangeSecrets(v === true); setSecrets(initial(m.secrets!)); }} />
+                </SettingsField> : null}
+                {!secret || changeSecrets ? <ExtensionFields block={block} schema={secret ? m.secrets! : m.settings}
+                  values={secret ? secrets : settings} onChange={secret ? setSecrets : setSettings} locale={locale} issues={issues} /> : null}
+              </> : null), false, settingsText(block.description, locale, t),
+              block.footer ? <ExtensionContent content={block.footer} locale={locale} /> : undefined, editable);
+          })}
             {inputs.map(({ input, requirement, choices }) => panel(`bindings:${input}`, `${t.connections} (${input})`,
               <FieldSet key={input} aria-describedby={`input-${input}-hint`}>
                 <FieldLegend className="sr-only">
@@ -1080,8 +994,14 @@ function InstanceEditor({
                   ))
                 )}
               </FieldSet>,
-              !requirement.optional && !choices.some((choice) => (bindings[input] ?? []).some((binding) => binding.connectionId === choice.connectionId && binding.dataset === choice.dataset)),
+              !requirement.optional && !choices.some((choice) => (bindings[input] ?? []).some((binding) => binding.connectionId === choice.connectionId && binding.dataset === choice.dataset)), t.settingsBindingsDescription,
             ))}
+          {!item ? <>
+            {error ? <ErrorState>{error}</ErrorState> : null}
+            <div><Button type="submit" formNoValidate name="setting" value="create" disabled={busy || !profiles || !!missingInput}>
+              {busy ? t.saving : t.settingsCreate}
+            </Button></div>
+          </> : null}
         </div>
       </EditorForm>
     </div>

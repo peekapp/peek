@@ -3,6 +3,8 @@ import Ajv, { type ValidateFunction } from "ajv";
 import semver from "semver";
 import { isIP } from "node:net";
 import { type Manifest, type Schema, type Contract } from "@peekapp/sdk";
+import { assertSettingsPattern, type SettingsIssue } from "@peekapp/sdk";
+import { assertSettingsUi } from "./settings-ui";
 const validators = new Map<string, ValidateFunction>();
 export const PACKAGE_ID = /^[a-z][a-z0-9-]{0,39}\/[a-z][a-z0-9-]{0,59}$/;
 export const LIMITS = {
@@ -14,6 +16,7 @@ export const LIMITS = {
   cards: 1000,
 };
 const keywords = new Set([
+  "pattern",
   "oneOf",
   "format",
   "type",
@@ -46,6 +49,16 @@ function validator(schema: Schema) {
       throw new Error("invalid-schema");
     for (const [k, v] of Object.entries(s)) {
       if (!keywords.has(k)) throw new Error("unsupported-schema-keyword");
+      if (k === "pattern") {
+        assertSettingsPattern(v);
+        if (
+          s &&
+          (!("maxLength" in s) ||
+            typeof s.maxLength !== "number" ||
+            s.maxLength > 4096)
+        )
+          throw new Error("pattern-needs-max-length");
+      }
       if (k === "format" && !["date", "time-zone"].includes(v as string))
         throw new Error("unsupported-schema-format");
       if (k === "oneOf") {
@@ -106,15 +119,35 @@ function validator(schema: Schema) {
 export function assertSchema(schema: Schema) {
   validator(schema);
 }
-export function validate(schema: Schema, value: unknown) {
-  if (!validator(schema)(value)) throw new Error("schema-validation-failed");
+export class SchemaValidationError extends Error {
+  constructor(public issues: SettingsIssue[]) {
+    super("schema-validation-failed");
+  }
+}
+export function validate(schema: Schema, value: unknown, source = "") {
+  const fn = validator(schema);
+  if (!fn(value))
+    throw new SchemaValidationError(
+      (fn.errors ?? []).map((error) => ({
+        path:
+          source +
+          error.instancePath +
+          (error.keyword === "required"
+            ? "/" +
+              String(error.params.missingProperty)
+                .replaceAll("~", "~0")
+                .replaceAll("/", "~1")
+            : ""),
+        code: error.keyword,
+      })),
+    );
 }
 export function manifest(input: unknown): Manifest {
   const m = input as Manifest;
   if (
     !m ||
-    m.format !== 2 ||
-    m.sdk !== "^0.1.0" ||
+    m.format !== 3 ||
+    m.sdk !== "^0.2.0" ||
     !PACKAGE_ID.test(m.id) ||
     !semver.valid(m.version) ||
     !["scenario", "connection"].includes(m.kind) ||
@@ -160,6 +193,7 @@ export function manifest(input: unknown): Manifest {
     if (m.kind !== "connection") throw new Error("scenario-secrets-forbidden");
     assertSchema(m.secrets);
   }
+  assertSettingsUi(m);
   for (const entries of [m.provides, m.inputs])
     if (
       entries !== undefined &&

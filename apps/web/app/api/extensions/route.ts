@@ -2,7 +2,7 @@ import { databasePath } from "@peek/db";
 import { openExtensions } from "@peek/extensions/store";
 import { decode } from "@peek/extensions/archive";
 import { dependencies, downloadPackage } from "@peek/extensions/download";
-import { LIMITS } from "@peek/extensions/validation";
+import { LIMITS, SchemaValidationError } from "@peek/extensions/validation";
 import { settingsRequestAllowed } from "../../../lib/request-access";
 import { readExtensions } from "../../../lib/settings-data";
 export const dynamic = "force-dynamic";
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "invalid-request";
     return Response.json(
-      { error: message.length < 200 ? message : "invalid-request" },
+      { error: message.length < 200 ? message : "invalid-request", ...(error instanceof SchemaValidationError ? { issues: error.issues } : {}) },
       { status: 400 },
     );
   } finally {

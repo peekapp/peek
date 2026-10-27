@@ -1,0 +1,217 @@
+{
+  "format": 3,
+  "sdk": "^0.2.0",
+  "id": "test/settings",
+  "version": "1.0.0",
+  "kind": "connection",
+  "name": "Settings controls",
+  "description": "Representative SDK settings controls.",
+  "author": "Peek tests",
+  "entry": "index.mjs",
+  "permissions": {},
+  "settings": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "slug",
+      "count",
+      "enabled",
+      "mode",
+      "strategy",
+      "identifier",
+      "locked"
+    ],
+    "properties": {
+      "slug": {
+        "type": "string",
+        "default": "calendar",
+        "pattern": "^[a-z-]+$",
+        "maxLength": 40
+      },
+      "count": { "type": "integer", "default": 2, "minimum": 1, "maximum": 10 },
+      "enabled": { "type": "boolean", "default": true },
+      "notes": { "type": "string", "maxLength": 200 },
+      "mode": { "type": "integer", "enum": [1, 2], "default": 1 },
+      "strategy": {
+        "type": "string",
+        "enum": ["queue", "immediate"],
+        "default": "queue"
+      },
+      "identifier": { "type": "string", "default": "instance-123" },
+      "locked": { "type": "boolean", "default": false }
+    }
+  },
+  "secrets": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "token": { "type": "string", "minLength": 1, "maxLength": 100 }
+    },
+    "required": ["token"]
+  },
+  "settingsUi": {
+    "blocks": [
+      {
+        "id": "general",
+        "name": { "en": "Calendar behavior", "ru": "Поведение календаря" },
+        "description": {
+          "en": "Choose a URL slug, count, and whether updates are enabled.",
+          "ru": "Выберите адрес, количество и состояние обновлений."
+        },
+        "controls": [
+          {
+            "type": "input",
+            "field": "slug",
+            "label": { "en": "Slug", "ru": "Адрес" },
+            "prefix": { "en": "https://example.com/" },
+            "placeholder": { "en": "calendar" },
+            "hint": {
+              "en": "Lowercase letters and hyphens only.",
+              "ru": "Только строчные латинские буквы и дефисы."
+            }
+          },
+          {
+            "type": "input",
+            "field": "count",
+            "label": { "en": "Count", "ru": "Количество" },
+            "suffix": { "en": "items", "ru": "элементов" }
+          },
+          {
+            "type": "switch",
+            "field": "enabled",
+            "label": { "en": "Updates", "ru": "Обновления" }
+          },
+          {
+            "type": "text",
+            "text": {
+              "en": "These values save together.",
+              "ru": "Эти значения сохраняются вместе."
+            }
+          }
+        ],
+        "footer": {
+          "text": { "en": "Learn more", "ru": "Подробнее" },
+          "links": [
+            {
+              "label": { "en": "Documentation", "ru": "Документация" },
+              "href": "https://example.com/docs"
+            }
+          ]
+        }
+      },
+      {
+        "id": "notes",
+        "name": { "en": "Notes", "ru": "Заметки" },
+        "description": {
+          "en": "Optional notes.",
+          "ru": "Необязательные заметки."
+        },
+        "controls": [
+          {
+            "type": "textarea",
+            "field": "notes",
+            "placeholder": { "en": "Add notes", "ru": "Добавить заметки" }
+          }
+        ]
+      },
+      {
+        "id": "choices",
+        "name": { "en": "Delivery", "ru": "Доставка" },
+        "description": {
+          "en": "Choose delivery behavior.",
+          "ru": "Выберите способ доставки."
+        },
+        "controls": [
+          {
+            "type": "select",
+            "field": "mode",
+            "label": { "en": "Mode", "ru": "Режим" },
+            "options": [
+              { "value": 1, "label": { "en": "One", "ru": "Один" } },
+              { "value": 2, "label": { "en": "Two", "ru": "Два" } }
+            ]
+          },
+          {
+            "type": "radio",
+            "field": "strategy",
+            "label": { "en": "Strategy", "ru": "Стратегия" },
+            "options": [
+              {
+                "value": "queue",
+                "label": { "en": "Queue", "ru": "Очередь" },
+                "description": {
+                  "en": "Process one at a time.",
+                  "ru": "Обрабатывать по одному."
+                }
+              },
+              {
+                "value": "immediate",
+                "label": { "en": "Immediate", "ru": "Немедленно" },
+                "description": {
+                  "en": "Process without waiting.",
+                  "ru": "Обрабатывать без ожидания."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "identity",
+        "name": { "en": "Identifier", "ru": "Идентификатор" },
+        "description": {
+          "en": "Use this value when contacting support.",
+          "ru": "Используйте это значение при обращении в поддержку."
+        },
+        "controls": [
+          { "type": "readonly", "field": "identifier", "copy": true }
+        ]
+      },
+      {
+        "id": "locked",
+        "name": { "en": "Managed preference", "ru": "Управляемая настройка" },
+        "description": {
+          "en": "This preference cannot be changed here.",
+          "ru": "Эту настройку нельзя изменить здесь."
+        },
+        "controls": [
+          {
+            "type": "switch",
+            "field": "locked",
+            "disabled": true,
+            "disabledReason": {
+              "en": "Managed by the provider.",
+              "ru": "Управляется поставщиком."
+            }
+          }
+        ]
+      },
+      {
+        "id": "credentials",
+        "source": "secrets",
+        "name": { "key": "credentials" },
+        "description": {
+          "en": "Enter your access token.",
+          "ru": "Введите токен доступа."
+        },
+        "controls": [{ "type": "secret", "field": "token" }]
+      },
+      {
+        "id": "help",
+        "name": { "en": "Help", "ru": "Помощь" },
+        "description": {
+          "en": "Find setup instructions online.",
+          "ru": "Инструкции по настройке доступны онлайн."
+        },
+        "footer": {
+          "links": [
+            {
+              "label": { "en": "Setup guide", "ru": "Руководство" },
+              "href": "https://example.com/setup"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -8,6 +8,7 @@ import {
   type ReactElement,
 } from "react";
 import { cva } from "class-variance-authority";
+import { Switch } from "../ui/switch";
 import { Checkbox } from "../ui/checkbox";
 import { Textarea } from "../ui/textarea";
 import { Input } from "../ui/input";
@@ -36,6 +37,7 @@ export function SettingsField({
       (child.type === Input ||
         child.type === Textarea ||
         child.type === Checkbox ||
+        child.type === Switch ||
         child.type === SettingsSelect ||
         ["input", "select", "textarea"].includes(child.type as string)),
   );
@@ -51,13 +53,14 @@ export function SettingsField({
     ]
       .filter(Boolean)
       .join(" ") || undefined;
-  const isCheckbox = isValidElement(control) && control.type === Checkbox;
+  const hideLabel = labelHidden && !(isValidElement(control) && control.type === Switch);
+  const isCheckbox = isValidElement(control) && (control.type === Checkbox || control.type === Switch);
   return (
     <Field
       className={className}
       orientation={isCheckbox ? "horizontal" : "vertical"}
     >
-      {!isCheckbox ? <FieldLabel htmlFor={id} className={labelVariants({ hidden: labelHidden })}>{label}</FieldLabel> : null}
+      {!isCheckbox ? <FieldLabel htmlFor={id} className={labelVariants({ hidden: hideLabel })}>{label}</FieldLabel> : null}
       {isValidElement(control)
         ? cloneElement(
             control as ReactElement<{
@@ -67,7 +70,7 @@ export function SettingsField({
             { id, "aria-describedby": describedBy },
           )
         : control}
-      {isCheckbox ? <FieldLabel htmlFor={id} className={labelVariants({ hidden: labelHidden })}>{label}</FieldLabel> : null}
+      {isCheckbox ? <FieldLabel htmlFor={id} className={labelVariants({ hidden: hideLabel })}>{label}</FieldLabel> : null}
       {hints.length ? (
         <FieldDescription id={`${id}-hint`}>{hints}</FieldDescription>
       ) : null}

@@ -15,11 +15,12 @@ export function SettingsSelect({
   children,
   id,
   className,
+  placeholder,
   "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
   "aria-invalid": ariaInvalid,
   ...props
-}: ComponentProps<typeof Select> &
+}: ComponentProps<typeof Select> & { placeholder?: string } &
   Pick<
     ComponentProps<typeof SelectTrigger>,
     "id" | "className" | "aria-label" | "aria-describedby" | "aria-invalid"
@@ -33,7 +34,7 @@ export function SettingsSelect({
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
       >
-        <SelectValue />
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent position="popper">
         <SelectGroup>{children}</SelectGroup>

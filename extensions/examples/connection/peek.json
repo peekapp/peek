@@ -1,6 +1,6 @@
 {
-  "format": 2,
-  "sdk": "^0.1.0",
+  "format": 3,
+  "sdk": "^0.2.0",
   "id": "example/connection",
   "version": "0.1.0",
   "kind": "connection",
@@ -33,5 +33,28 @@
         "maxItems": 100
       }
     }
+  },
+  "settingsUi": {
+    "blocks": [
+      {
+        "id": "settings",
+        "name": {
+          "en": "Settings"
+        },
+        "description": {
+          "en": "Configure this extension."
+        },
+        "source": "settings",
+        "controls": [
+          {
+            "type": "input",
+            "field": "message",
+            "label": {
+              "en": "message"
+            }
+          }
+        ]
+      }
+    ]
   }
 }

@@ -18,3 +18,7 @@ from `@peek/core/i18n` for UI text, including accessibility labels. Reuse existi
 message keys; add new strings for every supported locale in
 `packages/core/src/i18n.ts`. Do not introduce inline translations, locale-based
 text conditionals, component-local dictionaries, or local translation helpers.
+
+Third-party SDK settings metadata is the explicit exception to the shared-dictionary
+rule: packages may supply validated `{en, ru?}` text through the shared SDK resolver.
+Official extension metadata and all host UI text still use `messages(locale)`.

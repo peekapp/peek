@@ -1,4 +1,4 @@
-# Peek extensions: SDK v0.1
+# Peek extensions: SDK v0.2
 
 ## Architecture
 
@@ -90,8 +90,8 @@ archives with UTF-8 files, not executable installation scripts or tar paths.
 
 ```json
 {
-  "format": 2,
-  "sdk": "^0.1.0",
+  "format": 3,
+  "sdk": "^0.2.0",
   "id": "author/my-scenario",
   "version": "0.1.0",
   "kind": "scenario",
@@ -100,6 +100,7 @@ archives with UTF-8 files, not executable installation scripts or tar paths.
   "author": "Author name",
   "entry": "index.mjs",
   "settings": { "type": "object", "properties": {} },
+  "settingsUi": { "blocks": [] },
   "permissions": {},
   "inputs": {
     "items": {
@@ -122,7 +123,8 @@ properties, required, items, enum/default, additionalProperties, numeric bounds,
 and string/array length bounds, bounded `oneOf`, and the built-in `date` and
 `time-zone` string formats. Schemas are capped at 64 KB and depth 12;
 `oneOf` has at most eight branches. References (including local/remote `$ref`),
-regular expressions and other combinators are unsupported. Forms render scalar controls; structured values use JSON input.
+other combinators are unsupported. `pattern` accepts the bounded syntax documented below.
+Settings forms require explicit blocks and scalar top-level fields; structured schemas remain available for data contracts.
 The host validates submitted settings and every published snapshot.
 
 ## Reusable contracts and author workflow
@@ -171,14 +173,14 @@ including conflicts within a bundle. Pins survive uninstall and rollback, so a
 version cannot silently acquire a different schema. SDK Events v1 is additionally
 checked against its built-in canonical definition even on a fresh installation.
 
-For format 2, a binding must satisfy both the input semver range and an exact
+For format 3, a binding must satisfy both the input semver range and an exact
 version included in the consumer's definitions. A consumer can carry several
 versions. Unknown future minor versions require adding their canonical definition
 and shipping a consumer update; semantic-version claims alone cannot establish
 schema agreement. Peek validates every published dataset using the pinned schema.
 This intentionally avoids trying to prove structural schema compatibility.
 
-Only format 2 manifests with `connection` or `scenario` kinds are accepted. Every
+Only format 3 manifests with `connection` or `scenario` kinds are accepted. Every
 input requires a canonical definition; ID/range matching never bypasses that check.
 Rebuild older development packages with the current SDK and CLI.
 
@@ -205,7 +207,7 @@ and rollback restores the previous package/configuration snapshot.
 - `permissions.local` accepts explicit IPv4 address/port pairs. A separate trusted
   gateway enforces filtering in the shared network namespace; the extension cannot
   change it. Docker networks, loopback, link-local/metadata and reserved addresses
-  remain blocked. IPv6 is blocked in v0.1, including local IPv6 grants.
+  remain blocked. IPv6 is blocked in v0.2, including local IPv6 grants.
 - Containers reduce risk, but share the Docker host kernel; this is not a guarantee
   against kernel/container-runtime exploits. Keep Docker and the host updated.
 - The existing trusted-LAN Settings policy applies to package installation. This
@@ -326,3 +328,107 @@ Failed installation banners disappear once newer successful installations cover
 all packages from that attempt. Pending retries, unrelated installs and partial
 successes leave unresolved failures visible. The retained operation journal keeps
 the original failure; the status response omits resolved failures and package code.
+
+## Settings blocks (SDK 0.2 / format 3)
+
+Every manifest declares `settingsUi: { blocks: [...] }`, including an empty list
+when there are no package settings. Peek owns the Name, Profile, Enabled, and
+connection-binding blocks. Package blocks follow them in declaration order (bindings
+remain after package configuration). Values still arrive through `context.settings`
+and `context.secrets`; the layout is presentation metadata, not a new storage format.
+
+A block has a unique `id` (`[a-z][a-zA-Z0-9-]{0,63}`), required `name` and
+`description`, optional `controls`, and optional `footer`. `source` defaults to
+`settings`. All secrets belong to one `source: "secrets"` block and use secret
+inputs; they cannot be copied or displayed. Controls reference top-level schema
+properties by `field`; every property must appear exactly once. There are at most
+100 blocks and 100 controls per block; layout JSON is capped at 64 KB.
+
+Text uses `{ "key": "existingPeekMessageKey" }` or package translations
+`{ "en": "Required English text", "ru": "Optional Russian text" }`. Missing Russian
+falls back to English. All official-extension text and host UI use Peek's central
+`messages(locale)` dictionary. Third-party package metadata is the explicit exception
+to that repository rule. Metadata is plain text, never HTML. Links are structured
+`{ label, href }` entries with HTTPS URLs and no credentials; they open separately.
+
+| Control `type` | Value schema | Additional metadata |
+| --- | --- | --- |
+| `input` | string, integer, number | `placeholder`, `prefix`, `suffix` |
+| `textarea` | string | `placeholder` |
+| `secret` | string, secrets source only | `placeholder` |
+| `select` | scalar with `enum` | `options: [{ value, label, description? }]`, `placeholder` |
+| `radio` | scalar with `enum` | Same typed options, displayed as radio cards |
+| `switch` | boolean | — |
+| `readonly` | scalar, settings source only | `copy: true` enables clipboard copying |
+| `text` | no field | `text` and/or `links` |
+
+Field controls accept `label`, `hideLabel`, `hint`, `disabled`, and
+`disabledReason`. A lone field uses the block name as its accessible label when
+`label` is absent. Multiple fields require individual labels; `hideLabel` only
+hides the visual label. Disabled and read-only required fields need a schema
+default so a new instance can be created. Options must cover the schema enum
+exactly and preserve JSON types (numeric `1` is different from string `"1"`).
+The footer accepts `{ text?, links?: [{ label, href }] }`; no footer is rendered
+when both help and actions are absent. Informational/read-only blocks have no Save.
+
+Defaults, required fields, bounds, and validation live only in JSON Schema.
+Optional cleared text/numeric inputs omit their property. Existing records save
+one block atomically, preserving other drafts. Creation validates the whole form
+and has one Create action. Errors carry `{ path, code }`, with source-prefixed
+JSON Pointer paths such as `settings/intervalSeconds` and `secrets/url`; error
+responses never include submitted values. Stored credentials are never returned,
+and a successful replacement clears the browser's credential draft.
+
+`pattern` is deliberately bounded: use `^...$`, literal characters, character
+classes, `\d`, `\s`, `\w` (and their inverse forms), escaped punctuation, fixed
+repetitions, and at most one variable repetition (`?`, `*`, `+`, or `{m,n}`).
+Groups, alternation, lookarounds, backreferences, and wildcard dots are rejected.
+Patterns have at most 256 characters and a fixed repetition budget of 4096;
+a patterned schema must declare `maxLength` no greater than 4096. Matching uses
+Unicode JavaScript regular expressions on both server and client, not HTML's
+implicit full-match pattern semantics. For example: `"pattern": "^[a-z-]+$"`.
+Unsupported syntax fails package validation rather than reaching a user's browser.
+
+Complete manifests and runnable entry points:
+
+- [Scenario example](../extensions/examples/scenario/peek.json) with [implementation](../extensions/examples/scenario/index.ts).
+- [Connection example](../extensions/examples/connection/peek.json) with [implementation](../extensions/examples/connection/index.ts).
+- [iCalendar credentials and settings](../extensions/official/ical/peek.json).
+- [Every control and mixed blocks](../tests/fixtures/settings-manifest.json).
+
+Use `peek check` before packaging. There is no implicit layout fallback, extension
+JavaScript UI, conditional controls, remote options, or executable settings action
+protocol in this version.
+
+### Development reset from format 2
+
+This is a breaking development release, not a data migration. Old packages cannot
+be installed or edited with the new SDK. No automatic database reset is performed.
+Stop the web app, worker, and extension runner first. Back up the database and its
+credential key. Run the following deliberately destructive SQL against your chosen
+**development** database (the absolute `PEEK_DATABASE_PATH` used by all processes):
+
+```sh
+sqlite3 "$PEEK_DATABASE_PATH" '.backup /absolute/path/peek-before-sdk-0.2.sqlite'
+sqlite3 "$PEEK_DATABASE_PATH" <<'SQL'
+BEGIN IMMEDIATE;
+DELETE FROM cards WHERE scenario_id IS NOT NULL;
+DELETE FROM extension_instances;
+DELETE FROM extension_packages;
+DELETE FROM extension_contracts;
+DELETE FROM extension_defaults;
+DELETE FROM extension_operations;
+DELETE FROM extension_history;
+DELETE FROM extension_runtime;
+UPDATE screen_state SET revision = revision + 1;
+COMMIT;
+SQL
+bun install
+bun run official:build
+```
+
+This removes extension packages, instances, credentials, generated cards, and
+rollback history; profiles, screens, and general settings remain. Restart all
+processes, let the runner provision the rebuilt official bundle, then recreate
+instances. Rebuild third-party packages with SDK/CLI 0.2 and explicit blocks before
+reinstalling. Publishing the npm packages remains a separate release operation.
