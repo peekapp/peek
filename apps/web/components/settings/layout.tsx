@@ -295,6 +295,33 @@ export function EditorSection({
     </section>
   );
 }
+export function EditorPanel({
+  title,
+  description,
+  children,
+  hint,
+  actions,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+  hint: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <Card variant="settings">
+      <CardHeader>
+        <CardTitle asChild><h3>{title}</h3></CardTitle>
+        {description ? <CardDescription>{description}</CardDescription> : null}
+      </CardHeader>
+      <CardContent><FieldGroup>{children}</FieldGroup></CardContent>
+      <CardFooter>
+        <p className="min-w-0 flex-1 basis-48">{hint}</p>
+        {actions ? <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div> : null}
+      </CardFooter>
+    </Card>
+  );
+}
 export function EditorActions({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-2.5 border-t border-border pt-6 text-sm md:gap-5">

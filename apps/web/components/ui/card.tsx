@@ -8,6 +8,8 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
+        settings:
+          "flex flex-col gap-6 overflow-hidden rounded-md border bg-card pt-6 text-card-foreground",
         default:
           "flex flex-col gap-6 rounded-md border bg-card py-6 text-card-foreground shadow-sm",
         resource:
@@ -45,7 +47,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 group-data-[variant=preview]/card:px-0 group-data-[variant=choice]/card:px-0",
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 group-data-[variant=preview]/card:px-0 group-data-[variant=choice]/card:px-0 group-data-[variant=settings]/card:px-4 sm:group-data-[variant=settings]/card:px-6",
         className,
       )}
       {...props}
@@ -63,6 +65,7 @@ function CardTitle({
     <Comp
       data-slot="card-title"
       className={cn(
+        "group-data-[variant=settings]/card:text-base group-data-[variant=settings]/card:font-medium group-data-[variant=settings]/card:leading-snug",
         "leading-none font-semibold wrap-anywhere group-data-[variant=resource]/card:text-lg group-data-[variant=resource]/card:font-medium group-data-[variant=resource]/card:leading-snug group-data-[variant=preview]/card:text-sm group-data-[variant=preview]/card:font-medium group-data-[variant=preview]/card:text-muted-foreground group-data-[variant=choice]/card:text-lg group-data-[variant=choice]/card:leading-normal",
         className,
       )}
@@ -107,6 +110,7 @@ function CardContent({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-content"
       className={cn(
+        "group-data-[variant=settings]/card:px-4 sm:group-data-[variant=settings]/card:px-6",
         "px-6 group-data-[variant=resource]/card:wrap-anywhere group-data-[variant=preview]/card:px-0 group-data-[variant=choice]/card:px-0 group-data-[variant=resource]/card:flex group-data-[variant=resource]/card:flex-col group-data-[variant=resource]/card:gap-3 group-data-[variant=resource]/card:text-sm group-data-[variant=resource]/card:text-muted-foreground",
         className,
       )}
@@ -120,6 +124,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-footer"
       className={cn(
+        "group-data-[variant=settings]/card:mt-auto group-data-[variant=settings]/card:flex-wrap group-data-[variant=settings]/card:gap-4 group-data-[variant=settings]/card:border-t group-data-[variant=settings]/card:bg-background group-data-[variant=settings]/card:px-4 group-data-[variant=settings]/card:py-4 group-data-[variant=settings]/card:text-sm group-data-[variant=settings]/card:text-muted-foreground sm:group-data-[variant=settings]/card:px-6",
         "flex items-center px-6 [.border-t]:pt-6 group-data-[variant=preview]/card:px-0 group-data-[variant=choice]/card:px-0 group-data-[variant=resource]/card:mt-auto group-data-[variant=resource]/card:flex-wrap group-data-[variant=resource]/card:gap-2",
         className,
       )}

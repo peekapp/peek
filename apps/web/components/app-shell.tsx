@@ -12,6 +12,7 @@ import {
 import { messages, type Locale } from "@peek/core/i18n";
 import { SettingsTitle } from "./settings/layout";
 import { Brand } from "./brand";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator } from "./ui/breadcrumb";
 import {
   Sidebar,
   SidebarContent,
@@ -88,10 +89,12 @@ function AppSidebar({ locale, section }: { locale: Locale; section: Section }) {
 export function AppShell({
   locale,
   section,
+  detail,
   children,
 }: {
   locale: Locale;
   section: Section;
+  detail?: { label: string; href: string };
   children: ReactNode;
 }) {
   return (
@@ -103,7 +106,18 @@ export function AppShell({
             locale={locale}
             aria-label={messages(locale).toggleSidebar}
           />
-          <SettingsTitle>{messages(locale)[section]}</SettingsTitle>
+          {detail ? (
+            <>
+              <SettingsTitle visibility="hidden">{detail.label}</SettingsTitle>
+              <Breadcrumb className="min-w-0" aria-label={messages(locale).breadcrumbs}>
+                <BreadcrumbList className="flex-nowrap justify-center">
+                  <BreadcrumbItem className="shrink-0"><BreadcrumbLink asChild><Link href={`/${section}`}>{messages(locale)[section]}</Link></BreadcrumbLink></BreadcrumbItem>
+                  <BreadcrumbSeparator>/</BreadcrumbSeparator>
+                  <BreadcrumbItem className="min-w-0"><BreadcrumbLink asChild className="truncate"><Link href={detail.href} aria-current="page" title={detail.label}>{detail.label}</Link></BreadcrumbLink></BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </>
+          ) : <SettingsTitle>{messages(locale)[section]}</SettingsTitle>}
         </header>
         {children}
       </div>

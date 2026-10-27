@@ -7,19 +7,24 @@ import {
   type ReactNode,
   type ReactElement,
 } from "react";
+import { cva } from "class-variance-authority";
 import { Checkbox } from "../ui/checkbox";
 import { Textarea } from "../ui/textarea";
 import { Input } from "../ui/input";
 import { SettingsSelect } from "./select";
 import { Field, FieldLabel, FieldDescription } from "../ui/field";
 
+const labelVariants = cva("", { variants: { hidden: { true: "sr-only", false: "" } } });
+
 /** Shared label, control and hint spacing for the settings editors. */
 export function SettingsField({
   label,
+  labelHidden = false,
   children,
   className,
 }: {
   label: ReactNode;
+  labelHidden?: boolean;
   children: ReactNode;
   className?: string;
 }) {
@@ -52,7 +57,7 @@ export function SettingsField({
       className={className}
       orientation={isCheckbox ? "horizontal" : "vertical"}
     >
-      {!isCheckbox ? <FieldLabel htmlFor={id}>{label}</FieldLabel> : null}
+      {!isCheckbox ? <FieldLabel htmlFor={id} className={labelVariants({ hidden: labelHidden })}>{label}</FieldLabel> : null}
       {isValidElement(control)
         ? cloneElement(
             control as ReactElement<{
@@ -62,7 +67,7 @@ export function SettingsField({
             { id, "aria-describedby": describedBy },
           )
         : control}
-      {isCheckbox ? <FieldLabel htmlFor={id}>{label}</FieldLabel> : null}
+      {isCheckbox ? <FieldLabel htmlFor={id} className={labelVariants({ hidden: labelHidden })}>{label}</FieldLabel> : null}
       {hints.length ? (
         <FieldDescription id={`${id}-hint`}>{hints}</FieldDescription>
       ) : null}

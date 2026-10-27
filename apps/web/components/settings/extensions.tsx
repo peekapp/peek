@@ -7,7 +7,7 @@ import { InstanceHealth } from "./instance-health";
 import { SettingsDataTable } from "./data-table";
 import { LoadingState, ErrorState } from "./layout";
 import { EditorForm } from "./layout";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ExtensionIcon, ExtensionLabel } from "../extension-icon";
@@ -46,15 +46,14 @@ import {
   SettingsRow,
   SettingsRowDetails,
   SettingsEmpty,
-  EditorHeader,
-  EditorSection,
-  EditorActions,
+  EditorPanel,
 } from "./layout";
 import { ProfileLabel } from "../profile-label";
 import type { Profile } from "@peek/core/profiles";
 import { DeleteButton, ConfirmAction } from "./delete-button";
 import { acceptsContract } from "@peek/extensions/compatibility";
 import { numericSetting } from "./numeric-setting";
+import { applyInstanceSetting, type InstanceSetting } from "./instance-draft";
 type Binding = { connectionId: string; dataset: string };
 type Item = {
   id: string;
@@ -114,11 +113,15 @@ function SchemaFields({
   value,
   onChange,
   secret = false,
+  labelHidden = false,
+  locale,
 }: {
   schema: Schema;
   value: Record<string, Json>;
   onChange: (v: Record<string, Json>) => void;
   secret?: boolean;
+  labelHidden?: boolean;
+  locale: Locale;
 }) {
   return (
     <>
@@ -126,7 +129,7 @@ function SchemaFields({
         const update = (v: Json) => onChange({ ...value, [key]: v });
         const required = schema.required?.includes(key);
         return (
-          <SettingsField key={key} label={s.title ?? key}>
+          <SettingsField key={key} label={s.title ?? key} labelHidden={labelHidden}>
             {s.enum ? (
               <SettingsSelect
                 value={JSON.stringify(value[key] ?? s.enum[0])}
@@ -183,7 +186,7 @@ function SchemaFields({
                     update(JSON.parse(e.target.value));
                     e.target.setCustomValidity("");
                   } catch {
-                    e.target.setCustomValidity("Invalid JSON");
+                    e.target.setCustomValidity(messages(locale).invalidJson);
                     e.target.reportValidity();
                   }
                 }}
@@ -202,6 +205,7 @@ export function Extensions({
   kind,
   itemId,
   packageId,
+  onEditorTitleChange,
 }: {
   initialData?: Status | null;
   initialProfiles?: Profile[] | null;
@@ -209,6 +213,7 @@ export function Extensions({
   kind?: "scenario" | "connection";
   itemId?: string;
   packageId?: string;
+  onEditorTitleChange?: (title: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const t = messages(locale);
@@ -310,11 +315,6 @@ export function Extensions({
         ) : null}
         {!data ? (
           <>
-            <EditorHeader
-              backHref={`/${section}`}
-              backLabel={t.backToList}
-              title={t.configure}
-            />
             {!loadError ? (
               <LoadingState layout="editor">{t.loading}</LoadingState>
             ) : null}
@@ -325,7 +325,7 @@ export function Extensions({
           <InstanceEditor
             key={item?.id ?? manifest.id}
             manifest={manifest}
-            iconDataUrl={selectedPackage?.iconDataUrl}
+            onEditorTitleChange={onEditorTitleChange}
             packages={data.packages}
             instances={data.instances}
             item={item}
@@ -334,8 +334,8 @@ export function Extensions({
             profilesError={profilesError}
             locale={locale}
             save={async (instance) => {
-              await api({ action: "save", instance });
-              router.push(`/${section}`);
+              const result = await api({ action: "save", instance });
+              if (!item) router.replace(`/${section}/${encodeURIComponent(result.id)}`);
             }}
           />
         )}
@@ -537,7 +537,7 @@ export function Extensions({
       ) : null}
       <>
         {!kind ? (
-          <Card>
+          <Card variant="settings">
             <CardHeader>
               <CardTitle>{t.installPackage}</CardTitle>
               <CardDescription>{t.installPackageHint}</CardDescription>
@@ -595,7 +595,7 @@ export function Extensions({
           </Card>
         ) : null}
         {review ? (
-          <Card>
+          <Card variant="settings">
             <CardHeader>
               <CardTitle>{t.reviewInstallation}</CardTitle>
               <CardDescription>{t.unreviewedPackagesWarning}</CardDescription>
@@ -794,7 +794,7 @@ export function Extensions({
 }
 function InstanceEditor({
   manifest: m,
-  iconDataUrl,
+  onEditorTitleChange,
   packages,
   instances,
   item,
@@ -805,7 +805,7 @@ function InstanceEditor({
   save,
 }: {
   manifest: Manifest;
-  iconDataUrl?: string | null;
+  onEditorTitleChange?: (title: string) => void;
   packages: Status["packages"];
   instances: Status["instances"];
   item?: Item;
@@ -831,6 +831,14 @@ function InstanceEditor({
   ),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const draft = { name, profile, enabled, settings, secrets, changeSecrets, bindings };
+  const [savedDraft, setSavedDraft] = useState(draft);
+  const editorTitle = item ? savedDraft.name : `${t.configure} ${m.name}`;
+  useEffect(() => {
+    onEditorTitleChange?.(editorTitle);
+  }, [editorTitle, onEditorTitleChange]);
+  const [activeSetting, setActiveSetting] = useState<InstanceSetting | null>(null);
+  const [savedSetting, setSavedSetting] = useState<InstanceSetting | null>(null);
   const inputs = Object.entries(m.inputs ?? {}).map(([input, requirement]) => ({
     input,
     requirement,
@@ -862,50 +870,67 @@ function InstanceEditor({
         ),
       ),
   );
+  function panel(setting: InstanceSetting, title: string, children: ReactNode, disabled = false) {
+    const changed = JSON.stringify(applyInstanceSetting(savedDraft, draft, setting)) !== JSON.stringify(savedDraft);
+    const Container = item ? "form" : "div";
+    return (
+      <Container key={setting} data-setting={setting}>
+        <EditorPanel
+          title={title}
+          hint={item ? t.instanceSettingHint : t.instanceCreateHint}
+          actions={
+            <>
+              {savedSetting === setting && !changed ? <span role="status">{t.saved}</span> : null}
+              <Button type="submit" name="setting" value={setting}
+                disabled={busy || disabled || (item ? !changed : !!missingInput)}>
+                {busy && activeSetting === setting ? t.saving : t.save}
+              </Button>
+            </>
+          }
+        >
+          {children}
+          {error && activeSetting === setting ? <ErrorState>{error}</ErrorState> : null}
+        </EditorPanel>
+      </Container>
+    );
+  }
   return (
     <div>
-      <EditorHeader
-        media={
-          <ExtensionIcon kind={m.kind} src={iconDataUrl} color={m.iconColor} />
-        }
-        title={item?.name ?? `${t.configure} ${m.name}`}
-        description={m.description}
-        backHref={`/${m.kind === "scenario" ? "scenarios" : "connections"}`}
-        backLabel={t.backToList}
-      />
       <EditorForm
+        layout="settings"
         id="extension-instance"
-        draft={{
-          name,
-          profile,
-          enabled,
-          settings,
-          secrets,
-          changeSecrets,
-          bindings,
-        }}
+        as={item ? "div" : "form"}
+        draft={draft}
+        savedDraft={savedDraft}
         locale={locale}
         onSubmit={async (e) => {
           e.preventDefault();
-          if (missingInput) {
-            setError(
-              t.chooseACompatibleConnectionFor + ` ${missingInput.input}.`,
-            );
+          const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+          if (!submitter) return false;
+          const setting = submitter.value as InstanceSetting;
+          const next = item ? applyInstanceSetting(savedDraft, draft, setting) : draft;
+          if (missingInput && (!item || setting === `bindings:${missingInput.input}`)) {
+            setActiveSetting(setting);
+            setError(t.chooseACompatibleConnectionFor + ` ${missingInput.input}.`);
             return false;
           }
+          setActiveSetting(setting);
+          setSavedSetting(null);
           setBusy(true);
           setError("");
           try {
             await save({
               id: item?.id,
               packageId: m.id,
-              name,
-              profileId: profile,
-              enabled: m.kind === "connection" || enabled,
-              settings,
-              bindings,
-              ...(changeSecrets ? { secrets } : {}),
+              name: next.name,
+              profileId: next.profile,
+              enabled: m.kind === "connection" || next.enabled,
+              settings: next.settings,
+              bindings: next.bindings,
+              ...((!item || setting === "secrets") && next.changeSecrets ? { secrets: next.secrets } : {}),
             });
+            setSavedDraft(next);
+            setSavedSetting(setting);
             return true;
           } catch (e) {
             setError(e instanceof Error ? e.message : String(e));
@@ -915,9 +940,9 @@ function InstanceEditor({
           }
         }}
       >
-        <EditorSection>
-          <FieldGroup>
-            <SettingsField label={t.name}>
+        <div className="flex flex-col gap-6">
+          {panel("name", t.name,
+            <SettingsField label={t.name} labelHidden>
               <Input
                 required
                 maxLength={100}
@@ -925,7 +950,9 @@ function InstanceEditor({
                 onChange={(e) => setName(e.target.value)}
               />
             </SettingsField>
-            <SettingsField label={t.profile}>
+          )}
+          {panel("profile", t.profile,
+            <SettingsField label={t.profile} labelHidden>
               {profiles ? (
                 <SettingsSelect value={profile} onValueChange={setProfile}>
                   {profiles.map((p) => (
@@ -939,21 +966,27 @@ function InstanceEditor({
               ) : (
                 <LoadingState layout="fields">{t.loadingProfiles}</LoadingState>
               )}
-            </SettingsField>
-            {m.kind === "scenario" && (
-              <SettingsField label={t.statusEnabled}>
+            </SettingsField>, !profiles
+          )}
+          {m.kind === "scenario" ? panel("enabled", t.statusEnabled,
+              <SettingsField label={t.statusEnabled} labelHidden>
                 <Checkbox
                   checked={enabled}
                   onCheckedChange={(v) => setEnabled(v === true)}
                 />
               </SettingsField>
-            )}
+          ) : null}
+          {Object.entries(m.settings.properties ?? {}).map(([key, schema]) => panel(
+            `settings:${key}`, schema.title ?? key,
             <SchemaFields
-              schema={m.settings}
+              locale={locale}
+              labelHidden
+              schema={{ ...m.settings, properties: { [key]: schema } }}
               value={settings}
               onChange={setSettings}
-            />
-            {m.secrets ? (
+            />,
+          ))}
+            {m.secrets ? panel("secrets", t.credentials,
               <>
                 <SettingsField label={t.setCredentialsHint}>
                   <Checkbox
@@ -963,6 +996,7 @@ function InstanceEditor({
                 </SettingsField>
                 {changeSecrets ? (
                   <SchemaFields
+                    locale={locale}
                     secret
                     schema={m.secrets}
                     value={secrets}
@@ -971,9 +1005,9 @@ function InstanceEditor({
                 ) : null}
               </>
             ) : null}
-            {inputs.map(({ input, requirement, choices }) => (
+            {inputs.map(({ input, requirement, choices }) => panel(`bindings:${input}`, `${t.connections} (${input})`,
               <FieldSet key={input} aria-describedby={`input-${input}-hint`}>
-                <FieldLegend>
+                <FieldLegend className="sr-only">
                   {t.connections} ({input}){" "}
                   {requirement.optional ? t.optional : ""}
                 </FieldLegend>
@@ -1045,28 +1079,10 @@ function InstanceEditor({
                     </SettingsField>
                   ))
                 )}
-              </FieldSet>
+              </FieldSet>,
+              !requirement.optional && !choices.some((choice) => (bindings[input] ?? []).some((binding) => binding.connectionId === choice.connectionId && binding.dataset === choice.dataset)),
             ))}
-            {error ? <ErrorState>{error}</ErrorState> : null}
-          </FieldGroup>
-        </EditorSection>
-        <EditorActions>
-          <Button
-            type="submit"
-            form="extension-instance"
-            disabled={busy || !!missingInput}
-          >
-            {busy ? t.saving : t.save}
-          </Button>
-          <Button variant="ghost" asChild>
-            <Link
-              href={`/${m.kind === "scenario" ? "scenarios" : "connections"}`}
-              data-discard-changes
-            >
-              {t.cancel}
-            </Link>
-          </Button>
-        </EditorActions>
+        </div>
       </EditorForm>
     </div>
   );

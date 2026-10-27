@@ -52,6 +52,7 @@ export function Settings({
   packageId?: string;
 }) {
   const [query, setQuery] = useState("");
+  const [editorTitle, setEditorTitle] = useState(initialExtensions?.instances.find((instance) => instance.id === path[1])?.name);
   const [profileDeleteError, setProfileDeleteError] = useState("");
   const [profileDeleting, setProfileDeleting] = useState(false);
   const [locale, setLocale] = useState<Locale>(initialData?.locale ?? "en"),
@@ -98,6 +99,10 @@ export function Settings({
   return (
     <AppShell
       locale={locale}
+      detail={item && (tab === "scenarios" || tab === "connections") ? {
+        label: editorTitle ?? (item === "new" ? t.configure : tab === "scenarios" ? t.scenarioSettings : t.connectionSettings),
+        href: `/${tab}/${encodeURIComponent(item)}${packageId ? `?package=${encodeURIComponent(packageId)}` : ""}`,
+      } : undefined}
       section={
         tab === "general" || tab === "extensions"
           ? "settings"
@@ -329,6 +334,7 @@ export function Settings({
               initialData={initialExtensions}
               initialProfiles={initialData?.profiles}
               itemId={item}
+              onEditorTitleChange={setEditorTitle}
               packageId={packageId}
               locale={locale}
               kind={tab === "scenarios" ? "scenario" : "connection"}

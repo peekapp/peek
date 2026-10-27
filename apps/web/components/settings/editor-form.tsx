@@ -4,7 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
-  type ComponentProps,
+  type HTMLAttributes,
   type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,7 @@ import {
 } from "../ui/alert-dialog";
 
 const editorFormVariants = cva("min-w-0", {
-  variants: { layout: { default: "max-w-2xl", preview: "w-full" } },
+  variants: { layout: { default: "max-w-2xl", preview: "w-full", settings: "max-w-5xl" } },
   defaultVariants: { layout: "default" },
 });
 
@@ -32,15 +32,19 @@ export function EditorForm({
   className,
   layout,
   draft,
+  savedDraft,
+  as: Comp = "form",
   locale,
   onSubmit,
   children,
   ...props
-}: Omit<ComponentProps<"form">, "onSubmit"> & {
-  layout?: "default" | "preview";
+}: Omit<HTMLAttributes<HTMLElement>, "onSubmit"> & {
+  layout?: "default" | "preview" | "settings";
   draft: unknown;
+  savedDraft?: unknown;
+  as?: "form" | "div";
   locale: Locale;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<boolean>;
+  onSubmit: (event: FormEvent<HTMLElement>) => Promise<boolean>;
 }) {
   const t = messages(locale);
   const router = useRouter();
@@ -51,7 +55,7 @@ export function EditorForm({
   const leaving = useRef(false);
   const [destination, setDestination] = useState<(() => void) | null>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
-  const dirty = serialized !== saved;
+  const dirty = serialized !== (savedDraft === undefined ? saved : JSON.stringify(savedDraft));
 
   useEffect(() => {
     if (!dirty && !pending) return;
@@ -131,7 +135,7 @@ export function EditorForm({
 
   return (
     <>
-      <form
+      <Comp
         {...props}
         className={cn(editorFormVariants({ layout }), className)}
         aria-busy={pending}
@@ -154,7 +158,7 @@ export function EditorForm({
         <fieldset className="min-w-0" disabled={pending} inert={pending}>
           {children}
         </fieldset>
-      </form>
+      </Comp>
       <AlertDialog
         open={!!destination}
         onOpenChange={(open) => {
