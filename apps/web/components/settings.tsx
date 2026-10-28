@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 import { LoadingState, SettingsEmpty } from "./settings/layout";
 import {
   EditorHeader,
@@ -53,7 +54,6 @@ export function Settings({
 }) {
   const [query, setQuery] = useState("");
   const [editorTitle, setEditorTitle] = useState(initialExtensions?.instances.find((instance) => instance.id === path[1])?.name);
-  const [profileDeleteError, setProfileDeleteError] = useState("");
   const [profileDeleting, setProfileDeleting] = useState(false);
   const [locale, setLocale] = useState<Locale>(initialData?.locale ?? "en"),
     [data, setData] = useState<Data | null>(initialData),
@@ -62,7 +62,7 @@ export function Settings({
   const refreshVersion = useRef(0);
   const preferenceSaves = useRef(0);
   const [themeBusy, setThemeBusy] = useState(false);
-  const [themeStatus, setThemeStatus] = useState<"saved" | "error" | "">("");
+  const [themeStatus, setThemeStatus] = useState<"error" | "">("");
   const t = messages(locale),
     tab = path[0] ?? "general",
     item = path[1];
@@ -160,7 +160,7 @@ export function Settings({
                       try {
                         await mutate({ action: "theme", theme: value });
                         setTheme(value);
-                        setThemeStatus("saved");
+                        toast.success(t.themeSaved);
                       } catch {
                         setThemeStatus("error");
                       } finally {
@@ -173,11 +173,9 @@ export function Settings({
                   <FormFeedback role="status">
                     {themeBusy
                       ? t.saving
-                      : themeStatus === "saved"
-                        ? t.saved
-                        : themeStatus === "error"
-                          ? t.loadError
-                          : ""}
+                      : themeStatus === "error"
+                        ? t.loadError
+                        : ""}
                   </FormFeedback>
                 </div>
               </PreferenceRow>
@@ -192,6 +190,7 @@ export function Settings({
                     try {
                       await mutate({ action: "locale", locale: value });
                       setLocale(value as Locale);
+                      toast.success(messages(value as Locale).languageSaved);
                     } catch {
                       setError(true);
                     } finally {
@@ -282,11 +281,6 @@ export function Settings({
                 ) ? (
                   <SearchEmpty locale={locale} />
                 ) : null}
-                {profileDeleteError ? (
-                  <Alert variant="destructive" role="status">
-                    <AlertDescription>{errorText(profileDeleteError, locale)}</AlertDescription>
-                  </Alert>
-                ) : null}
                 <SettingsGrid variant="profiles">
                   {data?.profiles
                     .filter((p) => matchesSearch(query, profileName(p, locale)))
@@ -305,12 +299,12 @@ export function Settings({
                           disabled={profileDeleting}
                           onDelete={p.system ? undefined : async () => {
                             setProfileDeleting(true);
-                            setProfileDeleteError("");
                             try {
                               await mutate({ action: "profile-delete", id: p.id });
+                              toast.success(t.profileDeleted);
                               await refresh();
                             } catch (error) {
-                              setProfileDeleteError(error instanceof Error ? error.message : "error");
+                              throw new Error(errorText(error instanceof Error ? error.message : "error", locale));
                             } finally {
                               setProfileDeleting(false);
                             }

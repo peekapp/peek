@@ -1,6 +1,7 @@
 "use client";
+import { toast } from "sonner";
 
-import { useId, useState } from "react";
+import { useId } from "react";
 import { cva } from "class-variance-authority";
 import { messages, type Locale } from "@peek/core/i18n";
 import {
@@ -114,9 +115,6 @@ function ExtensionField({
 }) {
   const id = useId(),
     t = messages(locale);
-  const [copyStatus, setCopyStatus] = useState<"copied" | "failed" | null>(
-    null,
-  );
   const text = (value: SettingsText) => settingsText(value, locale, t);
   const s = schema.properties![c.field],
     value = values[c.field];
@@ -165,7 +163,6 @@ function ExtensionField({
     onChange: (
       event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     ) => {
-      setCopyStatus(null);
       if (s.type === "string")
         update(
           event.target.value === "" && !required
@@ -267,9 +264,9 @@ function ExtensionField({
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(String(value ?? ""));
-                  setCopyStatus("copied");
+                  toast.success(t.settingsCopied);
                 } catch {
-                  setCopyStatus("failed");
+                  toast.error(t.settingsCopyFailed);
                 }
               }}
             >
@@ -322,11 +319,6 @@ function ExtensionField({
         <FieldError id={`${id}-error`}>
           {validationMessage(issue.code, locale)}
         </FieldError>
-      ) : null}
-      {copyStatus ? (
-        <FieldDescription role="status">
-          {copyStatus === "copied" ? t.settingsCopied : t.settingsCopyFailed}
-        </FieldDescription>
       ) : null}
     </Field>
   );

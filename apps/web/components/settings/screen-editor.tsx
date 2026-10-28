@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 import { EditorForm, FormFeedback } from "./layout";
 import {
   Card,
@@ -203,7 +204,6 @@ export function ScreenEditor({
   const [idEdited, setIdEdited] = useState(!!screen);
   const [status, setStatus] = useState("");
   const [origin, setOrigin] = useState("");
-  const [copyStatus, setCopyStatus] = useState("");
   useEffect(() => setOrigin(window.location.origin), []);
   const update = (value: Partial<ScreenConfig>) => {
     setConfig((c) => ({ ...c, ...value }));
@@ -249,10 +249,11 @@ export function ScreenEditor({
               previousId: screen?.id,
               config,
             });
-            await refresh();
-            setStatus("saved");
-            if (!screen || screen.id !== result.id)
-              router.replace(`/screens/${result.id}/edit`);
+            setStatus("");
+            toast.success(screen ? t.saved : t.screenCreated);
+            if (!screen) router.replace("/screens");
+            else if (screen.id !== result.id) router.replace(`/screens/${result.id}/edit`);
+            else await refresh();
             return true;
           } catch (error) {
             setStatus(error instanceof Error ? error.message : "error");
@@ -446,16 +447,15 @@ export function ScreenEditor({
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(link);
-                      setCopyStatus(t.copied);
+                      toast.success(t.copied);
                     } catch {
-                      setCopyStatus(t.copyFailed);
+                      toast.error(t.copyFailed);
                     }
                   }}
                 >
                   {t.copyLink}
                 </Button>
               ) : null}
-              <p role="status">{copyStatus}</p>
             </div>
           </aside>
         </div>
@@ -475,21 +475,19 @@ export function ScreenEditor({
                 setStatus("saving");
                 try {
                   await mutate({ action: "screen-delete", id: screen.id });
-                  await refresh();
+                  toast.success(t.screenDeleted);
                   router.push("/screens");
                 } catch (error) {
-                  setStatus(error instanceof Error ? error.message : "error");
+                  throw new Error(errorText(error instanceof Error ? error.message : "error", locale));
+                } finally {
+                  setStatus("");
                 }
               }}
             />
           ) : null}
         </EditorActions>
         <FormFeedback role="status">
-          {status === "saved"
-            ? t.saved
-            : status && !busy
-              ? errorText(status, locale)
-              : ""}
+          {status && !busy ? errorText(status, locale) : ""}
         </FormFeedback>
       </EditorForm>
     </div>

@@ -178,9 +178,12 @@ with sync_playwright() as p:
     page.locator("form").dispatch_event("submit")
     assert len(held) == 1, "Duplicate submission escaped the shared form lock"
     held.pop().continue_()
-    page.wait_for_url(re.compile(r"/profiles/(?!new$)[^/]+$"))
-    expect(page.locator("form")).to_have_attribute("aria-busy", "false")
+    page.wait_for_url(base + "/profiles")
+    expect(page.locator('[data-sonner-toast]').filter(has_text="Profile created")).to_be_visible()
     page.unroute("**/api/settings", hold_save)
+    created = next(p for p in context.request.get(base + "/api/settings").json()["profiles"] if p["name"] == "UI audit " + suffix)
+    page.get_by_role("link", name="UI audit " + suffix, exact=True).click()
+    page.wait_for_url(base + "/profiles/" + created["id"])
     profile_url = page.url
     expect(field).to_have_value("UI audit " + suffix)
     assert any(
@@ -248,8 +251,10 @@ with sync_playwright() as p:
     page.locator("form").dispatch_event("submit")
     assert len(held) == 1
     held.pop().continue_()
-    page.wait_for_url(f"**/screens/{screen_id}/edit")
+    page.wait_for_url(base + "/screens")
+    expect(page.locator('[data-sonner-toast]').filter(has_text="Screen created")).to_be_visible()
     page.unroute("**/api/settings", hold_save)
+    visit(page, f"/screens/{screen_id}/edit")
     expect(page.locator("form")).to_have_attribute("aria-busy", "false")
     page.get_by_role("button", name="Delete", exact=True).click()
     page.get_by_role("alertdialog").get_by_role("button", name="Delete").click()

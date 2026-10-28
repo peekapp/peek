@@ -191,3 +191,22 @@ Saved scenario/connection identity panels share the existing three-dot actions m
 beside Enabled, with Delete and the shared confirmation. New drafts omit the menu.
 Failed deletion stays in the confirmation with feedback; connections in use cannot be
 deleted. Deletion from a sheet preserves the scenario draft and removes stale choices.
+
+## Action feedback
+
+Use the shared Sonner toaster in the root layout for successful explicit actions:
+resource creation, saves, deletions, enable/disable, refresh requests, preferences,
+clipboard actions and package operations. Toasts survive navigation, appear at the
+bottom right for five seconds, and have localized dismiss controls. Appearance uses
+semantic theme tokens and Tailwind in the shared primitive. Do not also show inline
+Saved/Copied messages. Keep validation/save errors near their controls, failed
+confirmations inside the dialog, and loading/runtime errors persistent. Standalone
+action failures use error toasts. Background polling and favorite toggles stay quiet.
+Only claim completion when the API confirms it; queued refreshes/installations say
+requested. A successful mutation followed by a failed read remains a successful
+mutation with separate refresh feedback.
+
+Full-page creation returns to /screens, /profiles, /scenarios or /connections with a
+resource-specific success toast. Existing records save in place (screen ID renames
+update the editor URL). Connections created inside a scenario sheet retain its
+selection flow and the scenario draft. Independent panel saves preserve other drafts.

@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 
 import { useId, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { ChevronRightIcon } from "lucide-react";
@@ -34,11 +35,11 @@ type Shared = {
   profiles: Profile[] | null; locale: Locale;
 };
 export function ScenarioConnections({ inputs, bindings, onChange, savedBindings, packages, instances, profiles, runtime, locale,
-  existing, busy, activeSetting, savedSetting, error, onOpen,
+  existing, busy, activeSetting, error, onOpen,
 }: Shared & {
   inputs: ReturnType<typeof connectionInputs>; bindings: Record<string, Binding[]>;
   savedBindings: Record<string, Binding[]>; onChange: Dispatch<SetStateAction<Record<string, Binding[]>>>;
-  existing: boolean; busy: boolean; activeSetting: InstanceSetting | null; savedSetting: InstanceSetting | null;
+  existing: boolean; busy: boolean; activeSetting: InstanceSetting | null;
   error: string; onOpen: (target: ConnectionSheetTarget) => void;
 }) {
   const t = messages(locale);
@@ -93,7 +94,6 @@ export function ScenarioConnections({ inputs, bindings, onChange, savedBindings,
           <EditorPanelSection hint={<details className="text-xs"><summary className="cursor-pointer rounded-sm focus-visible:ring-2 focus-visible:ring-ring">{t.connectionDetails}</summary>
             <p className="mt-2 wrap-anywhere">{requirement.contract} ({requirement.version})</p></details>}
             actions={existing ? <>
-              {savedSetting === setting && !changed ? <span role="status">{t.saved}</span> : null}
               <Button type="submit" formNoValidate name="setting" value={setting} size="sm" disabled={busy || missing || !changed}>
                 {busy && activeSetting === setting ? t.saving : t.save}</Button>
             </> : undefined}>
@@ -179,7 +179,7 @@ export function ConnectionSheet({ target, manifest, packages, instances, connect
             <details className="mt-4 text-xs text-muted-foreground"><summary>{t.connectionDetails}</summary><p className="mt-2 wrap-anywhere">{manifest.inputs?.[target.input].contract} ({manifest.inputs?.[target.input].version})</p></details>
           </> : null}
           {createdId && !refreshError ? <div className="space-y-3">
-            <p className="text-sm">{datasets.length ? t.connectionChooseDataset : t.saved}</p>
+            <p className="text-sm">{datasets.length ? t.connectionChooseDataset : t.connectionNoDataset}</p>
             {datasets.map((binding) => <Button key={binding.dataset} type="button" variant="outline" onClick={() => { if (!editing) onSelect(target.input, binding); finish(); }}>{binding.dataset}</Button>)}
           </div> : null}
         </EditorForm>
@@ -193,6 +193,7 @@ export function ConnectionSheet({ target, manifest, packages, instances, connect
               setRefreshing(true);
               try {
                 await api({ action: "delete-instance", id: item.id });
+                toast.success(t.connectionDeleted);
                 setDeletedId(item.id);
                 finish();
               } finally { setRefreshing(false); }

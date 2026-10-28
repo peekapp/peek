@@ -15,6 +15,11 @@ with sync_playwright() as p:
         for action, value in [('locale', locale), ('theme', theme)]:
             r = context.request.post(base + '/api/settings', headers={'Origin': base}, data={'action': action, action: value})
             assert r.ok, r.text()
+    def saved_toast():
+        notification = page.locator('[data-sonner-toast]').filter(has_text='Saved').last
+        expect(notification).to_be_visible()
+        notification.get_by_role('button', name='Dismiss notification').click()
+        expect(notification).to_have_count(0)
     def status(): return context.request.get(base + '/api/extensions').json()
     def block(id): return page.locator(f'[data-setting="block:{id}"]')
     def visit(path):
@@ -46,7 +51,7 @@ with sync_playwright() as p:
     block('general').get_by_role('switch').focus()
     page.keyboard.press('Space')
     block('general').get_by_role('button', name='Save', exact=True).click()
-    expect(block('general').get_by_text('Saved', exact=True)).to_be_visible()
+    saved_toast()
     stored = next(i for i in status()['instances'] if i['id'] == connection['id'])
     assert stored['settings']['slug'] == 'my-calendar' and stored['settings']['count'] == 4 and stored['settings']['enabled'] is False
     assert 'notes' not in stored['settings']
@@ -63,21 +68,21 @@ with sync_playwright() as p:
     expect(page.get_by_role('textbox', name='Notes', exact=True)).to_have_value('Pending notes')
     page.unroute('**/api/extensions')
     block('notes').get_by_role('button', name='Save', exact=True).click()
-    expect(block('notes').get_by_text('Saved', exact=True)).to_be_visible()
+    saved_toast()
     page.get_by_role('combobox', name='Mode', exact=True).click()
     page.get_by_role('option', name='Two', exact=True).click()
     page.get_by_role('radio', name='Queue', exact=True).focus()
     page.keyboard.press('ArrowRight', delay=50)
     expect(page.get_by_role('radio', name='Immediate', exact=True)).to_be_checked()
     block('choices').get_by_role('button', name='Save', exact=True).click()
-    expect(block('choices').get_by_text('Saved', exact=True)).to_be_visible()
+    saved_toast()
     stored = next(i for i in status()['instances'] if i['id'] == connection['id'])
     assert stored['settings']['mode'] == 2 and stored['settings']['strategy'] == 'immediate'
     # Secret replacement has its own transaction and empties the browser draft.
     block('credentials').get_by_role('checkbox').check()
     block('credentials').locator('input[type=password]').fill('replacement-token')
     block('credentials').get_by_role('button', name='Save', exact=True).click()
-    expect(block('credentials').get_by_text('Saved', exact=True)).to_be_visible()
+    saved_toast()
     expect(block('credentials').locator('input[type=password]')).to_have_count(0)
     assert 'replacement-token' not in str(status())
     # Every locale/theme/viewport renders the same shared compositions.
@@ -103,7 +108,8 @@ with sync_playwright() as p:
     expect(page.get_by_text('This field is required.', exact=True)).to_be_visible()
     block('credentials').locator('input[type=password]').fill('new-token')
     page.get_by_role('button', name='Create', exact=True).click()
-    page.wait_for_url(lambda url: '/connections/' in url and '/new' not in url)
+    page.wait_for_url(base + '/connections')
+    expect(page.locator('[data-sonner-toast]').filter(has_text='Connection created')).to_be_visible()
     assert len(status()['instances']) == 3
     assert not errors, errors
     browser.close()

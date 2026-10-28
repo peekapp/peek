@@ -1,3 +1,5 @@
+import { Toaster } from "../components/ui/sonner";
+import type { Locale } from "@peek/core/i18n";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { ThemeProvider } from "../components/theme";
 import { defaultTheme, isLightTheme, type Theme } from "@peek/core/themes";
@@ -16,7 +18,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  let locale = "en";
+  let locale: Locale = "en";
   let theme: Theme = defaultTheme;
   try {
     const state = readState();
@@ -31,6 +33,7 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider initialTheme={theme}>
+          <Toaster initialLocale={locale} />
           <TimeZoneProvider value={installationTimeZone()}>
             <TooltipProvider>{children}</TooltipProvider>
           </TimeZoneProvider>

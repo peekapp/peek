@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 import { EditorForm, FormFeedback } from "./layout";
 import { EditorHeader, EditorSection, EditorActions } from "./layout";
 import { ProfileLabel, ProfileIdentity } from "../profile-label";
@@ -55,14 +56,15 @@ export function ProfileEditor({
             e.preventDefault();
             setStatus("saving");
             try {
-              const result = await mutate({
+              await mutate({
                 action: "profile-save",
                 id: profile?.id,
                 config: { name, color },
               });
-              await refresh();
-              setStatus("saved");
-              if (!profile) router.replace(`/profiles/${result.id}`);
+              setStatus("");
+              toast.success(profile ? t.saved : t.profileCreated);
+              if (!profile) router.replace("/profiles");
+              else await refresh();
               return true;
             } catch (e) {
               setStatus(e instanceof Error ? e.message : "error");
@@ -153,21 +155,17 @@ export function ProfileEditor({
                 onConfirm={async () => {
                   try {
                     await mutate({ action: "profile-delete", id: profile.id });
-                    await refresh();
+                    toast.success(t.profileDeleted);
                     router.push("/profiles");
                   } catch (e) {
-                    setStatus(e instanceof Error ? e.message : "error");
+                    throw new Error(errorText(e instanceof Error ? e.message : "error", locale));
                   }
                 }}
               />
             ) : null}
           </EditorActions>
           <FormFeedback role="status">
-            {status === "saved"
-              ? t.saved
-              : status && status !== "saving"
-                ? errorText(status, locale)
-                : ""}
+            {status && status !== "saving" ? errorText(status, locale) : ""}
           </FormFeedback>
         </EditorForm>
       )}

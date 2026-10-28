@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 
 import { messages, type Locale } from "@peek/core/i18n";
 import { SettingsRowMenu } from "./row-menu";
@@ -188,14 +189,24 @@ export function Extensions({
       clearInterval(timer);
     };
   }, [itemId]);
-  async function perform(fn: () => Promise<unknown>) {
+  async function perform(fn: () => Promise<unknown>, success: string, confirmation = false) {
     setBusy(true);
     setError("");
     try {
-      await fn();
-      await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      try {
+        await fn();
+      } catch (e) {
+        const message = e instanceof Error && e.message === "connection-in-use" ? t.connectionInUse : t.actionFailed;
+        if (confirmation) throw new Error(message);
+        toast.error(message);
+        return;
+      }
+      toast.success(success);
+      try {
+        await refresh();
+      } catch {
+        setError(t.loadError);
+      }
     } finally {
       setBusy(false);
     }
@@ -241,11 +252,12 @@ export function Extensions({
             locale={locale}
             onDelete={item ? async () => {
               await api({ action: "delete-instance", id: item.id });
+              toast.success(item.kind === "scenario" ? t.scenarioDeleted : t.connectionDeleted);
               router.replace(`/${section}`);
             } : undefined}
             save={async (instance) => {
-              const result = await api({ action: "save", instance });
-              if (!item) router.replace(`/${section}/${encodeURIComponent(result.id)}`);
+              await api({ action: "save", instance });
+              if (!item) router.replace(`/${section}`);
               else {
                 try {
                   const response = await fetch("/api/extensions", { cache: "no-store" });
@@ -319,18 +331,19 @@ export function Extensions({
             <SettingsRowMenu
               kind={i.kind}
               refreshDisabled={busy || !i.enabled || !data.runtime.ready}
-              onRefresh={() => perform(() => api({ action: "run", id: i.id }))}
+              onRefresh={() => perform(() => api({ action: "run", id: i.id }), t.refreshRequested)}
               enabled={!!i.enabled}
               onToggle={() =>
                 perform(() =>
                   api({ action: "set-enabled", id: i.id, enabled: !i.enabled }),
+                  i.enabled ? t.scenarioDisabled : t.scenarioEnabled,
                 )
               }
               href={`/${i.kind === "scenario" ? "scenarios" : "connections"}/${encodeURIComponent(i.id)}`}
               locale={locale}
               disabled={busy}
               onDelete={() =>
-                perform(() => api({ action: "delete-instance", id: i.id }))
+                perform(() => api({ action: "delete-instance", id: i.id }), i.kind === "scenario" ? t.scenarioDeleted : t.connectionDeleted, true)
               }
             />
           ) : (
@@ -347,7 +360,7 @@ export function Extensions({
                 disabled={busy}
                 description={t.confirmInstanceDelete}
                 onConfirm={() =>
-                  perform(() => api({ action: "delete-instance", id: i.id }))
+                  perform(() => api({ action: "delete-instance", id: i.id }), i.kind === "scenario" ? t.scenarioDeleted : t.connectionDeleted, true)
                 }
               />
             </>
@@ -406,7 +419,7 @@ export function Extensions({
                 variant="ghost"
                 disabled={busy || (i.kind === "scenario" && !i.enabled)}
                 onClick={() =>
-                  void perform(() => api({ action: "run", id: i.id }))
+                  void perform(() => api({ action: "run", id: i.id }), t.refreshRequested)
                 }
               >
                 {i.kind === "scenario" ? t.updateCards : t.refreshData}
@@ -480,7 +493,7 @@ export function Extensions({
                           const result = await r.json();
                           if (!r.ok) throw new Error(result.error);
                           setReview(result);
-                        });
+                        }, t.packageReviewReady);
                       e.target.value = "";
                     }}
                   />
@@ -501,6 +514,7 @@ export function Extensions({
                 onClick={() =>
                   void perform(async () =>
                     setReview(await api({ action: "download", url })),
+                    t.packageReviewReady,
                   )
                 }
               >
@@ -556,7 +570,7 @@ export function Extensions({
                   void perform(async () => {
                     await api({ action: "confirm", id: review.id });
                     setReview(null);
-                  })
+                  }, t.installationRequested)
                 }
               >
                 {t.acceptAndInstall}
@@ -567,7 +581,7 @@ export function Extensions({
                   void perform(async () => {
                     await api({ action: "cancel", id: review.id });
                     setReview(null);
-                  })
+                  }, t.installationCancelled)
                 }
               >
                 {t.cancel}
@@ -666,6 +680,7 @@ export function Extensions({
                                 action: "delete-package",
                                 id: p.manifest.id,
                               }),
+                              t.packageDeleted, true,
                             )
                           }
                         />
@@ -700,7 +715,7 @@ export function Extensions({
             disabled={busy}
             label={t.restorePreviousInstallation}
             description={t.confirmRestoreInstallation}
-            onConfirm={() => perform(() => api({ action: "rollback" }))}
+            onConfirm={() => perform(() => api({ action: "rollback" }), t.installationRestored, true)}
           />
         ) : null}
       </>
@@ -764,7 +779,6 @@ export function InstanceEditor({
   }, [editorTitle, onEditorTitleChange]);
   const [issues, setIssues] = useState<SettingsIssue[]>([]);
   const [activeSetting, setActiveSetting] = useState<InstanceSetting | null>(null);
-  const [savedSetting, setSavedSetting] = useState<InstanceSetting | null>(null);
   const editorId = useId();
   const [sheet, setSheet] = useState<ConnectionSheetTarget | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<Pick<Status, "instances" | "connections" | "runtime"> | null>(null);
@@ -795,7 +809,6 @@ export function InstanceEditor({
           hint={footer}
           actions={item && editable ?
             <>
-              {savedSetting === setting && !changed ? <span role="status">{t.saved}</span> : null}
               <Button size="sm" type="submit" formNoValidate name="setting" value={setting}
                 disabled={busy || disabled || (item ? !changed : !!missingInput)}>
                 {busy && activeSetting === setting ? t.saving : t.save}
@@ -849,7 +862,6 @@ export function InstanceEditor({
             requestAnimationFrame(() => form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
             return false;
           }
-          setSavedSetting(null);
           setBusy(true);
           setError("");
           try {
@@ -867,7 +879,7 @@ export function InstanceEditor({
             const committed = (!item || savingSecrets) && next.changeSecrets ? { ...next, secrets: {}, changeSecrets: false } : next;
             if (committed !== next) { setSecrets({}); setChangeSecrets(false); }
             setSavedDraft(committed);
-            setSavedSetting(setting);
+            toast.success(item ? t.saved : m.kind === "scenario" ? t.scenarioCreated : t.connectionCreated);
             return true;
           } catch (e) {
             const serverIssues = (e as { issues?: SettingsIssue[] }).issues;
@@ -929,7 +941,7 @@ export function InstanceEditor({
             inputs={inputs} bindings={bindings} onChange={setBindings}
             savedBindings={savedDraft.bindings} packages={packages} instances={currentInstances}
             profiles={profiles} runtime={connectionStatus?.runtime ?? runtime} locale={locale}
-            existing={!!item} busy={busy} activeSetting={activeSetting} savedSetting={savedSetting}
+            existing={!!item} busy={busy} activeSetting={activeSetting}
             error={error} onOpen={setSheet}
           /> : null}
           {m.settingsUi.blocks.map((block) => {

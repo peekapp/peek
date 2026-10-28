@@ -11,6 +11,11 @@ with sync_playwright() as p:
     page = context.new_page()
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
+    def saved_toast():
+        notification = page.locator('[data-sonner-toast]').filter(has_text='Saved').last
+        expect(notification).to_be_visible()
+        notification.get_by_role('button', name='Dismiss notification').click()
+        expect(notification).to_have_count(0)
     def status(): return context.request.get(base + '/api/extensions').json()
     def visit(id):
         page.goto(base + '/scenarios/' + id)
@@ -37,7 +42,7 @@ with sync_playwright() as p:
     expect(group().get_by_role('radio', name='Calendar', exact=True).first).to_be_checked()
     expect(group().locator('[data-slot=card-footer]').get_by_role('button', name='Save', exact=True)).to_be_visible()
     group().get_by_role('button', name='Save', exact=True).click()
-    expect(group().get_by_text('Saved', exact=True)).to_be_visible()
+    saved_toast()
     assert next(i for i in status()['instances'] if i['id'] == scenario['id'])['name'] == scenario['name']
     expect(page.get_by_role('textbox', name='Name', exact=True)).to_have_value('Pending scenario name')
     # Sheet edits have an independent discard guard and save target.
@@ -53,7 +58,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='Keep editing', exact=True).click()
     expect(sheet().get_by_role('textbox', name='Name', exact=True)).to_have_value('Updated calendar')
     sheet().locator('[data-setting="general"]').get_by_role('button', name='Save', exact=True).click()
-    expect(sheet().get_by_text('Saved', exact=True)).to_be_visible()
+    saved_toast()
     sheet().get_by_role('button', name='Close', exact=True).click()
     expect(page.locator('[data-slot=sheet-content]')).to_have_attribute('data-state', 'closed')
     expect(sheet()).to_have_count(0)
@@ -116,13 +121,13 @@ with sync_playwright() as p:
     other = page.locator('[data-setting="bindings:other"]')
     other.get_by_role('radio', name='Created in sheet', exact=True).click()
     group().get_by_role('button', name='Save', exact=True).click()
-    expect(group().get_by_text('Saved', exact=True)).to_be_visible()
+    saved_toast()
     stored = next(i for i in status()['instances'] if i['id'] == grouped['id'])
     assert stored['bindings']['events'] and not stored['bindings'].get('other')
     expect(other.get_by_role('radio', name='Created in sheet', exact=True)).to_be_checked()
     group().get_by_role('radio', name='None', exact=True).click()
     group().get_by_role('button', name='Save', exact=True).click()
-    expect(group().get_by_text('Saved', exact=True)).to_be_visible()
+    saved_toast()
     assert not next(i for i in status()['instances'] if i['id'] == grouped['id'])['bindings']['events']
     # Multiple selections preserve the existing source; creation has only one Create action.
     page.reload(); page.wait_for_load_state('networkidle')
@@ -138,7 +143,7 @@ with sync_playwright() as p:
     expect(choice.get_by_role('checkbox')).to_be_checked()
     expect(group().get_by_role('checkbox', name='Updated calendar', exact=True)).to_be_checked()
     group().get_by_role('button', name='Save', exact=True).click()
-    expect(group().get_by_text('Saved', exact=True)).to_be_visible()
+    saved_toast()
     assert len(next(i for i in status()['instances'] if i['id'] == multiple['id'])['bindings']['events']) == 2
     visit('new?package=peek%2Fmeetings')
     expect(page.get_by_role('button', name='Create', exact=True)).to_be_disabled()

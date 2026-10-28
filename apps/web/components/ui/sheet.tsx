@@ -57,6 +57,7 @@ function SheetContent({
   side = "right",
   variant = "default",
   showCloseButton = true,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   locale: Locale;
@@ -83,6 +84,11 @@ function SheetContent({
           className,
         )}
         {...props}
+        onInteractOutside={(event) => {
+          // Dismissing a toast must not dismiss the editor underneath it.
+          if (event.target instanceof Element && event.target.closest("[data-sonner-toaster]")) event.preventDefault();
+          else onInteractOutside?.(event);
+        }}
       >
         {children}
         {showCloseButton && (
