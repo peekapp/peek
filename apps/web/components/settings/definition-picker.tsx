@@ -30,16 +30,6 @@ export function DefinitionPicker({
 }) {
   const [open, setOpen] = useState(false);
   const t = messages(locale);
-  const choices = packages
-    .filter((p) => p.manifest.kind === kind)
-    .map(({ manifest: m, iconDataUrl }) => ({
-      id: m.id,
-      iconDataUrl,
-      iconColor: m.iconColor,
-      title: m.name,
-      description: m.description,
-      href: `/connections/new?package=${encodeURIComponent(m.id)}`,
-    }));
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -78,38 +68,32 @@ export function DefinitionPicker({
             onSelect={() => setOpen(false)}
           />
         ) : (
-          <div className="grid gap-3">
-            {!choices.length ? <p>{t.noConnectionsAvailable}</p> : null}
-            {choices.map((choice) => (
-              <Card variant="choice" asChild key={choice.id}>
-                <Link href={choice.href} onClick={() => setOpen(false)}>
-                  <CardHeader>
-                    <CardTitle asChild>
-                      <strong className="flex items-center gap-3">
-                        <ExtensionIcon
-                          kind="connection"
-                          src={choice.iconDataUrl}
-                          color={choice.iconColor}
-                        />
-                        {choice.title}
-                      </strong>
-                    </CardTitle>
-                    <CardDescription asChild>
-                      <span>{choice.description}</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <span
-                    className="absolute right-4 top-6 text-2xl text-muted-foreground"
-                    aria-hidden="true"
-                  >
-                    ›
-                  </span>
-                </Link>
-              </Card>
-            ))}
-          </div>
+          <ConnectionTypeChoices packages={packages.filter((p) => p.manifest.kind === kind)} locale={locale} onSelect={() => setOpen(false)} />
         )}
       </DialogContent>
     </Dialog>
   );
+}
+
+export function ConnectionTypeChoices({ packages, locale, onSelect, embedded = false }: {
+  packages: Status["packages"]; locale: Locale; embedded?: boolean;
+  onSelect: (packageId: string) => void;
+}) {
+  const t = messages(locale);
+  return <div className="grid gap-3">
+    {!packages.length ? <p className="text-sm text-muted-foreground">{t.noConnectionsAvailable}</p> : null}
+    {packages.map(({ manifest, iconDataUrl }) => {
+      const content = <CardHeader>
+        <CardTitle asChild><strong className="flex items-center gap-3">
+          <ExtensionIcon kind="connection" src={iconDataUrl} color={manifest.iconColor} />
+          {manifest.name}
+        </strong></CardTitle>
+        <CardDescription asChild><span>{manifest.description}</span></CardDescription>
+      </CardHeader>;
+      return <Card variant="choice" asChild key={manifest.id}>
+        {embedded ? <button type="button" className="w-full text-left" onClick={() => onSelect(manifest.id)}>{content}</button>
+          : <Link href={`/connections/new?package=${encodeURIComponent(manifest.id)}`} onClick={() => onSelect(manifest.id)}>{content}</Link>}
+      </Card>;
+    })}
+  </div>;
 }

@@ -25,7 +25,7 @@ export function SettingsRowMenu({
   refreshDisabled,
   kind,
 }: {
-  href: string;
+  href?: string;
   locale: Locale;
   disabled?: boolean;
   onDelete?: () => Promise<void>;
@@ -39,18 +39,18 @@ export function SettingsRowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={t.actions}>
+        <Button type="button" variant="ghost" size="icon" aria-label={t.actions} disabled={disabled}>
           <Ellipsis />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
+          {href ? <DropdownMenuItem asChild>
             <Link href={href}>
               <Pencil aria-hidden="true" />
               {t.edit}
             </Link>
-          </DropdownMenuItem>
+          </DropdownMenuItem> : null}
           {kind === "scenario" && onToggle ? <DropdownMenuItem
             disabled={disabled}
             onSelect={() => void onToggle()}
@@ -67,7 +67,7 @@ export function SettingsRowMenu({
             {kind === "scenario" ? t.updateCards : t.refreshData}
           </DropdownMenuItem> : null}
           {onDelete ? <>
-          <DropdownMenuSeparator />
+          {href || onToggle || onRefresh ? <DropdownMenuSeparator /> : null}
           <ConfirmAction
             locale={locale}
             disabled={disabled}

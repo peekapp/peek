@@ -3,6 +3,7 @@
 import { messages, type Locale } from "@peek/core/i18n";
 
 import * as React from "react";
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 import { Dialog as SheetPrimitive } from "radix-ui";
@@ -37,7 +38,7 @@ function SheetOverlay({
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-overlay/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-overlay/50 backdrop-blur-sm data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
         className,
       )}
       {...props}
@@ -45,15 +46,21 @@ function SheetOverlay({
   );
 }
 
+const sheetVariants = cva("", { variants: { variant: {
+  default: "", editor: "w-full sm:max-w-[640px]",
+} }, defaultVariants: { variant: "default" } });
+
 function SheetContent({
   locale,
   className,
   children,
   side = "right",
+  variant = "default",
   showCloseButton = true,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   locale: Locale;
+  variant?: "default" | "editor";
   side?: "top" | "right" | "bottom" | "left";
   showCloseButton?: boolean;
 }) {
@@ -72,6 +79,7 @@ function SheetContent({
             "inset-x-0 top-0 h-auto border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
           side === "bottom" &&
             "inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          sheetVariants({ variant }),
           className,
         )}
         {...props}

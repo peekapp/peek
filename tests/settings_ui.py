@@ -93,7 +93,7 @@ with sync_playwright() as p:
     page.set_viewport_size({'width':1280,'height':1000})
     visit('/scenarios/' + scenario['id'])
     expect(block('general').get_by_role('switch')).to_be_visible()
-    expect(page.locator('[data-setting="enabled"]').get_by_role('switch')).to_be_visible()
+    expect(page.locator('[data-setting="general"]').get_by_role('switch')).to_be_visible()
     expect(block('credentials')).to_have_count(0)
     # Create validates the whole configuration and offers exactly one action.
     visit('/connections/new?package=test%2Fsettings')

@@ -2,6 +2,8 @@
 
 import {
   useEffect,
+  useImperativeHandle,
+  type Ref,
   useRef,
   useState,
   type HTMLAttributes,
@@ -27,9 +29,14 @@ const editorFormVariants = cva("min-w-0", {
   defaultVariants: { layout: "default" },
 });
 
+export type EditorGuard = { requestClose: (close: () => void) => void };
+
 /** A successful submit commits the draft; failed submits keep navigation guarded. */
 export function EditorForm({
   className,
+  guardRef,
+  navigationGuard = true,
+  navigationDirty = false,
   layout,
   draft,
   savedDraft,
@@ -39,6 +46,9 @@ export function EditorForm({
   children,
   ...props
 }: Omit<HTMLAttributes<HTMLElement>, "onSubmit"> & {
+  guardRef?: Ref<EditorGuard>;
+  navigationGuard?: boolean;
+  navigationDirty?: boolean;
   layout?: "default" | "preview" | "settings";
   draft: unknown;
   savedDraft?: unknown;
@@ -53,12 +63,21 @@ export function EditorForm({
   const [pending, setPending] = useState(false);
   const submitting = useRef(false);
   const leaving = useRef(false);
-  const [destination, setDestination] = useState<(() => void) | null>(null);
+  const [destination, setDestination] = useState<{ run: () => void; navigation: boolean } | null>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   const dirty = serialized !== (savedDraft === undefined ? saved : JSON.stringify(savedDraft));
 
+  useImperativeHandle(guardRef, () => ({
+    requestClose(close) {
+      if (submitting.current) return;
+      if (!dirty) { close(); return; }
+      previousFocus.current = document.activeElement as HTMLElement | null;
+      setDestination({ run: close, navigation: false });
+    },
+  }), [dirty]);
+
   useEffect(() => {
-    if (!dirty && !pending) return;
+    if (!navigationGuard || (!dirty && !navigationDirty && !pending)) return;
     const warn = (event: BeforeUnloadEvent) => {
       if (leaving.current) return;
       event.preventDefault();
@@ -66,7 +85,7 @@ export function EditorForm({
     };
     const ask = (go: () => void) => {
       previousFocus.current = document.activeElement as HTMLElement | null;
-      setDestination(() => go);
+      setDestination({ run: go, navigation: true });
     };
     const click = (event: MouseEvent) => {
       if (
@@ -131,7 +150,7 @@ export function EditorForm({
       document.removeEventListener("click", click, true);
       window.navigation?.removeEventListener("navigate", traverse);
     };
-  }, [dirty, pending, router]);
+  }, [dirty, navigationDirty, navigationGuard, pending, router]);
 
   return (
     <>
@@ -141,6 +160,7 @@ export function EditorForm({
         aria-busy={pending}
         onSubmit={async (event) => {
           event.preventDefault();
+          event.stopPropagation();
           if (submitting.current) return;
           submitting.current = true;
           setPending(true);
@@ -183,8 +203,10 @@ export function EditorForm({
               variant="destructive"
               disabled={pending}
               onClick={() => {
-                leaving.current = true;
-                destination?.();
+                leaving.current = destination?.navigation ?? false;
+                const run = destination?.run;
+                setDestination(null);
+                run?.();
               }}
             >
               {t.leave}

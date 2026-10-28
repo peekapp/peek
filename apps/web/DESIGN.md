@@ -22,9 +22,9 @@ Consistency is implemented in components, not achieved by copying classes.
 | Screen collection | `SettingsGrid` + `SettingsCard` | Preview cards in two equal columns, one on small screens, 24px gap |
 | Text resource collection | `SettingsList` + `SettingsRow` | Installed extensions use shadcn Item rows in one bordered list with separators; metadata left, actions right, stacked on mobile |
 | Screen card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
-| Scenario collection | `SettingsDataTable` | shadcn Table with TanStack Table; clickable rows with name (no subtitle), health as the sole status (Paused when disabled), avatar-only profile (name in tooltip), and a trailing three-dot Edit/Enable-or-Disable/Refresh-cards/Delete menu with icons; column headers are visible on desktop; keyboard focus remains visible without a mouse-click row ring; health dot/text with explanatory tooltip containing the last successful run (relative and full date); manual card refresh in the menu; current stored card count independent of screen visibility; no connections or troubleshooting; errors stay visible; separate bordered cards below 1024px (name and primary health above, generated card count/profile/menu on the page background below a divider); existing search and empty states |
+| Scenario collection | `SettingsDataTable` | shadcn Table with TanStack Table; clickable rows with name (no subtitle), health as the sole status (Paused when disabled), avatar-only profile (name in tooltip), and a trailing three-dot Edit/Enable-or-Disable/Refresh-cards/Delete menu with icons; column headers are visible on desktop; keyboard focus remains visible without a mouse-click row ring; health dot/text with explanatory tooltip containing the last successful run (relative and full date); manual card refresh in the menu; current stored card count independent of screen visibility; no connections or troubleshooting; error details stay in the health tooltip; separate bordered cards below 1024px (name and primary health above, generated card count/profile/menu on the page background below a divider); existing search and empty states |
 | Profile collection | `SettingsGrid` + `ProfileCard` | Vertical cards in a responsive grid, at least four columns from 1024px; 64px shared avatar with name below, then compact icon/count pairs with hover/focus tooltips for connections and scenarios; whole-card edit link and separate Edit/Delete menu with confirmation; system profiles cannot be deleted; no header or individual resource names |
-| Connection collection | `SettingsDataTable` | Same responsive table/cards, clickable names, avatar-only profiles and health dot/tooltip as scenarios; Connected, Waiting for sync, Needs attention or Paused; last update in the health tooltip; Edit/Refresh data/Delete menu, no enable/disable or card-count column; errors stay visible |
+| Connection collection | `SettingsDataTable` | Same responsive table/cards, clickable names, avatar-only profiles and health dot/tooltip as scenarios; Connected, Waiting for sync, Needs attention or Paused; last update in the health tooltip; Edit/Refresh data/Delete menu, no enable/disable or card-count column; error details stay in the health tooltip |
 | Empty collection        | `SettingsEmpty`                  | Shared shadcn Empty composition with next-step copy                         |
 | Editor heading          | `EditorHeader`                   | Back link, shared section heading, optional description/action              |
 | Extension editor panels | `EditorPanel` + `Card variant="settings"` | Scenarios and connections start with one shared identity panel: package icon/name and Enabled switch, labeled Name/Profile fields, saved health and last-success/update time, scenario card count and visible errors. Name/profile/enabled save together; other blocks have their own Save button. Existing records save only that panel, in place; unrelated drafts remain guarded. A new record needs a complete valid first save. Credentials remain an atomic group because stored secrets are never sent back to the browser. Editor top bars use clickable shadcn breadcrumbs with the saved instance name, updating after rename; omit the redundant back link and separate heading. Extension installation/review uses the same Card variant. |
@@ -113,7 +113,7 @@ poll these out from under a draft. Catalog/status lists and independent profile 
 may refresh without remounting editors or resetting search and installation inputs.
 Load extension schemas and profile choices independently.
 
-Text resource loading uses `LoadingState layout="list"`; screen loading retains the card grid. Keep errors visible in rows and connection troubleshooting expandable. Preserve real title links, separate actions, and wrapping names/metadata without horizontal scrolling.
+Text resource loading uses `LoadingState layout="list"`; screen loading retains the card grid. Keep resource-row error details in the health tooltip and connection troubleshooting expandable. Preserve real title links, separate actions, and wrapping names/metadata without horizontal scrolling.
 
 ## Extension identity
 
@@ -158,3 +158,36 @@ saves refresh status without replacing the schema or other drafts. Paused connec
 stop syncing but retain cached data for existing scenario bindings; header copy explains
 this. Scenario connection choices show paused entries as disabled, retaining existing
 selections. Connection rows remain editable and manual refresh is disabled while paused.
+
+Scenario connections sit immediately below the identity panel, before package settings.
+Use the shared ScenarioConnections composition: one EditorPanel, separated input groups,
+compact selectable rows with extension icon, name label, avatar-only ProfileLabel and InstanceHealth.
+The row surface/name selects; a separate Open action opens settings. Header actions align
+with the top of the title. Input groups use EditorPanelSection and the standard CardFooter
+for compatibility details and Save, never a replacement action area inside the body.
+Connection choice errors appear in the health tooltip, without duplicate inline error text.
+Single inputs use radios (including None when optional); multiple inputs use checkboxes.
+Selected rows use semantic accent/border styling. Paused choices remain visible and disabled.
+Dataset labels disambiguate choices; contract IDs/versions live in expandable details.
+Existing input groups save independently; creation retains the single Create action.
+
+Connection Open actions open the shared connection editor in an editor Sheet (640px desktop,
+full-width mobile). Add connection opens the shared type picker filtered by the input's
+contract and accepted version. Successful creation selects the matching dataset in the
+scenario draft; multiple matches require a choice. Connection creation is independent of
+scenario saving. Sheets preserve the scenario draft and guard their own unsaved edits on
+close/back; only the active editor guards navigation, including the underlying draft.
+Save and validation events stay scoped to their editor. Refresh failures after a successful
+creation retain the created ID and retry reading it, never creating another instance.
+
+Sheets load the shared Tailwind animation utilities, use a dimmed blurred backdrop, and
+remain mounted through the Radix closing animation. Respect prefers-reduced-motion.
+
+Resource tables size health, card count, profile and menu columns to their content,
+with consistent cell padding. The name column takes the remaining width; health
+and count labels stay on one line. Avoid fixed metadata widths that leave large gaps.
+
+Saved scenario/connection identity panels share the existing three-dot actions menu
+beside Enabled, with Delete and the shared confirmation. New drafts omit the menu.
+Failed deletion stays in the confirmation with feedback; connections in use cannot be
+deleted. Deletion from a sheet preserves the scenario draft and removes stale choices.

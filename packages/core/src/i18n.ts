@@ -1,5 +1,16 @@
 export type Locale = "en" | "ru";
 export const en = {
+  connectionOpen: "Open",
+  connectionDetails: "Data compatibility",
+  connectionChooseOne: "Choose one connection to provide data.",
+  connectionChooseMany: "Choose connections to provide data.",
+  connectionNone: "None",
+  connectionInstallRequired: "Install a compatible connection extension to continue.",
+  connectionCreateHint: "The connection will be saved separately. Save the scenario to keep your selection.",
+  connectionRefreshFailed: "Connection saved, but its details could not be refreshed. Reload to continue.",
+  connectionChooseDataset: "Choose a dataset",
+  connectionBack: "Back to connection types",
+
   settingsRequired: "This field is required.",
   settingsInvalid: "Enter a valid value.",
   settingsPattern: "Use the requested format.",
@@ -44,6 +55,8 @@ export const en = {
   disable: "Disable",
   enable: "Enable",
   confirmInstanceDelete: "Delete this instance and its local data?",
+  actionFailed: "Could not complete this action. Try again.",
+  connectionInUse: "This connection is used by a scenario. Remove it from the scenario and save before deleting it.",
   searchScreens: "Search screens",
   noResultsFound: "No results found",
   tryADifferentSearch: "Try a different search",
@@ -376,6 +389,17 @@ export const en = {
   allClear: "All clear",
 };
 export const ru: Record<keyof typeof en, string> = {
+  connectionOpen: "Открыть",
+  connectionDetails: "Совместимость данных",
+  connectionChooseOne: "Выберите одно подключение для получения данных.",
+  connectionChooseMany: "Выберите подключения для получения данных.",
+  connectionNone: "Не выбрано",
+  connectionInstallRequired: "Для продолжения установите совместимое расширение подключения.",
+  connectionCreateHint: "Подключение сохранится отдельно. Сохраните сценарий, чтобы применить выбор.",
+  connectionRefreshFailed: "Подключение сохранено, но обновить его данные не удалось. Обновите, чтобы продолжить.",
+  connectionChooseDataset: "Выберите набор данных",
+  connectionBack: "Назад к типам подключений",
+
   settingsRequired: "Обязательное поле.",
   settingsInvalid: "Введите корректное значение.",
   settingsPattern: "Используйте указанный формат.",
@@ -421,6 +445,8 @@ export const ru: Record<keyof typeof en, string> = {
   disable: "Выключить",
   enable: "Включить",
   confirmInstanceDelete: "Удалить этот экземпляр и его локальные данные?",
+  actionFailed: "Не удалось выполнить действие. Попробуйте ещё раз.",
+  connectionInUse: "Это подключение используется сценарием. Уберите его из сценария и сохраните изменения перед удалением.",
   searchScreens: "Поиск экранов",
   noResultsFound: "Ничего не найдено",
   tryADifferentSearch: "Попробуйте другой запрос",

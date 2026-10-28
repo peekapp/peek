@@ -2,6 +2,7 @@
 
 import { useState, type ReactElement } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
+import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import {
   AlertDialog,
@@ -33,11 +34,12 @@ export function ConfirmAction({
   const t = messages(locale);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   return (
     <AlertDialog
       open={open}
       onOpenChange={(next) => {
-        if (!pending) setOpen(next);
+        if (!pending) { setOpen(next); setError(""); }
       }}
     >
       <AlertDialogTrigger asChild>
@@ -57,6 +59,7 @@ export function ConfirmAction({
           <AlertDialogTitle>{label ?? t.remove}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>{t.cancel}</AlertDialogCancel>
           <AlertDialogAction
@@ -65,9 +68,12 @@ export function ConfirmAction({
             onClick={async (event) => {
               event.preventDefault();
               setPending(true);
+              setError("");
               try {
                 await onConfirm();
                 setOpen(false);
+              } catch (error) {
+                setError(error instanceof Error ? error.message : t.actionFailed);
               } finally {
                 setPending(false);
               }

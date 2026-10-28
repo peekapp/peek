@@ -7,7 +7,7 @@ import { InstanceHealth } from "./instance-health";
 import { SettingsDataTable } from "./data-table";
 import { LoadingState, ErrorState } from "./layout";
 import { EditorForm } from "./layout";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useId, type Ref, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ExtensionIcon, ExtensionLabel } from "../extension-icon";
@@ -20,12 +20,7 @@ import { Switch } from "../ui/switch";
 import { Checkbox } from "../ui/checkbox";
 import { SettingsSelect } from "./select";
 import { SelectItem } from "../ui/select";
-import {
-  FieldGroup,
-  FieldSet,
-  FieldLegend,
-  FieldDescription,
-} from "../ui/field";
+import { FieldGroup } from "../ui/field";
 import { SettingsField } from "./form-field";
 import {
   Card,
@@ -52,7 +47,9 @@ import {
 import { ProfileLabel } from "../profile-label";
 import type { Profile } from "@peek/core/profiles";
 import { DeleteButton, ConfirmAction } from "./delete-button";
-import { acceptsContract } from "@peek/extensions/compatibility";
+import { ScenarioConnections, ConnectionSheet, type ConnectionSheetTarget } from "./scenario-connections";
+import { connectionInputs, selectBinding } from "./connection-bindings";
+import type { EditorGuard } from "./editor-form";
 import { applyInstanceSetting, type InstanceSetting } from "./instance-draft";
 type Binding = { connectionId: string; dataset: string };
 type Item = {
@@ -89,7 +86,7 @@ export type Status = {
   runtime: { ready: boolean; error: string | null };
   canRollback: boolean;
 };
-async function api(body: unknown) {
+export async function api(body: unknown) {
   const r = await fetch("/api/extensions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -242,6 +239,10 @@ export function Extensions({
             profiles={profiles}
             profilesError={profilesError}
             locale={locale}
+            onDelete={item ? async () => {
+              await api({ action: "delete-instance", id: item.id });
+              router.replace(`/${section}`);
+            } : undefined}
             save={async (instance) => {
               const result = await api({ action: "save", instance });
               if (!item) router.replace(`/${section}/${encodeURIComponent(result.id)}`);
@@ -279,11 +280,6 @@ export function Extensions({
         health: (
           <InstanceHealth kind={i.kind} enabled={!!i.enabled} error={i.last_error} lastSuccess={i.last_success} ready={data.runtime.ready} locale={locale} />
         ),
-        error: i.last_error ? (
-          <Alert variant="destructive" role="status">
-            <AlertDescription>{i.last_error}</AlertDescription>
-          </Alert>
-        ) : null,
         media: (
           <ExtensionIcon
             kind={i.kind}
@@ -711,7 +707,7 @@ export function Extensions({
     </SettingsCollection>
   );
 }
-function InstanceEditor({
+export function InstanceEditor({
   manifest: m,
   onEditorTitleChange,
   packages,
@@ -723,7 +719,15 @@ function InstanceEditor({
   profilesError,
   locale,
   save,
+  guardRef,
+  navigationDirty = false,
+  defaultProfile = "shared",
+  onDelete,
 }: {
+  onDelete?: () => Promise<void>;
+  guardRef?: Ref<EditorGuard>;
+  navigationDirty?: boolean;
+  defaultProfile?: string;
   manifest: Manifest;
   onEditorTitleChange?: (title: string) => void;
   packages: Status["packages"];
@@ -738,7 +742,7 @@ function InstanceEditor({
 }) {
   const t = messages(locale);
   const [name, setName] = useState(item?.name ?? m.name),
-    [profile, setProfile] = useState(item?.profile_id ?? "shared"),
+    [profile, setProfile] = useState(item?.profile_id ?? defaultProfile),
     [enabled, setEnabled] = useState(item ? !!item.enabled : true);
   const [settings, setSettings] = useState<Record<string, Json>>(
     (item?.settings as Record<string, Json>) ?? initial(m.settings),
@@ -761,27 +765,12 @@ function InstanceEditor({
   const [issues, setIssues] = useState<SettingsIssue[]>([]);
   const [activeSetting, setActiveSetting] = useState<InstanceSetting | null>(null);
   const [savedSetting, setSavedSetting] = useState<InstanceSetting | null>(null);
-  const inputs = Object.entries(m.inputs ?? {}).map(([input, requirement]) => ({
-    input,
-    requirement,
-    choices: connections.flatMap((connection) =>
-      Object.entries(connection.contracts)
-        .filter(([, contract]) => acceptsContract(m, requirement, contract))
-        .map(([dataset]) => {
-          const sourcePackage = packages.find(
-            (p) => p.manifest.id === instances.find((i) => i.id === connection.id)?.package_id,
-          );
-          return {
-            connectionId: connection.id,
-            enabled: connection.enabled,
-            name: connection.name,
-            iconDataUrl: sourcePackage?.iconDataUrl,
-            iconColor: sourcePackage?.manifest.iconColor,
-            dataset,
-          };
-        }),
-    ),
-  }));
+  const editorId = useId();
+  const [sheet, setSheet] = useState<ConnectionSheetTarget | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<Pick<Status, "instances" | "connections" | "runtime"> | null>(null);
+  const currentConnections = connectionStatus?.connections ?? connections;
+  const currentInstances = connectionStatus?.instances ?? instances;
+  const inputs = connectionInputs(m, currentConnections);
   const missingInput = inputs.find(
     ({ input, requirement, choices }) =>
       !requirement.optional &&
@@ -826,13 +815,17 @@ function InstanceEditor({
     <div>
       <EditorForm
         layout="settings"
-        id="extension-instance"
+        id={editorId}
+        guardRef={guardRef}
+        navigationGuard={!sheet}
+        navigationDirty={navigationDirty}
         as={item ? "div" : "form"}
         draft={draft}
         savedDraft={savedDraft}
         locale={locale}
         onSubmit={async (e) => {
           e.preventDefault();
+          const form = e.currentTarget;
           const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
           if (!submitter) return false;
           const setting = submitter.value as InstanceSetting;
@@ -853,7 +846,7 @@ function InstanceEditor({
           setIssues(nextIssues);
           if (nextIssues.length || !next.name.trim() || next.name.length > 100 || !profiles?.some((p) => p.id === next.profile)) {
             setError(item ? t.settingsSaveError : t.settingsCreateError);
-            requestAnimationFrame(() => document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+            requestAnimationFrame(() => form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
             return false;
           }
           setSavedSetting(null);
@@ -918,10 +911,27 @@ function InstanceEditor({
               </div> : null}
             </>, !profiles, m.description, undefined, true,
             <ExtensionIcon kind={m.kind} size="header" src={packages.find((p) => p.manifest.id === m.id)?.iconDataUrl} color={m.iconColor} />,
-            <SettingsField label={t.statusEnabled}>
-              <Switch checked={enabled} onCheckedChange={setEnabled} />
-            </SettingsField>
+            <div className="flex items-center gap-2">
+              <SettingsField label={t.statusEnabled}>
+                <Switch checked={enabled} onCheckedChange={setEnabled} />
+              </SettingsField>
+              {item && onDelete ? <SettingsRowMenu locale={locale} kind={m.kind} disabled={busy}
+                onDelete={async () => {
+                  setBusy(true);
+                  try { await onDelete(); }
+                  catch (error) {
+                    throw new Error(error instanceof Error && error.message === "connection-in-use" ? t.connectionInUse : t.actionFailed);
+                  } finally { setBusy(false); }
+                }} /> : null}
+            </div>
           )}
+          {inputs.length ? <ScenarioConnections
+            inputs={inputs} bindings={bindings} onChange={setBindings}
+            savedBindings={savedDraft.bindings} packages={packages} instances={currentInstances}
+            profiles={profiles} runtime={connectionStatus?.runtime ?? runtime} locale={locale}
+            existing={!!item} busy={busy} activeSetting={activeSetting} savedSetting={savedSetting}
+            error={error} onOpen={setSheet}
+          /> : null}
           {m.settingsUi.blocks.map((block) => {
             const secret = block.source === "secrets";
             const editable = (block.controls ?? []).some((c) => c.type !== "text" && c.type !== "readonly" && !c.disabled);
@@ -935,88 +945,6 @@ function InstanceEditor({
               </> : null), false, settingsText(block.description, locale, t),
               block.footer ? <ExtensionContent content={block.footer} locale={locale} /> : undefined, editable);
           })}
-            {inputs.map(({ input, requirement, choices }) => panel(`bindings:${input}`, `${t.connections} (${input})`,
-              <FieldSet key={input} aria-describedby={`input-${input}-hint`}>
-                <FieldLegend className="sr-only">
-                  {t.connections} ({input}){" "}
-                  {requirement.optional ? t.optional : ""}
-                </FieldLegend>
-                <FieldDescription id={`input-${input}-hint`}>
-                  {requirement.optional
-                    ? t.optionalConnection
-                    : t.compatibleConnectionRequired}
-                </FieldDescription>
-                {choices.some((choice) => !choice.enabled) ? <FieldDescription id={`input-${input}-paused-hint`}>
-                  {t.connectionPausedChoice}
-                </FieldDescription> : null}
-                {!choices.length ? (
-                  <SettingsEmpty
-                    title={t.noCompatibleConnections}
-                    description={
-                      t.addAConnectionThatProvides +
-                      ` ${requirement.contract} (${requirement.version}).`
-                    }
-                    action={
-                      <Button variant="outline" asChild>
-                        <Link href="/connections">{t.addConnection}</Link>
-                      </Button>
-                    }
-                  />
-                ) : (
-                  choices.map((choice) => (
-                    <SettingsField
-                      key={`${choice.connectionId}:${choice.dataset}`}
-                      label={
-                        <ExtensionLabel
-                          kind="connection"
-                          src={choice.iconDataUrl}
-                          color={choice.iconColor}
-                        >
-                          <span className={choice.enabled ? undefined : "text-muted-foreground"}>{choice.name}{!choice.enabled ? ` (${t.paused})` : ""}</span>
-                        </ExtensionLabel>
-                      }
-                    >
-                      <Checkbox
-                        disabled={!choice.enabled}
-                        aria-describedby={!choice.enabled ? `input-${input}-paused-hint` : undefined}
-                        checked={(bindings[input] ?? []).some(
-                          (binding) =>
-                            binding.connectionId === choice.connectionId &&
-                            binding.dataset === choice.dataset,
-                        )}
-                        onCheckedChange={(checked) => {
-                          const rest = (bindings[input] ?? []).filter(
-                            (binding) =>
-                              (binding.connectionId !== choice.connectionId ||
-                                binding.dataset !== choice.dataset) &&
-                              choices.some(
-                                (option) =>
-                                  option.connectionId ===
-                                  binding.connectionId &&
-                                  option.dataset === binding.dataset,
-                              ),
-                          );
-                          setBindings({
-                            ...bindings,
-                            [input]:
-                              checked === true
-                                ? [
-                                  ...(requirement.multiple ? rest : []),
-                                  {
-                                    connectionId: choice.connectionId,
-                                    dataset: choice.dataset,
-                                  },
-                                ]
-                                : rest,
-                          });
-                        }}
-                      />
-                    </SettingsField>
-                  ))
-                )}
-              </FieldSet>,
-              !requirement.optional && !choices.some((choice) => (bindings[input] ?? []).some((binding) => binding.connectionId === choice.connectionId && binding.dataset === choice.dataset)), t.settingsBindingsDescription,
-            ))}
           {!item ? <>
             {error ? <ErrorState>{error}</ErrorState> : null}
             <div><Button type="submit" formNoValidate name="setting" value="create" disabled={busy || !profiles || !!missingInput}>
@@ -1025,6 +953,24 @@ function InstanceEditor({
           </> : null}
         </div>
       </EditorForm>
+      {sheet ? <ConnectionSheet target={sheet} manifest={m} packages={packages}
+        instances={currentInstances} connections={currentConnections} runtime={connectionStatus?.runtime ?? runtime}
+        profiles={profiles} profilesError={profilesError} locale={locale} defaultProfile={profile}
+        scenarioDirty={JSON.stringify(draft) !== JSON.stringify(savedDraft)}
+        onClose={() => setSheet(null)} onRefresh={setConnectionStatus}
+        onDeleted={(id) => {
+          setConnectionStatus({
+            instances: currentInstances.filter((instance) => instance.id !== id),
+            connections: currentConnections.filter((connection) => connection.id !== id),
+            runtime: connectionStatus?.runtime ?? runtime,
+          });
+          setBindings((previous) => Object.fromEntries(Object.entries(previous).map(([input, values]) =>
+            [input, values.filter((binding) => binding.connectionId !== id)])));
+        }}
+        onSelect={(input, binding) => setBindings((previous) => ({ ...previous,
+          [input]: selectBinding(previous[input] ?? [], binding, true, !!m.inputs?.[input].multiple),
+        }))} /> : null}
+
     </div>
   );
 }

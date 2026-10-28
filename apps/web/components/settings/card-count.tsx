@@ -9,7 +9,7 @@ export function ScenarioCardCount({ count, locale }: { count: number; locale: Lo
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span tabIndex={0} className="relative z-10 inline-flex rounded-sm text-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span tabIndex={0} className="relative z-10 inline-flex whitespace-nowrap rounded-sm text-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           {label}
         </span>
       </TooltipTrigger>

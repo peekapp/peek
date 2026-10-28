@@ -20,7 +20,6 @@ import {
 type ResourceRow = ComponentProps<typeof SettingsRow> & {
   id: string;
   profile?: ReactNode;
-  error?: ReactNode;
   health?: ReactNode;
   cardCount?: ReactNode;
 };
@@ -28,10 +27,10 @@ const columnVariants = cva("px-4", {
   variants: {
     column: {
       name: "col-span-1 min-w-0 py-4 pr-2 lg:py-2 lg:pr-4",
-      health: "col-span-2 self-start py-4 pl-2 lg:w-40 lg:py-2 lg:pl-4",
-      cardCount: "content-center self-stretch border-t bg-background lg:w-32 lg:border-t-0 lg:bg-transparent",
-      profile: "flex h-full items-center border-t bg-background lg:table-cell lg:w-16 lg:border-t-0 lg:bg-transparent lg:px-4",
-      actions: "content-center self-stretch border-t bg-background pl-2 lg:w-16 lg:border-t-0 lg:bg-transparent lg:pl-4",
+      health: "col-span-2 self-start py-4 pl-2 lg:py-2 lg:pl-4",
+      cardCount: "content-center self-stretch border-t bg-background lg:border-t-0 lg:bg-transparent",
+      profile: "flex h-full items-center border-t bg-background lg:table-cell lg:border-t-0 lg:bg-transparent lg:px-4",
+      actions: "content-center self-stretch border-t bg-background pl-2 lg:border-t-0 lg:bg-transparent lg:pl-4",
     },
   },
 });
@@ -47,7 +46,6 @@ const columns = column.columns([
         {row.media}
         <div className="min-w-0 flex-1">
           <div>{row.title}</div>
-          {row.error}
         </div>
       </div>
     ),
@@ -93,13 +91,13 @@ export function SettingsDataTable({
   if (!rows.length) return null;
   return (
     <div className="lg:overflow-hidden lg:rounded-md lg:border">
-      <Table className="block lg:table lg:table-fixed" aria-label={kind === "scenario" ? t.scenarios : t.connections}>
+      <Table className="block lg:table lg:table-auto" aria-label={kind === "scenario" ? t.scenarios : t.connections}>
         <colgroup className="hidden lg:table-column-group">
-          <col />
-          <col className="w-32" />
-          {kind !== "connection" ? <col className="w-32" /> : null}
-          <col className="w-16" />
-          <col className="w-16" />
+          <col className="w-full" />
+          <col className="w-px" />
+          {kind !== "connection" ? <col className="w-px" /> : null}
+          <col className="w-px" />
+          <col className="w-px" />
         </colgroup>
         <TableBody className="grid gap-4 lg:table-row-group [&_tr:last-child]:border lg:[&_tr:last-child]:border-0">
           {table.getRowModel().rows.map((row) => (

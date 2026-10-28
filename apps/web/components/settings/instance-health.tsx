@@ -43,7 +43,7 @@ export function InstanceHealth({
     <Tooltip>
       <TooltipTrigger asChild>
         <button type="button" aria-label={showUpdated ? undefined : `${t.health}: ${label}`} className="relative z-10 inline-flex flex-wrap items-center gap-x-4 gap-y-2 rounded-sm text-left text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap">
             <span aria-hidden="true" className={dot({ state })} />
             {label}
           </span>
