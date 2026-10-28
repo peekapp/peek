@@ -19,11 +19,16 @@ with sync_playwright() as p:
     def prefs(locale='en', theme='night'):
         for action, value in [('locale', locale), ('theme', theme)]:
             post('/api/settings', {'action': action, action: value})
+    def open_related(root=None, locale='en'):
+        (root or page).get_by_role('button', name='Actions' if locale == 'en' else 'Действия', exact=True).click()
+        page.get_by_role('menuitem', name='Related items' if locale == 'en' else 'Связанные объекты', exact=True).click()
     def visit(path):
         page.goto(base + path)
         page.wait_for_load_state('networkidle')
+        if path.startswith('/connections/'):
+            open_related(locale=context.request.get(base + '/api/settings').json()['locale'])
     def usage(root=None, locale='en'):
-        return (root or page).get_by_role('region', name='Used by' if locale == 'en' else 'Используется в сценариях', exact=True)
+        return (root or page).get_by_role('region', name='Scenarios' if locale == 'en' else 'Сценарии', exact=True)
     def no_overflow():
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), page.url
     prefs()
@@ -45,6 +50,13 @@ with sync_playwright() as p:
     count = row.get_by_text(f'{total} scenarios', exact=True)
     count.focus()
     expect(page.get_by_role('tooltip')).to_contain_text('including paused scenarios')
+    count.click()
+    page.get_by_role('button', name='Disconnect: Paused scenario', exact=True).click()
+    expect(usage().get_by_role('listitem')).to_have_count(total - 1)
+    page.locator('[data-sonner-toast]').filter(has_text='Scenario disconnected').last.get_by_role('button', name='Undo', exact=True).click()
+    expect(usage().get_by_role('listitem')).to_have_count(total)
+    page.get_by_role('dialog').get_by_role('button', name='Close', exact=True).click()
+    expect(count).to_be_focused()
     page.get_by_role('searchbox').fill('Calendar')
     expect(row.get_by_text(f'{total} scenarios', exact=True)).to_be_visible()
     for locale in ['en', 'ru']:
@@ -53,12 +65,18 @@ with sync_playwright() as p:
             for width in [1280, 390]:
                 page.set_viewport_size({'width': width, 'height': 1000})
                 visit('/connections')
-                expect(page.get_by_text('6 scenarios' if locale == 'en' else '6 сценариев', exact=True)).to_be_visible()
+                expect(page.get_by_text(f'{total} scenarios' if locale == 'en' else f'{total} сценариев', exact=True)).to_be_visible()
                 no_overflow()
                 page.screenshot(path=f'/tmp/peek-usage-list-{locale}-{theme}-{width}.png', full_page=True)
                 visit('/connections/' + connection_id)
                 expect(usage(locale=locale).get_by_role('listitem')).to_have_count(total)
-                names = usage(locale=locale).locator('a').all_text_contents()
+                aligned_row = usage(locale=locale).get_by_role('listitem').filter(has=page.get_by_role('link', name='Alpha scenario', exact=True))
+                title_box = aligned_row.get_by_role('link', name='Alpha scenario', exact=True).bounding_box()
+                for slot in ['item-media', 'item-actions']:
+                    box = aligned_row.locator(f'[data-slot="{slot}"]').bounding_box()
+                    assert abs(title_box['y'] + title_box['height'] / 2 - box['y'] - box['height'] / 2) < 2
+
+                names = usage(locale=locale).locator('a[href^="/scenarios/"]').all_text_contents()
                 assert names == page.evaluate('(v) => [...v.names].sort((a,b) => a.localeCompare(b,v.locale))', {'names': names, 'locale': locale})
                 no_overflow()
                 page.screenshot(path=f'/tmp/peek-usage-header-{locale}-{theme}-{width}.png', full_page=True)
@@ -71,15 +89,19 @@ with sync_playwright() as p:
     prefs()
     page.set_viewport_size({'width': 1280, 'height': 1000})
     visit('/connections/' + unused['id'])
-    expect(usage().get_by_text('No scenarios use this connection yet.', exact=True)).to_be_visible()
+    expect(usage().get_by_text('No scenarios use this connection yet', exact=True)).to_be_visible()
     visit('/connections/' + connection_id)
+    page.get_by_role('dialog').get_by_role('button', name='Close', exact=True).click()
+    expect(page.get_by_role('dialog')).to_have_count(0)
+    page.keyboard.press('Escape')
     page.get_by_role('textbox', name='Name', exact=True).fill('Unsaved connection')
+    open_related()
     link = usage().get_by_role('link', name='Alpha scenario', exact=True)
     link.focus()
     page.keyboard.press('Enter')
     expect(page.get_by_role('alertdialog')).to_be_visible()
     page.get_by_role('button', name='Keep editing', exact=True).click()
-    expect(page.get_by_role('textbox', name='Name', exact=True)).to_have_value('Unsaved connection')
+    expect(page.locator('[data-setting=general] input:not([type=checkbox])').first).to_have_value('Unsaved connection')
     link.click()
     page.get_by_role('button', name='Leave', exact=True).click()
     expect(page).to_have_url(base + '/scenarios/' + targets[0])
@@ -88,15 +110,16 @@ with sync_playwright() as p:
         visit('/scenarios/' + source['id'])
         page.get_by_role('textbox', name='Name', exact=True).fill('Unsaved scenario')
         page.locator('[data-setting="bindings:events"]').get_by_role('button', name='Open: Calendar', exact=True).first.click()
-        sheet = page.get_by_role('dialog')
-        expect(usage(sheet).get_by_role('listitem')).to_have_count(total)
+        sheet = page.get_by_role('dialog').first
         if dirty_connection:
             sheet.get_by_role('textbox', name='Name', exact=True).fill('Unsaved sheet connection')
-        usage(sheet).get_by_role('link', name='Alpha scenario', exact=True).click()
+        open_related(sheet)
+        expect(usage().get_by_role('listitem')).to_have_count(total)
+        usage().get_by_role('link', name='Alpha scenario', exact=True).click()
         expect(page.get_by_role('alertdialog')).to_have_count(1)
         page.get_by_role('button', name='Keep editing', exact=True).click()
         expect(sheet).to_be_visible()
-        usage(sheet).get_by_role('link', name='Alpha scenario', exact=True).click()
+        usage().get_by_role('link', name='Alpha scenario', exact=True).click()
         page.get_by_role('button', name='Leave', exact=True).click()
         expect(page).to_have_url(base + '/scenarios/' + targets[0])
     # Required last connections explain the problem and request disabling.
@@ -116,8 +139,10 @@ with sync_playwright() as p:
     visit('/scenarios/' + optional['id'])
     page.get_by_role('textbox', name='Name', exact=True).fill('Pending optional scenario')
     page.locator('[data-setting="bindings:events"]').get_by_role('button', name='Open: Calendar', exact=True).first.click()
-    sheet = page.get_by_role('dialog')
-    button = sheet.get_by_role('button', name='Disconnect: ' + optional['name'], exact=True)
+    sheet = page.get_by_role('dialog').first
+    open_related(sheet)
+    related = page.get_by_role('dialog', name='Related items', exact=True)
+    button = related.get_by_role('button', name='Disconnect: ' + optional['name'], exact=True)
     # Immediate disconnect failures show a toast, keep the row and allow retry.
     page.route('**/api/extensions', lambda route: route.fulfill(status=400, json={'error': 'failed'}) if route.request.method == 'POST' else route.continue_())
     button.click()
@@ -136,6 +161,9 @@ with sync_playwright() as p:
     assert restored_optional['enabled'] == 1 and restored_optional['bindings'] == source['bindings']
     button.click()
     expect(button).to_have_count(0)
+    related.get_by_role('button', name='Close', exact=True).click()
+    expect(related).to_have_count(0)
+    page.keyboard.press('Escape')
     sheet.get_by_role('button', name='Close', exact=True).click()
     expect(sheet).to_have_count(0)
     expect(page.get_by_role('textbox', name='Name', exact=True)).to_have_value('Pending optional scenario')

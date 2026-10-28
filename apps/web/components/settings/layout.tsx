@@ -129,6 +129,20 @@ export function SettingsList({ children }: { children: ReactNode }) {
     </ItemGroup>
   );
 }
+const settingsRowVariants = cva("", {
+  variants: { layout: {
+    default: "flex-col sm:flex-row",
+    compact: "flex-row flex-nowrap items-center gap-3 py-0",
+  } },
+  defaultVariants: { layout: "default" },
+});
+const settingsRowContentVariants = cva("flex min-w-0 flex-1 gap-3", {
+  variants: { layout: {
+    default: "w-full items-start sm:w-auto",
+    compact: "items-center py-4",
+  } },
+  defaultVariants: { layout: "default" },
+});
 export function SettingsRow({
   href,
   title,
@@ -137,7 +151,9 @@ export function SettingsRow({
   actions,
   status,
   media,
+  layout = "default",
 }: {
+  layout?: "default" | "compact";
   href?: string;
   title: ReactNode;
   description?: ReactNode;
@@ -147,8 +163,8 @@ export function SettingsRow({
   media?: ReactNode;
 }) {
   return (
-    <Item role="listitem" variant="resource" className={cn("flex-col sm:flex-row", href && "relative")}>
-      <div className="flex w-full min-w-0 flex-1 items-start gap-3 sm:w-auto">
+    <Item role="listitem" variant="resource" className={cn(settingsRowVariants({ layout }), href && "relative")}>
+      <div className={settingsRowContentVariants({ layout })}>
         {media ? <ItemMedia>{media}</ItemMedia> : null}
         <ItemContent className="w-full gap-2 sm:w-auto">
           <div className="flex flex-wrap items-center gap-2">
@@ -170,7 +186,7 @@ export function SettingsRow({
         </ItemContent>
       </div>
       {actions ? (
-        <ItemActions className="max-w-full flex-wrap sm:shrink-0">
+        <ItemActions className={cn("max-w-full flex-wrap sm:shrink-0", href && "relative z-10")}>
           {actions}
         </ItemActions>
       ) : null}

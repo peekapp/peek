@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Ellipsis, Pencil, Trash2, Pause, Play, RefreshCw } from "lucide-react";
 import { messages, type Locale } from "@peek/core/i18n";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -46,16 +45,11 @@ export function SettingsRowMenu({
   const t = messages(locale);
   return (
     <DropdownMenu>
-      <Tooltip>
-      <TooltipTrigger asChild>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" size="icon" aria-label={t.actions} disabled={disabled}>
           <Ellipsis />
         </Button>
       </DropdownMenuTrigger>
-      </TooltipTrigger>
-      <TooltipContent>{t.actions}</TooltipContent>
-      </Tooltip>
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
           {href ? <DropdownMenuItem asChild>

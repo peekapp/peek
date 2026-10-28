@@ -3,7 +3,8 @@ import { toast } from "sonner";
 
 import { messages, type Locale } from "@peek/core/i18n";
 import { SettingsRowMenu } from "./row-menu";
-import { ConnectionScenarioCount, ScenarioCardCount } from "./card-count";
+import { InstanceRelatedItems } from "./instance-related-items";
+import type { RelatedItemsVariant } from "./related-items";
 import { InstanceHealth } from "./instance-health";
 import { SettingsDataTable } from "./data-table";
 import { LoadingState, ErrorState } from "./layout";
@@ -285,11 +286,17 @@ export function Extensions({
       </section>
     );
   }
-  function connectionUsage(connectionId: string) {
-    return data ? <ConnectionUsage connectionId={connectionId} instances={data.instances} packages={data.packages}
+  function connectionUsage(connectionId: string, separated = true) {
+    return data ? <ConnectionUsage separated={separated} connectionId={connectionId} instances={data.instances} packages={data.packages}
       profiles={profiles} locale={locale} onDisconnect={(scenarioId, disable) => disconnectScenario(connectionId, scenarioId, disable,
         (scenario) => setData((previous) => previous ? { ...previous,
           instances: previous.instances.map((value) => value.id === scenario.id ? scenario : value) } : previous))} /> : null;
+  }
+  function relatedItems(instance: Item, variant: RelatedItemsVariant) {
+    return <InstanceRelatedItems id={instance.id} kind={instance.kind} locale={locale} variant={variant}
+      count={instance.kind === "scenario" ? instance.cardCount : connectionScenarios(data!.instances, instance.id).length}>
+      {instance.kind === "connection" ? connectionUsage(instance.id, false) : null}
+    </InstanceRelatedItems>;
   }
   const rows =
     data?.instances
@@ -305,8 +312,7 @@ export function Extensions({
           .map((p) => (
             <ProfileLabel key={p.id} profile={p} locale={locale} avatarOnly />
           )),
-        count: i.kind === "scenario" ? <ScenarioCardCount count={i.cardCount} locale={locale} />
-          : <ConnectionScenarioCount count={connectionScenarios(data.instances, i.id).length} locale={locale} />,
+        count: relatedItems(i, "counts"),
         health: (
           <InstanceHealth kind={i.kind} enabled={!!i.enabled} error={i.last_error} lastSuccess={i.last_success} ready={data.runtime.ready} locale={locale} />
         ),
@@ -348,6 +354,7 @@ export function Extensions({
           kind ? (
             <SettingsRowMenu
               kind={i.kind}
+              relatedItems={relatedItems(i, "menu")}
               deleteContent={i.kind === "connection" ? connectionUsage(i.id) : undefined}
               deleteDisabled={i.kind === "connection" && connectionScenarios(data.instances, i.id).length > 0}
               refreshDisabled={busy || !i.enabled || !data.runtime.ready}
@@ -828,6 +835,14 @@ export function InstanceEditor({
     }
     onDisconnected?.(scenario, connectionId, beforeUndo);
   }
+  function relatedItems(variant: RelatedItemsVariant) {
+    return item ? <InstanceRelatedItems id={item.id} kind={m.kind} locale={locale} variant={variant}
+      count={m.kind === "scenario" ? item.cardCount : connectionScenarios(currentInstances, item.id).length}>
+      {m.kind === "connection" ? <ConnectionUsage separated={false} connectionId={item.id}
+        instances={currentInstances} packages={packages} profiles={profiles} locale={locale}
+        onDisconnect={(scenarioId, disable) => disconnectScenario(item.id, scenarioId, disable, disconnected)} /> : null}
+    </InstanceRelatedItems> : null;
+  }
   const inputs = connectionInputs(m, currentConnections);
   const missingInput = inputs.find(
     ({ input, requirement, choices }) =>
@@ -962,15 +977,12 @@ export function InstanceEditor({
               {item ? <div className="flex flex-col items-start gap-2">
                 <InstanceHealth kind={m.kind} enabled={savedDraft.enabled} error={item.last_error}
                   lastSuccess={item.last_success} ready={runtime.ready} locale={locale} showUpdated />
-                {m.kind === "scenario" ? <ScenarioCardCount count={item.cardCount} locale={locale} /> : null}
+                {m.kind === "scenario" ? relatedItems("counts") : null}
                 {m.kind === "connection" && !savedDraft.enabled ? <p className="text-sm text-muted-foreground">{t.connectionPaused}</p> : null}
                 {item.last_error || !runtime.ready ? <Alert variant="destructive" className="wrap-anywhere">
                   <AlertDescription>{item.last_error || t.extensionRunnerUnavailable}</AlertDescription>
                 </Alert> : null}
               </div> : null}
-              {item && m.kind === "connection" ? <ConnectionUsage connectionId={item.id}
-                instances={currentInstances} packages={packages} profiles={profiles} locale={locale}
-                onDisconnect={(scenarioId, disable) => disconnectScenario(item.id, scenarioId, disable, disconnected)} /> : null}
             </>, !profiles, m.description, undefined, true,
             <ExtensionIcon kind={m.kind} size="header" src={packages.find((p) => p.manifest.id === m.id)?.iconDataUrl} color={m.iconColor} />,
             <div className="flex items-center gap-2">
@@ -978,6 +990,7 @@ export function InstanceEditor({
                 <Switch checked={enabled} onCheckedChange={setEnabled} />
               </SettingsField>
               {item && onDelete ? <SettingsRowMenu locale={locale} kind={m.kind} disabled={busy}
+                relatedItems={relatedItems("menu")}
                 deleteDisabled={m.kind === "connection" && connectionScenarios(currentInstances, item.id).length > 0}
                 deleteContent={m.kind === "connection" ? <ConnectionUsage connectionId={item.id}
                   instances={currentInstances} packages={packages} profiles={profiles} locale={locale}

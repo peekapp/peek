@@ -41,7 +41,7 @@ with sync_playwright() as p:
     sheet=page.get_by_role('dialog')
     menu(sheet)
     expect(page.get_by_role('alertdialog').get_by_role('button', name='Delete', exact=True)).to_be_disabled()
-    expect(page.get_by_role('alertdialog').get_by_role('region', name='Used by', exact=True)).to_be_visible()
+    expect(page.get_by_role('alertdialog').get_by_role('region', name='Scenarios', exact=True)).to_be_visible()
     assert any(i['id']==used for i in status()['instances'])
     page.get_by_role('alertdialog').get_by_role('button', name='Cancel', exact=True).click()
     expect(page.get_by_role('alertdialog')).to_have_count(0)

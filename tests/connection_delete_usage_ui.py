@@ -57,7 +57,7 @@ with sync_playwright() as p:
     nested.get_by_role('button',name='Disable and disconnect',exact=True).click()
     expect(page.get_by_role('alertdialog')).to_have_count(1)
     expect(dialog.get_by_role('button',name='Delete',exact=True)).to_be_enabled()
-    expect(dialog.get_by_text('No scenarios use this connection yet.',exact=True)).to_be_visible()
+    expect(dialog.get_by_text('No scenarios use this connection yet',exact=True)).to_be_visible()
     assert any(i['id']==cid for i in status()['instances'])
     dialog.get_by_role('button',name='Delete',exact=True).click()
     expect(dialog).to_have_count(0)

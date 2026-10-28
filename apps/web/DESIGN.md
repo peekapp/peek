@@ -211,15 +211,15 @@ resource-specific success toast. Existing records save in place (screen ID renam
 update the editor URL). Connections created inside a scenario sheet retain its
 selection flow and the scenario draft. Independent panel saves preserve other drafts.
 
-Saved connection identity panels show a Used by section below runtime status, with compact scenario links and shared extension/profile identities sorted by localized name. Show all saved dependents, including paused scenarios, once each; unused connections show localized quiet empty copy and new drafts omit usage. Links open in the same tab through the existing editor navigation guard, including sheets and underlying scenario drafts. Usage reflects loaded saved bindings, not unsaved selections.
+Saved connection related-items sheets use the same RelatedItemsSection, SettingsList and SettingsRow compositions as profiles: a Scenarios · count heading, bordered card rows, package icons, and shared profile identities sorted by localized name. Show all saved dependents, including paused scenarios, once each; unused connections show localized quiet empty copy and new drafts omit usage. Links open in the same tab through the existing editor navigation guard, including sheets and underlying scenario drafts. Usage reflects loaded saved bindings, not unsaved selections.
 
-Connection usage starts after an inset Separator within the identity card. Each scenario row has a separate Disconnect action. Ordinary disconnects run immediately with success/error toasts; only actions that disable a scenario require confirmation. Disconnect removes only that connection’s saved bindings, preserving other configuration and pending drafts; disconnecting the last source of a required input asks to disable the scenario in the confirmation and performs both changes atomically. Disabled scenarios may have empty required inputs; enabling requires valid bindings. Sheet disconnects reconcile the underlying scenario draft to prevent restoring removed bindings.
+Connection usage appears in the shared related-items sheet and remains embedded after an inset Separator in deletion confirmations. Each scenario row has a separate Disconnect action. Ordinary disconnects run immediately with success/error toasts; only actions that disable a scenario require confirmation. Disconnect removes only that connection’s saved bindings, preserving other configuration and pending drafts; disconnecting the last source of a required input asks to disable the scenario in the confirmation and performs both changes atomically. Disabled scenarios may have empty required inputs; enabling requires valid bindings. Sheet disconnects reconcile the underlying scenario draft to prevent restoring removed bindings.
 
 Confirmations that disable a scenario include the shared warning callout: warning icon, prominent consequence title, and explanatory text, alongside the explicit Disable and disconnect action. Ordinary disconnects do not open a confirmation.
 
 Disconnect success toasts offer Undo for the standard toast duration. Undo restores the saved bindings and prior enabled state, rejects newer scenario revisions, and reconciles open editors without discarding unrelated drafts. Toast actions reuse shared Button styling.
 
-Connection deletion confirmations embed the shared Used by list and disconnect controls across collection menus, full editors and sheets. Explain dependencies and disable Delete until the list is empty; disconnecting the last scenario never deletes the connection automatically. Bound long dialog lists with a scrolling body while retaining the confirmation actions.
+Connection deletion confirmations embed the shared scenario list and disconnect controls across collection menus, full editors and sheets. Explain dependencies and disable Delete until the list is empty; disconnecting the last scenario never deletes the connection automatically. Bound long dialog lists with a scrolling body while retaining the confirmation actions.
 
 Screen and profile create/detail pages use the same AppShell breadcrumbs and
 EditorPanel cards as scenario/connection editors, without a duplicate heading or
@@ -250,4 +250,24 @@ preview panel; keep Open screen and its actions menu above it.
 
 Displayed profile identities link to the profile editor; selector options retain selection behavior. Saved profile identity panels include a labeled Related items button immediately before the actions menu, opening a shared sheet of saved screens, scenarios and connections. Compact profile-card count buttons and profile dropdown menus open the same sheet. Resource headings have no icons; scenario and connection rows use their package artwork through ExtensionIcon, with the shared fallback only when artwork is unavailable; each whole resource row is a link. Include All profiles screens and paused resources; group by resource type and sort names using the current locale. New profiles omit usage.
 
-Every icon-only button has a shared localized Tooltip on hover and keyboard focus, plus an accessible label; native title attributes do not replace tooltips.
+Every icon-only button has a shared localized Tooltip on hover and keyboard focus, plus an accessible label; native title attributes do not replace tooltips. Three-dot actions menus retain their localized accessible label without a tooltip.
+
+Connections and scenarios reuse the profile Related items sheet shell and triggers.
+Saved scenario/connection headers retain their compact Enabled switch and actions
+menu layout, with Related items only inside the dropdown. Collection counts also
+open the same content. Scenario editor card counts also open it.
+Connection sheets list saved dependent scenarios, including paused ones, with existing
+disconnect/Undo controls. Scenario sheets list all stored generated cards, including
+future/expired cards, with title, optional body/location, target time and visibility
+window in the installation timezone. Cards are read-only and sorted by target time then
+ID. Load cards on opening with localized loading/error/retry/empty states. New drafts
+omit related items; sheets preserve drafts and guard link navigation, including nested
+connection editors. Related-items sheets initially focus their title, avoiding automatic
+tooltips on controls while preserving deliberate keyboard-focus and hover tooltips.
+
+Related-item rows use SettingsRow's compact layout: icon/name and trailing actions
+share one vertically centered line at every width. Long names wrap within the
+remaining space; profile avatars and disconnect controls remain together at the right.
+
+Compact related-item rows keep vertical padding on the text/icon group, so trailing
+controls fit inside the same row height as profile related items without adding height.

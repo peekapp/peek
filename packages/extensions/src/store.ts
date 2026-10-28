@@ -1,4 +1,5 @@
 import { acceptsContract } from "./compatibility";
+import type { Card } from "@peek/core";
 import { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import { type Json, type Manifest, type Snapshot } from "@peekapp/sdk";
@@ -351,6 +352,13 @@ export function openExtensions(path: string) {
         "UPDATE extension_instances SET generation=generation+1,next_run_at=? WHERE kind='connection' AND enabled=1",
         [Date.now()],
       );
+    },
+    scenarioCards(id: string): Card[] {
+      if (!db.query("SELECT id FROM extension_instances WHERE id=? AND kind='scenario'").get(id))
+        throw new Error("scenario-not-found");
+      return db.query<{ payload: string }, [string]>("SELECT payload FROM cards WHERE scenario_id=?")
+        .all(id).map((row) => JSON.parse(row.payload) as Card)
+        .sort((a, b) => a.targetAt - b.targetAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     },
     status() {
       const cardCounts = new Map(

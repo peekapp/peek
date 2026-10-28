@@ -1,20 +1,21 @@
-import Link from "next/link";
 import { toast } from "sonner";
 import { UnplugIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { ConfirmAction } from "./delete-button";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
 import type { Profile } from "@peek/core/profiles";
-import { ExtensionLabel } from "../extension-icon";
+import { ExtensionIcon } from "../extension-icon";
 import { ProfileLabel } from "../profile-label";
-import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from "../ui/item";
+import { SettingsList, SettingsRow } from "./layout";
+import { RelatedItemsSection } from "./related-items";
 import { Separator } from "../ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { connectionScenarios } from "./connection-bindings";
 import type { Status } from "./extensions";
 
-export function ConnectionUsage({ connectionId, instances, packages, profiles, locale, onDisconnect }: {
+export function ConnectionUsage({ connectionId, instances, packages, profiles, locale, onDisconnect, separated = true }: {
+  separated?: boolean;
   connectionId: string;
   instances: Status["instances"];
   packages: Status["packages"];
@@ -23,7 +24,6 @@ export function ConnectionUsage({ connectionId, instances, packages, profiles, l
   onDisconnect: (scenarioId: string, disable: boolean) => Promise<() => Promise<void>>;
 }) {
   const t = messages(locale);
-  const headingId = useId();
   const [pending, setPending] = useState(false);
   async function disconnect(scenarioId: string, disable: boolean) {
     setPending(true);
@@ -42,10 +42,9 @@ export function ConnectionUsage({ connectionId, instances, packages, profiles, l
     .sort((a, b) => a.name.localeCompare(b.name, locale));
 
   return <>
-    <Separator />
-    <section aria-labelledby={headingId} className="flex min-w-0 flex-col gap-2">
-    <h4 id={headingId} className="text-sm font-medium">{t.connectionUsedBy}</h4>
-    {scenarios.length ? <ItemGroup>
+    {separated ? <Separator /> : null}
+    <RelatedItemsSection label={t.scenarios} count={scenarios.length}>
+    {scenarios.length ? <SettingsList>
       {scenarios.map((scenario) => {
         const pkg = packages.find((pkg) => pkg.manifest.id === scenario.package_id);
         const profile = profiles?.find((profile) => profile.id === scenario.profile_id);
@@ -58,18 +57,10 @@ export function ConnectionUsage({ connectionId, instances, packages, profiles, l
             <UnplugIcon />
           </Button>
         </TooltipTrigger>;
-        return <Item key={scenario.id} role="listitem" size="sm" className="relative">
-          <ItemContent>
-            <ItemTitle>
-              <Link href={`/scenarios/${encodeURIComponent(scenario.id)}`}
-                className="min-w-0 rounded-sm after:absolute after:inset-0 after:rounded-md hover:underline focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">
-                <ExtensionLabel kind="scenario" src={pkg?.iconDataUrl} color={pkg?.manifest.iconColor}>
-                  {scenario.name}
-                </ExtensionLabel>
-              </Link>
-            </ItemTitle>
-          </ItemContent>
-          <ItemActions className="relative z-10">
+        return <SettingsRow layout="compact" key={scenario.id} title={scenario.name}
+          href={`/scenarios/${encodeURIComponent(scenario.id)}`}
+          media={<ExtensionIcon kind="scenario" size="compact" src={pkg?.iconDataUrl} color={pkg?.manifest.iconColor} />}
+          actions={<>
             {profile ? <ProfileLabel profile={profile} locale={locale} avatarOnly /> : null}
             <Tooltip>
               {requiresDisable ? <ConfirmAction locale={locale} label={t.disableAndDisconnect}
@@ -78,10 +69,10 @@ export function ConnectionUsage({ connectionId, instances, packages, profiles, l
                 trigger={trigger} onConfirm={() => disconnect(scenario.id, true)} /> : trigger}
               <TooltipContent>{t.disconnect}</TooltipContent>
             </Tooltip>
-          </ItemActions>
-        </Item>;
+          </>}
+        />;
       })}
-    </ItemGroup> : <p className="text-sm text-muted-foreground">{t.connectionUnused}</p>}
-    </section>
+    </SettingsList> : <p className="text-sm text-muted-foreground">{t.connectionUnused}</p>}
+    </RelatedItemsSection>
   </>;
 }

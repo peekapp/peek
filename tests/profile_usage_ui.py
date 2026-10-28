@@ -48,6 +48,9 @@ with sync_playwright() as p:
             count.focus()
             expect(page.get_by_role("tooltip")).to_have_text("Screens" if locale == "en" else "Экраны")
             count.click()
+            page.mouse.move(0, 0)
+            expect(page.get_by_role("dialog").locator("[data-slot=sheet-title]")).to_be_focused()
+            expect(page.get_by_role("tooltip")).to_have_count(0)
             expect(page.get_by_role("dialog").get_by_role("link")).to_have_count(4)
             expect(page).to_have_url(base + "/profiles")
             page.get_by_role("dialog").screenshot(path=f"/tmp/peek-related-from-card-{locale}-{width}.png")
@@ -112,7 +115,7 @@ with sync_playwright() as p:
     expect(profile_link).to_have_attribute("href", "/profiles/" + profile_id)
     profile_link.click()
     expect(page).to_have_url(base + "/profiles/" + profile_id)
-    page.unroute("**/api/settings", resources)
+    page.unroute_all(behavior="wait")
     for screen in context.request.get(base + "/api/settings").json()["screens"]:
         post({"action": "screen-delete", "id": screen["id"]})
     page.goto(base + "/profiles/" + other_id)

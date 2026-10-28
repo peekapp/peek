@@ -7,6 +7,8 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 import { Dialog as SheetPrimitive } from "radix-ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
+import { Button } from "./button";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -65,6 +67,7 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left";
   showCloseButton?: boolean;
 }) {
+  const closeRef = React.useRef<HTMLButtonElement>(null);
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -92,10 +95,20 @@ function SheetContent({
       >
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
-            <XIcon className="size-4" />
-            <span className="sr-only">{messages(locale).close}</span>
-          </SheetPrimitive.Close>
+          <Tooltip>
+            <SheetPrimitive.Close asChild>
+              <TooltipTrigger asChild>
+                <Button ref={closeRef} type="button" variant="ghost" size="icon-sm" className="absolute top-3 right-3" aria-label={messages(locale).close}>
+                  <XIcon />
+                </Button>
+              </TooltipTrigger>
+            </SheetPrimitive.Close>
+            <TooltipContent onEscapeKeyDown={(event) => {
+              // Escape on the close tooltip must still close (or guard) its sheet.
+              event.preventDefault();
+              closeRef.current?.click();
+            }}>{messages(locale).close}</TooltipContent>
+          </Tooltip>
         )}
       </SheetPrimitive.Content>
     </SheetPortal>
