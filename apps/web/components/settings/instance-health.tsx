@@ -15,9 +15,10 @@ const dot = cva("size-2 shrink-0 rounded-full", {
 });
 
 export function InstanceHealth({
-  enabled, error, lastSuccess, ready, locale, kind,
+  enabled, error, lastSuccess, ready, locale, kind, showUpdated = false,
 }: {
   kind: "scenario" | "connection";
+  showUpdated?: boolean;
   enabled: boolean;
   error: string | null;
   lastSuccess: number | null;
@@ -25,7 +26,7 @@ export function InstanceHealth({
   locale: Locale;
 }) {
   const t = messages(locale);
-  const paused = kind === "scenario" && (!enabled || (!error && !ready));
+  const paused = !enabled || (kind === "scenario" && !error && !ready);
   const state = paused ? "paused" : error ? "error" : lastSuccess === null ? "waiting" : "healthy";
   const label = {
     error: t.needsAttention,
@@ -33,17 +34,26 @@ export function InstanceHealth({
     waiting: t.pending,
     healthy: kind === "connection" ? t.connected : t.healthy,
   }[state];
-  const detail = kind === "scenario" && !enabled
-    ? t.scenarioPaused
+  const detail = !enabled
+    ? (kind === "connection" ? t.connectionPaused : t.scenarioPaused)
     : error || (!ready ? t.extensionRunnerUnavailable : lastSuccess === null
       ? (kind === "connection" ? t.pending : t.scenarioWaiting)
       : null);
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" aria-label={`${t.health}: ${label}`} className="relative z-10 inline-flex items-center gap-2 rounded-sm text-left text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <span aria-hidden="true" className={dot({ state })} />
-          {label}
+        <button type="button" aria-label={showUpdated ? undefined : `${t.health}: ${label}`} className="relative z-10 inline-flex flex-wrap items-center gap-x-4 gap-y-2 rounded-sm text-left text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <span className="inline-flex items-center gap-2">
+            <span aria-hidden="true" className={dot({ state })} />
+            {label}
+          </span>
+          {showUpdated ? <span className="font-normal text-muted-foreground">
+            {kind === "connection" ? t.lastUpdated : t.lastSuccessfulRun}: {lastSuccess === null ? t.neverUpdated : (
+              <time dateTime={new Date(lastSuccess).toISOString()} suppressHydrationWarning>
+                {relativeUpdateTime(lastSuccess, Date.now(), locale)}
+              </time>
+            )}
+          </span> : null}
         </button>
       </TooltipTrigger>
       <TooltipContent size="compact" className="max-w-64">

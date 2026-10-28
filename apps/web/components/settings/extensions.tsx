@@ -82,6 +82,7 @@ export type Status = {
   connections: {
     id: string;
     name: string;
+    enabled: boolean;
     contracts: Record<string, { id: string; version: string }>;
   }[];
   operations: { id: string; status: string; error: string | null }[];
@@ -237,12 +238,23 @@ export function Extensions({
             instances={data.instances}
             item={item}
             connections={data.connections}
+            runtime={data.runtime}
             profiles={profiles}
             profilesError={profilesError}
             locale={locale}
             save={async (instance) => {
               const result = await api({ action: "save", instance });
               if (!item) router.replace(`/${section}/${encodeURIComponent(result.id)}`);
+              else {
+                try {
+                  const response = await fetch("/api/extensions", { cache: "no-store" });
+                  if (!response.ok) throw new Error("extensions-unavailable");
+                  const status: Status = await response.json();
+                  // Refresh saved status without replacing the schema or remounting pending drafts.
+                  setData((previous) => previous ? { ...previous, instances: status.instances, connections: status.connections, runtime: status.runtime } : previous);
+                  setLoadError("");
+                } catch (error) { setLoadError(String(error)); }
+              }
             }}
           />
         )}
@@ -302,15 +314,15 @@ export function Extensions({
           data.packages.find((p) => p.manifest.id === i.package_id)?.manifest
             .name ?? i.package_id,
         status: kind === "scenario" ? null : (
-          <Badge variant={i.last_error ? "error" : i.last_success !== null ? "success" : "inactive"}>
-            {i.last_error ? t.needsAttention : i.last_success !== null ? t.connected : t.pending}
+          <Badge variant={!i.enabled ? "inactive" : i.last_error ? "error" : i.last_success !== null ? "success" : "inactive"}>
+            {!i.enabled ? t.paused : i.last_error ? t.needsAttention : i.last_success !== null ? t.connected : t.pending}
           </Badge>
         ),
         actions:
           kind ? (
             <SettingsRowMenu
               kind={i.kind}
-              refreshDisabled={busy || (i.kind === "scenario" && !i.enabled) || !data.runtime.ready}
+              refreshDisabled={busy || !i.enabled || !data.runtime.ready}
               onRefresh={() => perform(() => api({ action: "run", id: i.id }))}
               enabled={!!i.enabled}
               onToggle={() =>
@@ -706,6 +718,7 @@ function InstanceEditor({
   instances,
   item,
   connections,
+  runtime,
   profiles,
   profilesError,
   locale,
@@ -717,6 +730,7 @@ function InstanceEditor({
   instances: Status["instances"];
   item?: Item;
   connections: Status["connections"];
+  runtime: Status["runtime"];
   profiles: Profile[] | null;
   profilesError: string;
   locale: Locale;
@@ -759,6 +773,7 @@ function InstanceEditor({
           );
           return {
             connectionId: connection.id,
+            enabled: connection.enabled,
             name: connection.name,
             iconDataUrl: sourcePackage?.iconDataUrl,
             iconColor: sourcePackage?.manifest.iconColor,
@@ -778,7 +793,7 @@ function InstanceEditor({
         ),
       ),
   );
-  function panel(setting: InstanceSetting, title: string, children: ReactNode, disabled = false, description?: string, footer?: ReactNode, editable = true) {
+  function panel(setting: InstanceSetting, title: string, children: ReactNode, disabled = false, description?: string, footer?: ReactNode, editable = true, media?: ReactNode, headerAction?: ReactNode) {
     const changed = JSON.stringify(applyInstanceSetting(savedDraft, draft, setting, m.settingsUi.blocks)) !== JSON.stringify(savedDraft);
     const Container = item ? "form" : "div";
     return (
@@ -786,6 +801,8 @@ function InstanceEditor({
         <EditorPanel
           title={title}
           description={description}
+          media={media}
+          headerAction={headerAction}
           hint={footer}
           actions={item && editable ?
             <>
@@ -848,7 +865,7 @@ function InstanceEditor({
               packageId: m.id,
               name: next.name,
               profileId: next.profile,
-              enabled: m.kind === "connection" || next.enabled,
+              enabled: next.enabled,
               settings: next.settings,
               bindings: next.bindings,
               ...((!item || savingSecrets) && next.changeSecrets ? { secrets: next.secrets } : {}),
@@ -862,7 +879,7 @@ function InstanceEditor({
           } catch (e) {
             const serverIssues = (e as { issues?: SettingsIssue[] }).issues;
             if (serverIssues) setIssues(serverIssues);
-            setError(serverIssues ? (item ? t.settingsSaveError : t.settingsCreateError) : e instanceof Error ? e.message : String(e));
+            setError(serverIssues ? (item ? t.settingsSaveError : t.settingsCreateError) : e instanceof Error ? (e.message === "connection-paused" ? t.connectionPausedChoice : e.message) : String(e));
             return false;
           } finally {
             setBusy(false);
@@ -870,42 +887,41 @@ function InstanceEditor({
         }}
       >
         <div className="flex flex-col gap-6">
-          {panel("name", t.name,
-            <SettingsField label={t.name} labelHidden>
-              <Input
-                required
-                maxLength={100}
-                aria-invalid={!!error && (!name.trim() || name.length > 100)}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </SettingsField>, false, t.settingsNameDescription
+          {panel("general", m.name,
+            <>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <SettingsField label={t.name}>
+                  <Input required maxLength={100}
+                    aria-invalid={!!error && (!name.trim() || name.length > 100)}
+                    value={name} onChange={(e) => setName(e.target.value)} />
+                </SettingsField>
+                <SettingsField label={t.profile}>
+                  {profiles ? (
+                    <SettingsSelect value={profile} onValueChange={setProfile}>
+                      {profiles.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          <ProfileLabel profile={p} locale={locale} />
+                        </SelectItem>
+                      ))}
+                    </SettingsSelect>
+                  ) : profilesError ? <ErrorState>{profilesError}</ErrorState> : <LoadingState layout="fields">{t.loadingProfiles}</LoadingState>}
+                </SettingsField>
+              </div>
+              {item ? <div className="flex flex-col items-start gap-2">
+                <InstanceHealth kind={m.kind} enabled={savedDraft.enabled} error={item.last_error}
+                  lastSuccess={item.last_success} ready={runtime.ready} locale={locale} showUpdated />
+                {m.kind === "scenario" ? <ScenarioCardCount count={item.cardCount} locale={locale} /> : null}
+                {m.kind === "connection" && !savedDraft.enabled ? <p className="text-sm text-muted-foreground">{t.connectionPaused}</p> : null}
+                {item.last_error || !runtime.ready ? <Alert variant="destructive" className="wrap-anywhere">
+                  <AlertDescription>{item.last_error || t.extensionRunnerUnavailable}</AlertDescription>
+                </Alert> : null}
+              </div> : null}
+            </>, !profiles, m.description, undefined, true,
+            <ExtensionIcon kind={m.kind} size="header" src={packages.find((p) => p.manifest.id === m.id)?.iconDataUrl} color={m.iconColor} />,
+            <SettingsField label={t.statusEnabled}>
+              <Switch checked={enabled} onCheckedChange={setEnabled} />
+            </SettingsField>
           )}
-          {panel("profile", t.profile,
-            <SettingsField label={t.profile} labelHidden>
-              {profiles ? (
-                <SettingsSelect value={profile} onValueChange={setProfile}>
-                  {profiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      <ProfileLabel profile={p} locale={locale} />
-                    </SelectItem>
-                  ))}
-                </SettingsSelect>
-              ) : profilesError ? (
-                <ErrorState>{profilesError}</ErrorState>
-              ) : (
-                <LoadingState layout="fields">{t.loadingProfiles}</LoadingState>
-              )}
-            </SettingsField>, !profiles, t.settingsProfileDescription
-          )}
-          {m.kind === "scenario" ? panel("enabled", t.statusEnabled,
-              <SettingsField label={t.statusEnabled} labelHidden>
-                <Switch
-                  checked={enabled}
-                  onCheckedChange={(v) => setEnabled(v === true)}
-                />
-              </SettingsField>, false, t.settingsEnabledDescription
-          ) : null}
           {m.settingsUi.blocks.map((block) => {
             const secret = block.source === "secrets";
             const editable = (block.controls ?? []).some((c) => c.type !== "text" && c.type !== "readonly" && !c.disabled);
@@ -930,6 +946,9 @@ function InstanceEditor({
                     ? t.optionalConnection
                     : t.compatibleConnectionRequired}
                 </FieldDescription>
+                {choices.some((choice) => !choice.enabled) ? <FieldDescription id={`input-${input}-paused-hint`}>
+                  {t.connectionPausedChoice}
+                </FieldDescription> : null}
                 {!choices.length ? (
                   <SettingsEmpty
                     title={t.noCompatibleConnections}
@@ -953,11 +972,13 @@ function InstanceEditor({
                           src={choice.iconDataUrl}
                           color={choice.iconColor}
                         >
-                          {choice.name}
+                          <span className={choice.enabled ? undefined : "text-muted-foreground"}>{choice.name}{!choice.enabled ? ` (${t.paused})` : ""}</span>
                         </ExtensionLabel>
                       }
                     >
                       <Checkbox
+                        disabled={!choice.enabled}
+                        aria-describedby={!choice.enabled ? `input-${input}-paused-hint` : undefined}
                         checked={(bindings[input] ?? []).some(
                           (binding) =>
                             binding.connectionId === choice.connectionId &&

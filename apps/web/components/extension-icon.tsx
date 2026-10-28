@@ -7,7 +7,7 @@ import { PlugIcon, WorkflowIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const iconVariants = cva("inline-flex shrink-0 items-center justify-center", {
-  variants: { size: { standard: "size-8", compact: "size-5" } },
+  variants: { size: { standard: "size-8", compact: "size-5", header: "size-12" } },
   defaultVariants: { size: "standard" },
 });
 

@@ -133,6 +133,7 @@ export function openExtensions(path: string) {
   function allConnections(): {
     id: string;
     name: string;
+    enabled: boolean;
     contracts: Record<string, { id: string; version: string }>;
   }[] {
     return instances()
@@ -140,6 +141,7 @@ export function openExtensions(path: string) {
       .map((i) => ({
         id: i.id,
         name: i.name,
+        enabled: !!i.enabled,
         contracts: getPackage(i.package_id).manifest.provides ?? {},
       }));
   }
@@ -665,6 +667,12 @@ export function openExtensions(path: string) {
           validate(p.manifest.settings, input.settings, "settings");
           boundedJson(input.settings, LIMITS.state);
           validateBindings(p.manifest, input.bindings ?? {});
+          const previousBindings: Record<string, Binding[]> = old ? JSON.parse(old.bindings) : {};
+          for (const [name, bindings] of Object.entries(input.bindings ?? {}))
+            for (const binding of bindings)
+              if (!instance(binding.connectionId)?.enabled && !previousBindings[name]?.some(
+                (previous) => previous.connectionId === binding.connectionId && previous.dataset === binding.dataset,
+              )) throw new Error("connection-paused");
           const secrets =
             input.secrets ??
             (old?.secret ? JSON.parse(decryptSecret(old.secret, path)) : {});
@@ -683,7 +691,7 @@ export function openExtensions(path: string) {
               canonicalSchema(
                 old.secret ? JSON.parse(decryptSecret(old.secret, path)) : {},
               ) !== canonicalSchema(secrets));
-          const enabled = p.manifest.kind === "connection" || input.enabled;
+          const enabled = input.enabled;
           const id = old?.id ?? `ext-${randomUUID()}`;
           db.run(
             `INSERT INTO extension_instances (id,package_id,kind,name,profile_id,settings,secret,bindings,enabled,generation,state,next_run_at,last_success,last_error,snapshots) VALUES (?,?,?,?,?,?,?,?,?,?,?, ?,NULL,NULL,?)
@@ -709,7 +717,7 @@ export function openExtensions(path: string) {
             ],
           );
           db.run("DELETE FROM cards WHERE scenario_id=?", [id]);
-          if (p.manifest.kind === "connection")
+          if (p.manifest.kind === "connection" && (!old || configChanged))
             for (const dependent of instances().filter(
               (x) => x.kind === "scenario",
             ))
@@ -737,7 +745,6 @@ export function openExtensions(path: string) {
       return db.transaction(() => {
         const current = instance(id);
         if (!current) throw new Error("instance-not-found");
-        if (current.kind !== "scenario") throw new Error("connection-always-active");
         return this.save({
           id, enabled,
           packageId: current.package_id,
@@ -795,7 +802,7 @@ export function openExtensions(path: string) {
       ))
         inputs[name] = bindings.flatMap((b) => {
           const c = instance(b.connectionId);
-          if (c?.enabled) {
+          if (c) {
             inputBytes += Buffer.byteLength(c.snapshots);
             if (inputBytes > LIMITS.message)
               throw new Error("inputs-too-large");

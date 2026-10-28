@@ -13,9 +13,7 @@ export type InstanceDraft = {
 export type InstanceSetting =
   | "create"
   | `block:${string}`
-  | "name"
-  | "profile"
-  | "enabled"
+  | "general"
   | `bindings:${string}`;
 
 /** Only the submitted card enters the saved snapshot; other drafts stay local. */
@@ -56,7 +54,5 @@ export function applyInstanceSetting(
       bindings: { ...saved.bindings, [key]: draft.bindings[key] ?? [] },
     };
   }
-  if (setting === "name") return { ...saved, name: draft.name };
-  if (setting === "profile") return { ...saved, profile: draft.profile };
-  return { ...saved, enabled: draft.enabled };
+  return { ...saved, name: draft.name, profile: draft.profile, enabled: draft.enabled };
 }

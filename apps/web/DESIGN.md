@@ -24,10 +24,10 @@ Consistency is implemented in components, not achieved by copying classes.
 | Screen card           | `SettingsCard`                   | Title, description, optional content, optional actions, optional preview    |
 | Scenario collection | `SettingsDataTable` | shadcn Table with TanStack Table; clickable rows with name (no subtitle), health as the sole status (Paused when disabled), avatar-only profile (name in tooltip), and a trailing three-dot Edit/Enable-or-Disable/Refresh-cards/Delete menu with icons; column headers are visible on desktop; keyboard focus remains visible without a mouse-click row ring; health dot/text with explanatory tooltip containing the last successful run (relative and full date); manual card refresh in the menu; current stored card count independent of screen visibility; no connections or troubleshooting; errors stay visible; separate bordered cards below 1024px (name and primary health above, generated card count/profile/menu on the page background below a divider); existing search and empty states |
 | Profile collection | `SettingsGrid` + `ProfileCard` | Vertical cards in a responsive grid, at least four columns from 1024px; 64px shared avatar with name below, then compact icon/count pairs with hover/focus tooltips for connections and scenarios; whole-card edit link and separate Edit/Delete menu with confirmation; system profiles cannot be deleted; no header or individual resource names |
-| Connection collection | `SettingsDataTable` | Same responsive table/cards, clickable names, avatar-only profiles and health dot/tooltip as scenarios; Connected, Waiting for sync or Needs attention; last update in the health tooltip; Edit/Refresh data/Delete menu, no enable/disable or card-count column; errors stay visible |
+| Connection collection | `SettingsDataTable` | Same responsive table/cards, clickable names, avatar-only profiles and health dot/tooltip as scenarios; Connected, Waiting for sync, Needs attention or Paused; last update in the health tooltip; Edit/Refresh data/Delete menu, no enable/disable or card-count column; errors stay visible |
 | Empty collection        | `SettingsEmpty`                  | Shared shadcn Empty composition with next-step copy                         |
 | Editor heading          | `EditorHeader`                   | Back link, shared section heading, optional description/action              |
-| Extension editor panels | `EditorPanel` + `Card variant="settings"` | Each scenario/connection setting has its own two-part panel and Save button. Existing records save only that panel, in place; unrelated drafts remain guarded. A new record needs a complete valid first save. Credentials remain an atomic group because stored secrets are never sent back to the browser. Editor top bars use clickable shadcn breadcrumbs with the saved instance name, updating after rename; omit the redundant back link and separate heading. Extension installation/review uses the same Card variant. |
+| Extension editor panels | `EditorPanel` + `Card variant="settings"` | Scenarios and connections start with one shared identity panel: package icon/name and Enabled switch, labeled Name/Profile fields, saved health and last-success/update time, scenario card count and visible errors. Name/profile/enabled save together; other blocks have their own Save button. Existing records save only that panel, in place; unrelated drafts remain guarded. A new record needs a complete valid first save. Credentials remain an atomic group because stored secrets are never sent back to the browser. Editor top bars use clickable shadcn breadcrumbs with the saved instance name, updating after rename; omit the redundant back link and separate heading. Extension installation/review uses the same Card variant. |
 | Editor section          | `EditorSection`                  | Common field spacing and section typography                                 |
 | Editor actions          | `EditorActions`                  | Save first, ghost Cancel second, destructive action at the end              |
 | Labeled control         | `SettingsField` / shadcn `Field` | Label above control; hint below; linked IDs                                 |
@@ -121,7 +121,7 @@ ExtensionIcon renders package-supplied SVG as an isolated image with contain siz
 The manifest’s optional iconColor defaults to original; theme uses the asset’s
 alpha mask filled with semantic foreground color. Both modes preserve transparency
 and use the same image-error fallback; never inject package SVG into the DOM. Standard icons are 32px in
-lists, catalog choices, installation review and editor headings; compact icons
+lists, catalog choices and installation review; scenario/connection header icons are 48px to match the title and description with their standard 8px gap; compact icons
 are 20px in ExtensionLabel beside connection choices and references. Icons are
 decorative beside visible names. Missing or broken images use WorkflowIcon for
 scenarios and PlugIcon for connections. Both themes use the same asset.
@@ -150,3 +150,11 @@ and use size="sm" Save buttons. Disabled buttons use muted fill/text with a subt
 border instead of fading the primary fill. Switches always have visible text
 next to the control, including single-field blocks. Do not show Required text beside
 field labels; retain aria-required and inline validation errors.
+
+
+Scenario/connection header fields stack on mobile and share EditorPanel media/action slots.
+Creation omits runtime status and retains one Create action after all blocks. Successful
+saves refresh status without replacing the schema or other drafts. Paused connections
+stop syncing but retain cached data for existing scenario bindings; header copy explains
+this. Scenario connection choices show paused entries as disabled, retaining existing
+selections. Connection rows remain editable and manual refresh is disabled while paused.

@@ -455,7 +455,7 @@ test("bindings reject duplicate datasets and malformed entries before saving", (
   }
 });
 
-test("rollback keeps connections active", () => {
+test("rollback preserves the current connection enabled state", () => {
   for (const enabled of [true, false]) {
     const f = fixture();
     try {
@@ -475,9 +475,9 @@ test("rollback keeps connections active", () => {
       const stale = f.store.instance(id)!;
       f.store.rollback();
       const restored = f.store.instance(id)!;
-      expect(restored.enabled).toBe(1);
-      expect(restored.next_run_at !== null).toBe(true);
-      expect(f.store.due().some((i) => i.id === id)).toBe(true);
+      expect(restored.enabled).toBe(Number(!enabled));
+      expect(restored.next_run_at !== null).toBe(!enabled);
+      expect(f.store.due().some((i) => i.id === id)).toBe(!enabled);
       expect(f.store.publish(stale, { datasets: { items: [] } })).toBe(false);
     } finally {
       f.close();
@@ -943,9 +943,14 @@ test("enable changes preserve current configuration and invalidate in-flight res
     expect(f.store.instance(id)!.enabled).toBe(1);
     expect(f.store.due().some((i) => i.id === id)).toBe(true);
     const secret = f.store.context(f.store.instance(connection)!).secrets;
-    expect(() => f.store.setEnabled(connection, false)).toThrow("connection-always-active");
-    f.store.save({ ...sourceInput(), id: connection, enabled: false });
-    expect(f.store.instance(connection)!.enabled).toBe(1);
+    const running = f.store.instance(connection)!;
+    f.store.setEnabled(connection, false);
+    expect(f.store.instance(connection)!.enabled).toBe(0);
+    expect(f.store.instance(connection)!.next_run_at).toBeNull();
+    expect(f.store.due().some((i) => i.id === connection)).toBe(false);
+    expect(f.store.publish(running, { datasets: { items: ["stale"] } })).toBe(false);
+    expect(() => f.store.requestRun(connection)).toThrow("instance-not-found-or-disabled");
+    f.store.save({ ...sourceInput(), id: connection, enabled: true });
     expect(f.store.due().some((i) => i.id === connection)).toBe(true);
     expect(f.store.context(f.store.instance(connection)!).secrets).toEqual(secret);
     expect(() => f.store.setEnabled("missing", true)).toThrow("instance-not-found");
@@ -977,5 +982,43 @@ test("migration reactivates connections without changing saved data or scenarios
     expect(f.store.instance(scenario)!.enabled).toBe(0);
     f.main.migrate();
     expect(f.store.instance(connection)).toEqual(after);
+  } finally { f.close(); }
+});
+
+
+test("paused connections preserve cached inputs and cards but reject new bindings", () => {
+  const f = fixture();
+  try {
+    install(f.store, [pkg("connection"), pkg("scenario")]);
+    const connection = f.store.save(sourceInput());
+    const scenario = f.store.save(scenarioInput(connection));
+    f.store.publish(f.store.instance(connection)!, { datasets: { items: ["cached"] } });
+    const now = Date.now();
+    f.store.publish(f.store.instance(scenario)!, { cards: [{
+      id: "cached", title: "Cached card", visibleFrom: now - 1,
+      targetAt: now + 60000, expiresAt: now + 60000,
+    }], nextRunAt: null });
+    const before = f.store.instance(connection)!;
+    const dependent = f.store.instance(scenario)!;
+    f.store.setEnabled(connection, false);
+    expect(f.store.instance(connection)!.snapshots).toBe(before.snapshots);
+    expect(f.store.instance(connection)!.last_success).toBe(before.last_success);
+    expect(f.store.instance(scenario)).toEqual(dependent);
+    expect(f.main.snapshot().cards).toHaveLength(1);
+    expect(f.store.context(dependent).inputs.items[0].data).toEqual(["cached"]);
+    expect(f.store.connections().find((c) => c.id === connection)?.enabled).toBe(false);
+    expect(() => f.store.save(scenarioInput(connection))).toThrow("connection-paused");
+    expect(() => f.store.save({ ...scenarioInput(connection), id: scenario, name: "Renamed" })).not.toThrow();
+    const other = f.store.save(sourceInput());
+    const existing = f.store.save(scenarioInput(other));
+    expect(() => f.store.save({ ...scenarioInput(connection), id: existing })).toThrow("connection-paused");
+    f.store.setEnabled(connection, true);
+    expect(f.store.context(f.store.instance(scenario)!).inputs.items[0].data).toEqual(["cached"]);
+    expect(f.store.due().some((i) => i.id === connection)).toBe(true);
+    expect(() => f.store.save(scenarioInput(connection))).not.toThrow();
+    // Running migrations again must not reactivate a paused connection.
+    f.store.setEnabled(connection, false);
+    f.main.migrate();
+    expect(f.store.instance(connection)!.enabled).toBe(0);
   } finally { f.close(); }
 });

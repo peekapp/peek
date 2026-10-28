@@ -39,21 +39,17 @@ const singleBlocks: import("@peekapp/sdk").SettingsBlock[] = [
   },
 ];
 
-test("saving a card leaves other pending changes out of the payload", () => {
-  expect(applyInstanceSetting(saved, draft, "name")).toEqual({
-    ...saved,
-    name: draft.name,
+test("general settings save together and leave other pending changes out of the payload", () => {
+  const general = { ...draft, profile: "other" };
+  expect(applyInstanceSetting(saved, general, "general")).toEqual({
+    ...saved, name: general.name, profile: general.profile, enabled: general.enabled,
   });
-  const first = applyInstanceSetting(saved, draft, "block:lead", singleBlocks);
+  const first = applyInstanceSetting(saved, general, "block:lead", singleBlocks);
   expect(first).toEqual({ ...saved, settings: { lead: 20, filter: "work" } });
-  expect(applyInstanceSetting(first, draft, "name")).toEqual({
-    ...first,
-    name: draft.name,
+  expect(applyInstanceSetting(first, general, "general")).toEqual({
+    ...first, name: general.name, profile: general.profile, enabled: general.enabled,
   });
-  expect(applyInstanceSetting(saved, draft, "enabled")).toEqual({
-    ...saved,
-    enabled: false,
-  });
+  expect(applyInstanceSetting(saved, general, "create")).toBe(general);
 });
 test("cleared optional settings are removed without altering their siblings", () => {
   expect(
@@ -69,9 +65,6 @@ test("bindings and credentials only change when their own card is saved", () => 
   expect(
     applyInstanceSetting(saved, draft, "block:credentials", singleBlocks),
   ).toEqual({ ...saved, secrets: draft.secrets, changeSecrets: true });
-  expect(
-    applyInstanceSetting(saved, { ...draft, profile: "other" }, "profile"),
-  ).toEqual({ ...saved, profile: "other" });
 });
 
 test("block save is atomic and preserves unrelated drafts and read-only values", () => {

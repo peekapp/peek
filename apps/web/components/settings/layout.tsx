@@ -301,18 +301,30 @@ export function EditorPanel({
   children,
   hint,
   actions,
+  media,
+  headerAction,
 }: {
   title: string;
   description?: string;
   children?: ReactNode;
   hint?: ReactNode;
   actions?: ReactNode;
+  media?: ReactNode;
+  headerAction?: ReactNode;
 }) {
   return (
     <Card variant="settings">
       <CardHeader>
-        <CardTitle asChild><h3>{title}</h3></CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            {media}
+            <div className="flex min-w-0 flex-col gap-2">
+              <CardTitle asChild><h3>{title}</h3></CardTitle>
+              {description ? <CardDescription>{description}</CardDescription> : null}
+            </div>
+          </div>
+          {headerAction ? <div className="flex min-h-8 shrink-0 items-center">{headerAction}</div> : null}
+        </div>
       </CardHeader>
       {children ? <CardContent><FieldGroup>{children}</FieldGroup></CardContent> : null}
       {hint || actions ? <CardFooter>
