@@ -35,11 +35,11 @@ type Shared = {
   profiles: Profile[] | null; locale: Locale;
 };
 export function ScenarioConnections({ inputs, bindings, onChange, savedBindings, packages, instances, profiles, runtime, locale,
-  existing, busy, activeSetting, error, onOpen,
+  existing, allowEmpty, busy, activeSetting, error, onOpen,
 }: Shared & {
   inputs: ReturnType<typeof connectionInputs>; bindings: Record<string, Binding[]>;
   savedBindings: Record<string, Binding[]>; onChange: Dispatch<SetStateAction<Record<string, Binding[]>>>;
-  existing: boolean; busy: boolean; activeSetting: InstanceSetting | null;
+  existing: boolean; allowEmpty: boolean; busy: boolean; activeSetting: InstanceSetting | null;
   error: string; onOpen: (target: ConnectionSheetTarget) => void;
 }) {
   const t = messages(locale);
@@ -51,7 +51,7 @@ export function ScenarioConnections({ inputs, bindings, onChange, savedBindings,
         const setting = `bindings:${input}` as const;
         const selected = bindings[input] ?? [];
         const changed = JSON.stringify(selected) !== JSON.stringify(savedBindings[input] ?? []);
-        const missing = !requirement.optional && !choices.some((c) => selected.some((b) => b.connectionId === c.connectionId && b.dataset === c.dataset));
+        const missing = !allowEmpty && !requirement.optional && !choices.some((c) => selected.some((b) => b.connectionId === c.connectionId && b.dataset === c.dataset));
         const Container = existing ? "form" : "div";
         const set = (value: Binding[]) => onChange((previous) => ({ ...previous, [input]: value }));
         const choiceKey = (b: Binding) => JSON.stringify([b.connectionId, b.dataset]);
@@ -100,10 +100,10 @@ export function ScenarioConnections({ inputs, bindings, onChange, savedBindings,
           {inputs.length > 1 ? <div className="flex flex-wrap items-center justify-between gap-3"><h4 className="text-sm font-medium wrap-anywhere">{input}</h4>{add(input)}</div> : null}
           <p id={`${id}-${index}-hint`} className={cn("text-sm text-muted-foreground", inputs.length === 1 && "sr-only")}>{requirement.multiple ? t.connectionChooseMany : t.connectionChooseOne}{requirement.optional ? ` ${t.settingsOptional}.` : ""}</p>
           {choices.length ? requirement.multiple ? <div role="group" aria-label={input} aria-describedby={`${id}-${index}-hint`} className="grid gap-2">{rows}</div>
-            : <RadioGroup aria-label={inputs.length === 1 ? t.connections : input} aria-describedby={`${id}-${index}-hint`} value={selected[0] ? choiceKey(selected[0]) : requirement.optional ? "none" : ""}
+            : <RadioGroup aria-label={inputs.length === 1 ? t.connections : input} aria-describedby={`${id}-${index}-hint`} value={selected[0] ? choiceKey(selected[0]) : requirement.optional || allowEmpty ? "none" : ""}
               onValueChange={(value) => { const choice = choices.find((c) => choiceKey(c) === value); set(choice ? [{ connectionId: choice.connectionId, dataset: choice.dataset }] : []); }}>
               {rows}
-              {requirement.optional ? <label className="flex items-center gap-3 text-sm"><RadioGroupItem value="none" />{t.connectionNone}</label> : null}
+              {requirement.optional || allowEmpty ? <label className="flex items-center gap-3 text-sm"><RadioGroupItem value="none" />{t.connectionNone}</label> : null}
             </RadioGroup>
             : <SettingsEmpty title={t.noCompatibleConnections} description={t.compatibleConnectionRequired} />}
           {choices.some((c) => !c.enabled) ? <p id={`${id}-${index}-paused`} className="text-sm text-muted-foreground">{t.connectionPausedChoice}</p> : null}
@@ -115,11 +115,12 @@ export function ScenarioConnections({ inputs, bindings, onChange, savedBindings,
 }
 
 export function ConnectionSheet({ target, manifest, packages, instances, connections, runtime, profiles, profilesError, locale,
-  defaultProfile, scenarioDirty, onClose, onRefresh, onSelect, onDeleted,
+  defaultProfile, scenarioDirty, onClose, onRefresh, onSelect, onDeleted, onDisconnected,
 }: Shared & {
   target: ConnectionSheetTarget; manifest: Manifest; connections: Status["connections"]; profilesError: string;
   defaultProfile: string; scenarioDirty: boolean; onClose: () => void; onRefresh: (status: Status) => void;
   onDeleted: (id: string) => void;
+  onDisconnected: (scenario: Status["instances"][number], connectionId: string, previous?: Status["instances"][number]) => void;
   onSelect: (input: string, binding: Binding) => void;
 }) {
   const t = messages(locale);
@@ -188,7 +189,7 @@ export function ConnectionSheet({ target, manifest, packages, instances, connect
             onClick={() => guard.current?.requestClose(() => setPackageId(null))}>{t.connectionBack}</Button> : null}
           <InstanceEditor key={item?.id ?? pkg.manifest.id} manifest={pkg.manifest} item={item} packages={packages}
             instances={instances} connections={connections} runtime={runtime} profiles={profiles} profilesError={profilesError}
-            locale={locale} defaultProfile={defaultProfile} guardRef={guard} navigationDirty={scenarioDirty}
+            locale={locale} defaultProfile={defaultProfile} guardRef={guard} navigationDirty={scenarioDirty} onDisconnected={onDisconnected}
             onDelete={item ? async () => {
               setRefreshing(true);
               try {

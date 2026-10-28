@@ -21,14 +21,14 @@ type ResourceRow = ComponentProps<typeof SettingsRow> & {
   id: string;
   profile?: ReactNode;
   health?: ReactNode;
-  cardCount?: ReactNode;
+  count?: ReactNode;
 };
 const columnVariants = cva("px-4", {
   variants: {
     column: {
       name: "col-span-1 min-w-0 py-4 pr-2 lg:py-2 lg:pr-4",
       health: "col-span-2 self-start py-4 pl-2 lg:py-2 lg:pl-4",
-      cardCount: "content-center self-stretch border-t bg-background lg:border-t-0 lg:bg-transparent",
+      count: "content-center self-stretch border-t bg-background lg:border-t-0 lg:bg-transparent",
       profile: "flex h-full items-center border-t bg-background lg:table-cell lg:border-t-0 lg:bg-transparent lg:px-4",
       actions: "content-center self-stretch border-t bg-background pl-2 lg:border-t-0 lg:bg-transparent lg:pl-4",
     },
@@ -51,7 +51,7 @@ const columns = column.columns([
     ),
   }),
   column.display({ id: "health", cell: ({ row }) => row.original.health }),
-  column.display({ id: "cardCount", cell: ({ row }) => row.original.cardCount }),
+  column.display({ id: "count", cell: ({ row }) => row.original.count }),
   column.display({
     id: "profile",
     cell: ({ row }) => (
@@ -69,7 +69,6 @@ const columns = column.columns([
     ),
   }),
 ]);
-const connectionColumns = columns.filter((column) => column.id !== "cardCount");
 
 export function SettingsDataTable({
   rows,
@@ -84,7 +83,7 @@ export function SettingsDataTable({
   const table = useTable({
     features,
     data: rows,
-    columns: kind === "connection" ? connectionColumns : columns,
+    columns,
     getRowId: (row) => row.id,
   });
 
@@ -95,7 +94,7 @@ export function SettingsDataTable({
         <colgroup className="hidden lg:table-column-group">
           <col className="w-full" />
           <col className="w-px" />
-          {kind !== "connection" ? <col className="w-px" /> : null}
+          <col className="w-px" />
           <col className="w-px" />
           <col className="w-px" />
         </colgroup>
@@ -109,10 +108,9 @@ export function SettingsDataTable({
                 <TableCell
                   key={cell.id}
                   className={cn(
-                    kind === "connection" && cell.column.id === "profile" && "col-span-2",
                     columnVariants({
                       column: cell.column.id as
-                        "name" | "health" | "cardCount" | "profile" | "actions",
+                        "name" | "health" | "count" | "profile" | "actions",
                     }),
                     "align-middle whitespace-normal wrap-anywhere",
                   )}

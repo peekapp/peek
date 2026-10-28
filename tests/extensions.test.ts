@@ -924,6 +924,75 @@ test("unrelated and partial successes do not hide unresolved package failures", 
   } finally { f.close(); }
 });
 
+test("disconnect removes all matching bindings atomically without overwriting settings or required inputs", () => {
+  const f = fixture();
+  try {
+    const scenario = pkg("scenario");
+    scenario.manifest.inputs!.items.multiple = true;
+    scenario.manifest.inputs!.other = { ...scenario.manifest.inputs!.items, optional: true };
+    install(f.store, [pkg("connection"), scenario]);
+    const first = f.store.save(sourceInput()), second = f.store.save(sourceInput());
+    const id = f.store.save({ ...scenarioInput(first), settings: { label: "latest" }, enabled: true,
+      bindings: { items: [{ connectionId: first, dataset: "items" }, { connectionId: second, dataset: "items" }],
+        other: [{ connectionId: first, dataset: "items" }] } });
+    const before = f.store.instance(id)!;
+    f.store.disconnect(id, first);
+    const after = f.store.instance(id)!;
+    expect(JSON.parse(after.bindings)).toEqual({ items: [{ connectionId: second, dataset: "items" }], other: [] });
+    expect(after.settings).toBe(before.settings);
+    expect(after.enabled).toBe(1);
+    expect(after.generation).toBe(before.generation + 1);
+    expect(after.name).toBe(before.name);
+    expect(after.profile_id).toBe(before.profile_id);
+    expect(() => f.store.disconnect(id, second)).toThrow("connection-required");
+    expect(f.store.instance(id)).toEqual(after);
+    f.store.disconnect(id, second, true);
+    const disconnected = f.store.instance(id)!;
+    expect(disconnected.enabled).toBe(0);
+    expect(disconnected.next_run_at).toBeNull();
+    expect(JSON.parse(disconnected.bindings)).toEqual({ items: [], other: [] });
+    expect(() => f.store.setEnabled(id, true)).toThrow("invalid-bindings");
+    expect(f.store.instance(id)).toEqual(disconnected);
+    f.store.save({ ...scenarioInput(first), id, enabled: false, bindings: {} });
+    expect(() => f.store.save({ ...scenarioInput("missing"), id, enabled: false })).toThrow("incompatible-connection");
+    f.store.save({ ...scenarioInput(first), id });
+    f.store.setEnabled(id, false);
+    f.store.disconnect(id, first);
+    expect(JSON.parse(f.store.instance(id)!.bindings)).toEqual({ items: [] });
+    expect(() => f.store.disconnect(first, second)).toThrow("instance-not-found");
+    expect(() => f.store.disconnect(id, "missing")).toThrow("instance-not-found");
+    expect(() => f.store.disconnect(id, null as unknown as string)).toThrow("invalid-instance");
+  } finally { f.close(); }
+});
+
+test("undo disconnect restores bindings and enabled state, rejects stale or forged undo, and supports paused sources", () => {
+  const f = fixture();
+  try {
+    install(f.store, [pkg("connection"), pkg("scenario")]);
+    const connection = f.store.save(sourceInput());
+    const id = f.store.save(scenarioInput(connection));
+    const before = f.store.instance(id)!;
+    f.store.setEnabled(connection, false);
+    const undo = f.store.disconnect(id, connection, true);
+    expect(() => f.store.undoDisconnect("forged")).toThrow();
+    f.store.undoDisconnect(undo);
+    expect(f.store.instance(id)!.bindings).toBe(before.bindings);
+    expect(f.store.instance(id)!.enabled).toBe(1);
+    expect(() => f.store.undoDisconnect(undo)).toThrow("scenario-changed");
+    const stale = f.store.disconnect(id, connection, true);
+    f.store.save({ ...scenarioInput(connection), id, enabled: false, name: "New name", bindings: {} });
+    const changed = f.store.instance(id)!;
+    expect(() => f.store.undoDisconnect(stale)).toThrow("scenario-changed");
+    expect(f.store.instance(id)).toEqual(changed);
+    f.store.setEnabled(connection, true);
+    f.store.save({ ...scenarioInput(connection), id, enabled: false });
+    const paused = f.store.disconnect(id, connection);
+    f.store.undoDisconnect(paused);
+    expect(f.store.instance(id)!.enabled).toBe(0);
+    expect(f.store.instance(id)!.bindings).toBe(before.bindings);
+  } finally { f.close(); }
+});
+
 test("enable changes preserve current configuration and invalidate in-flight results", () => {
   const f = fixture();
   try {

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 
 import { messages, type Locale } from "@peek/core/i18n";
 import { SettingsRowMenu } from "./row-menu";
-import { ScenarioCardCount } from "./card-count";
+import { ConnectionScenarioCount, ScenarioCardCount } from "./card-count";
 import { InstanceHealth } from "./instance-health";
 import { SettingsDataTable } from "./data-table";
 import { LoadingState, ErrorState } from "./layout";
@@ -48,8 +48,9 @@ import {
 import { ProfileLabel } from "../profile-label";
 import type { Profile } from "@peek/core/profiles";
 import { DeleteButton, ConfirmAction } from "./delete-button";
+import { ConnectionUsage } from "./connection-usage";
 import { ScenarioConnections, ConnectionSheet, type ConnectionSheetTarget } from "./scenario-connections";
-import { connectionInputs, selectBinding } from "./connection-bindings";
+import { connectionInputs, connectionScenarios, selectBinding } from "./connection-bindings";
 import type { EditorGuard } from "./editor-form";
 import { applyInstanceSetting, type InstanceSetting } from "./instance-draft";
 type Binding = { connectionId: string; dataset: string };
@@ -97,6 +98,16 @@ export async function api(body: unknown) {
   if (!r.ok) throw Object.assign(new Error(data.error), { issues: data.issues });
   return data;
 }
+async function disconnectScenario(connectionId: string, scenarioId: string, disable: boolean,
+  changed: (scenario: Item, connectionId: string, beforeUndo?: Item) => void) {
+  const result = await api({ action: "disconnect", id: scenarioId, connectionId, disable });
+  changed(result.instance, connectionId);
+  return async () => {
+    const restored = await api({ action: "undo-disconnect", undo: result.undo });
+    changed(restored.instance, connectionId, result.instance);
+  };
+}
+
 function initial(schema: Schema): Record<string, Json> {
   return Object.fromEntries(
     Object.entries(schema.properties ?? {})
@@ -274,6 +285,12 @@ export function Extensions({
       </section>
     );
   }
+  function connectionUsage(connectionId: string) {
+    return data ? <ConnectionUsage connectionId={connectionId} instances={data.instances} packages={data.packages}
+      profiles={profiles} locale={locale} onDisconnect={(scenarioId, disable) => disconnectScenario(connectionId, scenarioId, disable,
+        (scenario) => setData((previous) => previous ? { ...previous,
+          instances: previous.instances.map((value) => value.id === scenario.id ? scenario : value) } : previous))} /> : null;
+  }
   const rows =
     data?.instances
       .filter(
@@ -288,7 +305,8 @@ export function Extensions({
           .map((p) => (
             <ProfileLabel key={p.id} profile={p} locale={locale} avatarOnly />
           )),
-        cardCount: <ScenarioCardCount count={i.cardCount} locale={locale} />,
+        count: i.kind === "scenario" ? <ScenarioCardCount count={i.cardCount} locale={locale} />
+          : <ConnectionScenarioCount count={connectionScenarios(data.instances, i.id).length} locale={locale} />,
         health: (
           <InstanceHealth kind={i.kind} enabled={!!i.enabled} error={i.last_error} lastSuccess={i.last_success} ready={data.runtime.ready} locale={locale} />
         ),
@@ -330,6 +348,8 @@ export function Extensions({
           kind ? (
             <SettingsRowMenu
               kind={i.kind}
+              deleteContent={i.kind === "connection" ? connectionUsage(i.id) : undefined}
+              deleteDisabled={i.kind === "connection" && connectionScenarios(data.instances, i.id).length > 0}
               refreshDisabled={busy || !i.enabled || !data.runtime.ready}
               onRefresh={() => perform(() => api({ action: "run", id: i.id }), t.refreshRequested)}
               enabled={!!i.enabled}
@@ -358,11 +378,12 @@ export function Extensions({
               <DeleteButton
                 locale={locale}
                 disabled={busy}
-                description={t.confirmInstanceDelete}
+                description={i.kind === "connection" && connectionScenarios(data.instances, i.id).length > 0 ? t.connectionDeleteInUse : t.confirmInstanceDelete}
+                confirmDisabled={i.kind === "connection" && connectionScenarios(data.instances, i.id).length > 0}
                 onConfirm={() =>
                   perform(() => api({ action: "delete-instance", id: i.id }), i.kind === "scenario" ? t.scenarioDeleted : t.connectionDeleted, true)
                 }
-              />
+              >{i.kind === "connection" ? connectionUsage(i.id) : null}</DeleteButton>
             </>
           ),
         children: (
@@ -738,8 +759,10 @@ export function InstanceEditor({
   navigationDirty = false,
   defaultProfile = "shared",
   onDelete,
+  onDisconnected,
 }: {
   onDelete?: () => Promise<void>;
+  onDisconnected?: (scenario: Item, connectionId: string, previous?: Item) => void;
   guardRef?: Ref<EditorGuard>;
   navigationDirty?: boolean;
   defaultProfile?: string;
@@ -784,6 +807,27 @@ export function InstanceEditor({
   const [connectionStatus, setConnectionStatus] = useState<Pick<Status, "instances" | "connections" | "runtime"> | null>(null);
   const currentConnections = connectionStatus?.connections ?? connections;
   const currentInstances = connectionStatus?.instances ?? instances;
+  function disconnected(scenario: Item, connectionId: string, beforeUndo?: Item) {
+    setConnectionStatus((previous) => ({ instances: (previous?.instances ?? instances).map((value) => value.id === scenario.id ? scenario : value),
+      connections: previous?.connections ?? connections, runtime: previous?.runtime ?? runtime }));
+    if (item?.id === scenario.id) {
+      const remove = (values: Record<string, Binding[]>) => Object.fromEntries(Object.entries(values)
+        .map(([input, bindings]) => [input, bindings.filter((binding) => binding.connectionId !== connectionId)]));
+      if (beforeUndo) {
+        setBindings((previous) => Object.fromEntries(Object.keys({ ...previous, ...scenario.bindings }).map((input) => [input,
+          JSON.stringify(previous[input] ?? []) === JSON.stringify(beforeUndo.bindings[input] ?? [])
+            ? scenario.bindings[input] ?? [] : previous[input] ?? [],
+        ])));
+        setSavedDraft((previous) => ({ ...previous, enabled: !!scenario.enabled, bindings: scenario.bindings }));
+        if (beforeUndo.enabled !== scenario.enabled) setEnabled(!!scenario.enabled);
+      } else {
+        setBindings(remove);
+        setSavedDraft((previous) => ({ ...previous, enabled: !!scenario.enabled, bindings: remove(previous.bindings) }));
+        if (savedDraft.enabled && !scenario.enabled) setEnabled(false);
+      }
+    }
+    onDisconnected?.(scenario, connectionId, beforeUndo);
+  }
   const inputs = connectionInputs(m, currentConnections);
   const missingInput = inputs.find(
     ({ input, requirement, choices }) =>
@@ -845,9 +889,12 @@ export function InstanceEditor({
           const block = m.settingsUi.blocks.find((b) => `block:${b.id}` === setting);
           const savingSecrets = block?.source === "secrets";
           const next = item ? applyInstanceSetting(savedDraft, draft, setting, m.settingsUi.blocks) : draft;
-          if (missingInput && (!item || setting === `bindings:${missingInput.input}`)) {
+          const missingSavedInput = next.enabled && inputs.find(({ input, requirement, choices }) => !requirement.optional &&
+            !choices.some((choice) => (next.bindings[input] ?? []).some((binding) =>
+              binding.connectionId === choice.connectionId && binding.dataset === choice.dataset)));
+          if (missingSavedInput) {
             setActiveSetting(setting);
-            setError(t.chooseACompatibleConnectionFor + ` ${missingInput.input}.`);
+            setError(t.chooseACompatibleConnectionFor + ` ${missingSavedInput.input}.`);
             return false;
           }
           setActiveSetting(setting);
@@ -921,6 +968,9 @@ export function InstanceEditor({
                   <AlertDescription>{item.last_error || t.extensionRunnerUnavailable}</AlertDescription>
                 </Alert> : null}
               </div> : null}
+              {item && m.kind === "connection" ? <ConnectionUsage connectionId={item.id}
+                instances={currentInstances} packages={packages} profiles={profiles} locale={locale}
+                onDisconnect={(scenarioId, disable) => disconnectScenario(item.id, scenarioId, disable, disconnected)} /> : null}
             </>, !profiles, m.description, undefined, true,
             <ExtensionIcon kind={m.kind} size="header" src={packages.find((p) => p.manifest.id === m.id)?.iconDataUrl} color={m.iconColor} />,
             <div className="flex items-center gap-2">
@@ -928,6 +978,10 @@ export function InstanceEditor({
                 <Switch checked={enabled} onCheckedChange={setEnabled} />
               </SettingsField>
               {item && onDelete ? <SettingsRowMenu locale={locale} kind={m.kind} disabled={busy}
+                deleteDisabled={m.kind === "connection" && connectionScenarios(currentInstances, item.id).length > 0}
+                deleteContent={m.kind === "connection" ? <ConnectionUsage connectionId={item.id}
+                  instances={currentInstances} packages={packages} profiles={profiles} locale={locale}
+                  onDisconnect={(scenarioId, disable) => disconnectScenario(item.id, scenarioId, disable, disconnected)} /> : undefined}
                 onDelete={async () => {
                   setBusy(true);
                   try { await onDelete(); }
@@ -941,7 +995,7 @@ export function InstanceEditor({
             inputs={inputs} bindings={bindings} onChange={setBindings}
             savedBindings={savedDraft.bindings} packages={packages} instances={currentInstances}
             profiles={profiles} runtime={connectionStatus?.runtime ?? runtime} locale={locale}
-            existing={!!item} busy={busy} activeSetting={activeSetting}
+            existing={!!item} allowEmpty={item ? !savedDraft.enabled : !enabled} busy={busy} activeSetting={activeSetting}
             error={error} onOpen={setSheet}
           /> : null}
           {m.settingsUi.blocks.map((block) => {
@@ -959,7 +1013,7 @@ export function InstanceEditor({
           })}
           {!item ? <>
             {error ? <ErrorState>{error}</ErrorState> : null}
-            <div><Button type="submit" formNoValidate name="setting" value="create" disabled={busy || !profiles || !!missingInput}>
+            <div><Button type="submit" formNoValidate name="setting" value="create" disabled={busy || !profiles || (enabled && !!missingInput)}>
               {busy ? t.saving : t.settingsCreate}
             </Button></div>
           </> : null}
@@ -969,7 +1023,7 @@ export function InstanceEditor({
         instances={currentInstances} connections={currentConnections} runtime={connectionStatus?.runtime ?? runtime}
         profiles={profiles} profilesError={profilesError} locale={locale} defaultProfile={profile}
         scenarioDirty={JSON.stringify(draft) !== JSON.stringify(savedDraft)}
-        onClose={() => setSheet(null)} onRefresh={setConnectionStatus}
+        onClose={() => setSheet(null)} onRefresh={setConnectionStatus} onDisconnected={disconnected}
         onDeleted={(id) => {
           setConnectionStatus({
             instances: currentInstances.filter((instance) => instance.id !== id),

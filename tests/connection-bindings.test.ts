@@ -2,12 +2,25 @@ import { expect, test } from "bun:test";
 import type { Manifest } from "@peekapp/sdk";
 import scenarioManifest from "../extensions/official/meetings/peek.json";
 import connectionManifest from "../extensions/official/ical/peek.json";
-import { compatiblePackages, connectionInputs, selectBinding } from "../apps/web/components/settings/connection-bindings";
+import { compatiblePackages, connectionInputs, connectionScenarios, selectBinding, type Binding } from "../apps/web/components/settings/connection-bindings";
 
 const manifest = scenarioManifest as Manifest;
 const producer = connectionManifest as Manifest;
 const contract = producer.provides!.events;
 const packages = (manifests: Manifest[]) => manifests.map((manifest) => ({ manifest, iconDataUrl: null, explicit: true, unused: false, official: true }));
+test("connection usage counts each saved scenario once across inputs and datasets, including paused and other profiles", () => {
+  const instances: { id: string; kind: string; enabled: number; profile_id: string; bindings: Record<string, Binding[]> }[] = [
+    { id: "active", kind: "scenario", enabled: 1, profile_id: "shared", bindings: { events: [{ connectionId: "a", dataset: "events" }], other: [{ connectionId: "a", dataset: "second" }] } },
+    { id: "paused", kind: "scenario", enabled: 0, profile_id: "personal", bindings: { events: [{ connectionId: "a", dataset: "events" }, { connectionId: "b", dataset: "events" }] } },
+    { id: "unrelated", kind: "scenario", enabled: 1, profile_id: "shared", bindings: { events: [{ connectionId: "b", dataset: "events" }] } },
+    { id: "empty", kind: "scenario", enabled: 1, profile_id: "shared", bindings: {} },
+    { id: "connection", kind: "connection", enabled: 1, profile_id: "shared", bindings: { events: [{ connectionId: "a", dataset: "events" }] } },
+  ];
+  expect(connectionScenarios(instances, "a").map((i) => i.id)).toEqual(["active", "paused"]);
+  expect(connectionScenarios(instances, "b").map((i) => i.id)).toEqual(["paused", "unrelated"]);
+  expect(connectionScenarios(instances, "unused")).toEqual([]);
+  expect(connectionScenarios([], "a")).toEqual([]);
+});
 test("creation and selection agree on compatible datasets and retain paused choices", () => {
   const incompatible = { ...producer, id: "test/incompatible", provides: { events: { ...contract, version: "99.0.0" } } };
   expect(compatiblePackages(manifest, "events", packages([producer, incompatible, manifest])).map((p) => p.manifest.id)).toEqual([producer.id]);

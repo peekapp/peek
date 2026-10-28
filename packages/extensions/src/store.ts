@@ -145,7 +145,7 @@ export function openExtensions(path: string) {
         contracts: getPackage(i.package_id).manifest.provides ?? {},
       }));
   }
-  function validateBindings(m: Manifest, bindings: Record<string, Binding[]>) {
+  function validateBindings(m: Manifest, bindings: Record<string, Binding[]>, enabled = true) {
     if (!bindings || typeof bindings !== "object" || Array.isArray(bindings))
       throw new Error("invalid-bindings");
     const connections = allConnections();
@@ -156,7 +156,7 @@ export function openExtensions(path: string) {
       if (
         !Array.isArray(selected) ||
         selected.length > 100 ||
-        (!input.optional && !selected.length) ||
+        (enabled && !input.optional && !selected.length) ||
         (!input.multiple && selected.length > 1)
       )
         throw new Error("invalid-bindings");
@@ -564,6 +564,7 @@ export function openExtensions(path: string) {
           validateBindings(
             getPackage(i.package_id).manifest,
             JSON.parse(i.bindings),
+            !!i.enabled,
           );
         db.run(
           "UPDATE extension_instances SET generation=generation+1,next_run_at=? WHERE kind='scenario' AND enabled=1",
@@ -629,6 +630,7 @@ export function openExtensions(path: string) {
           validateBindings(
             getPackage(i.package_id).manifest,
             JSON.parse(i.bindings),
+            !!i.enabled,
           );
         }
         for (const receipt of old.receipts ?? [])
@@ -648,7 +650,7 @@ export function openExtensions(path: string) {
       secrets?: Record<string, Json>;
       bindings: Record<string, Binding[]>;
       enabled: boolean;
-    }) {
+    }, restoringBindings = false) {
       return db
         .transaction(() => {
           const p = getPackage(input.packageId),
@@ -666,11 +668,11 @@ export function openExtensions(path: string) {
           owner(input.profileId);
           validate(p.manifest.settings, input.settings, "settings");
           boundedJson(input.settings, LIMITS.state);
-          validateBindings(p.manifest, input.bindings ?? {});
+          validateBindings(p.manifest, input.bindings ?? {}, input.enabled);
           const previousBindings: Record<string, Binding[]> = old ? JSON.parse(old.bindings) : {};
           for (const [name, bindings] of Object.entries(input.bindings ?? {}))
             for (const binding of bindings)
-              if (!instance(binding.connectionId)?.enabled && !previousBindings[name]?.some(
+              if (!restoringBindings && !instance(binding.connectionId)?.enabled && !previousBindings[name]?.some(
                 (previous) => previous.connectionId === binding.connectionId && previous.dataset === binding.dataset,
               )) throw new Error("connection-paused");
           const secrets =
@@ -738,6 +740,40 @@ export function openExtensions(path: string) {
           return id;
         })
         .immediate();
+    },
+    disconnect(id: string, connectionId: string, disable = false) {
+      if (typeof id !== "string" || typeof connectionId !== "string" || typeof disable !== "boolean")
+        throw new Error("invalid-instance");
+      return db.transaction(() => {
+        const current = instance(id);
+        if (current?.kind !== "scenario" || instance(connectionId)?.kind !== "connection")
+          throw new Error("instance-not-found");
+        const bindings = Object.fromEntries(Object.entries(JSON.parse(current.bindings) as Record<string, Binding[]>)
+          .map(([input, values]) => [input, values.filter((binding) => binding.connectionId !== connectionId)]));
+        const manifest = getPackage(current.package_id).manifest;
+        if (current.enabled && !disable && Object.entries(manifest.inputs ?? {}).some(([input, requirement]) => !requirement.optional && !bindings[input]?.length))
+          throw new Error("connection-required");
+        this.save({
+          id, packageId: current.package_id, name: current.name, profileId: current.profile_id,
+          settings: JSON.parse(current.settings), enabled: disable ? false : !!current.enabled, bindings,
+        });
+        return encryptSecret(JSON.stringify({ id, generation: instance(id)!.generation, bindings: JSON.parse(current.bindings), enabled: !!current.enabled }), path);
+      }).immediate();
+    },
+    undoDisconnect(token: string) {
+      if (typeof token !== "string") throw new Error("invalid-instance");
+      const undo = JSON.parse(decryptSecret(token, path)) as { id: string; generation: number; bindings: Record<string, Binding[]>; enabled: boolean };
+      if (!undo || typeof undo.id !== "string" || !Number.isSafeInteger(undo.generation))
+        throw new Error("invalid-instance");
+      return db.transaction(() => {
+        const current = instance(undo.id);
+        if (current?.kind !== "scenario") throw new Error("instance-not-found");
+        if (current.generation !== undo.generation) throw new Error("scenario-changed");
+        return this.save({
+          id: current.id, packageId: current.package_id, name: current.name, profileId: current.profile_id,
+          settings: JSON.parse(current.settings), bindings: undo.bindings, enabled: undo.enabled,
+        }, true);
+      }).immediate();
     },
     setEnabled(id: string, enabled: boolean) {
       if (typeof id !== "string" || typeof enabled !== "boolean")

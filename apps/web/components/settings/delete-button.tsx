@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
+import { TriangleAlertIcon } from "lucide-react";
 import { messages, type Locale } from "@peek/core/i18n";
-import { Alert, AlertDescription } from "../ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import {
   AlertDialog,
@@ -23,6 +24,9 @@ export function ConfirmAction({
   disabled,
   onConfirm,
   trigger,
+  warning,
+  children,
+  confirmDisabled,
 }: {
   locale: Locale;
   label?: string;
@@ -30,6 +34,9 @@ export function ConfirmAction({
   disabled?: boolean;
   onConfirm: () => Promise<void>;
   trigger?: ReactElement;
+  warning?: { title: string; description: string };
+  children?: ReactNode;
+  confirmDisabled?: boolean;
 }) {
   const t = messages(locale);
   const [open, setOpen] = useState(false);
@@ -59,12 +66,18 @@ export function ConfirmAction({
           <AlertDialogTitle>{label ?? t.remove}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {warning ? <Alert variant="warning" className="mb-0">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertTitle className="line-clamp-none">{warning.title}</AlertTitle>
+          <AlertDescription>{warning.description}</AlertDescription>
+        </Alert> : null}
+        {children ? <div className="flex max-h-[50dvh] min-h-0 flex-col gap-4 overflow-y-auto">{children}</div> : null}
         {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>{t.cancel}</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            disabled={pending}
+            disabled={pending || confirmDisabled}
             onClick={async (event) => {
               event.preventDefault();
               setPending(true);

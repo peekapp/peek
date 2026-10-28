@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Ellipsis, Pencil, Trash2, Pause, Play, RefreshCw } from "lucide-react";
 import { messages, type Locale } from "@peek/core/i18n";
@@ -24,7 +25,11 @@ export function SettingsRowMenu({
   onRefresh,
   refreshDisabled,
   kind,
+  deleteContent,
+  deleteDisabled,
 }: {
+  deleteContent?: ReactNode;
+  deleteDisabled?: boolean;
   href?: string;
   locale: Locale;
   disabled?: boolean;
@@ -71,8 +76,9 @@ export function SettingsRowMenu({
           <ConfirmAction
             locale={locale}
             disabled={disabled}
-            description={kind === "profile" ? t.confirmProfileDelete : t.confirmInstanceDelete}
+            description={deleteDisabled ? t.connectionDeleteInUse : kind === "profile" ? t.confirmProfileDelete : t.confirmInstanceDelete}
             onConfirm={onDelete}
+            confirmDisabled={deleteDisabled}
             trigger={
               <DropdownMenuItem
                 variant="destructive"
@@ -83,7 +89,7 @@ export function SettingsRowMenu({
                 {t.remove}
               </DropdownMenuItem>
             }
-          />
+          >{deleteContent}</ConfirmAction>
           </> : kind === "profile" ? <>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" disabled title={t.systemProfile}>

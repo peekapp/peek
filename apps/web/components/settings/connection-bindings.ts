@@ -2,6 +2,11 @@ import type { Manifest } from "@peekapp/sdk";
 import { acceptsContract } from "@peek/extensions/compatibility";
 
 export type Binding = { connectionId: string; dataset: string };
+
+export function connectionScenarios<T extends { kind: string; bindings: Record<string, Binding[]> }>(instances: T[], connectionId: string): T[] {
+  return instances.filter((instance) => instance.kind === "scenario" &&
+    Object.values(instance.bindings).some((bindings) => bindings.some((binding) => binding.connectionId === connectionId)));
+}
 export function connectionInputs(manifest: Manifest, connections: { id: string; name: string; enabled: boolean; contracts: Record<string, { id: string; version: string }> }[]) {
   return Object.entries(manifest.inputs ?? {}).map(([input, requirement]) => ({
     input, requirement,

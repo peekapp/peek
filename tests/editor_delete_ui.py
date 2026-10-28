@@ -36,12 +36,12 @@ with sync_playwright() as p:
     page.keyboard.press('Escape')
     expect(page.get_by_role('menu')).to_have_count(0)
     expect(page.get_by_role('textbox', name='Name', exact=True)).to_have_value('Keep this draft')
-    # Used connections remain protected; failed deletion stays in the confirmation.
+    # Used connections list their scenarios and keep deletion disabled until disconnected.
     page.get_by_role('button', name='Open: Calendar', exact=True).first.click()
     sheet=page.get_by_role('dialog')
     menu(sheet)
-    page.get_by_role('alertdialog').get_by_role('button', name='Delete', exact=True).click()
-    expect(page.get_by_role('alertdialog').get_by_role('alert')).to_contain_text('This connection is used by a scenario')
+    expect(page.get_by_role('alertdialog').get_by_role('button', name='Delete', exact=True)).to_be_disabled()
+    expect(page.get_by_role('alertdialog').get_by_role('region', name='Used by', exact=True)).to_be_visible()
     assert any(i['id']==used for i in status()['instances'])
     page.get_by_role('alertdialog').get_by_role('button', name='Cancel', exact=True).click()
     expect(page.get_by_role('alertdialog')).to_have_count(0)

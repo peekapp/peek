@@ -2,9 +2,18 @@ import { messages, type Locale } from "@peek/core/i18n";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 export function ScenarioCardCount({ count, locale }: { count: number; locale: Locale }) {
+  return <ResourceCount count={count} locale={locale} kind="card" />;
+}
+
+export function ConnectionScenarioCount({ count, locale }: { count: number; locale: Locale }) {
+  return <ResourceCount count={count} locale={locale} kind="scenario" />;
+}
+
+function ResourceCount({ count, locale, kind }: { count: number; locale: Locale; kind: "card" | "scenario" }) {
   const t = messages(locale);
   const plural = new Intl.PluralRules(locale).select(count);
-  const template = plural === "one" ? t.cardCountOne : plural === "few" ? t.cardCountFew : plural === "many" ? t.cardCountMany : t.cardCountOther;
+  const suffix = plural === "one" ? "One" : plural === "few" ? "Few" : plural === "many" ? "Many" : "Other";
+  const template = t[`${kind}Count${suffix}`];
   const label = template.replace("{count}", count.toLocaleString(locale));
   return (
     <Tooltip>
@@ -13,7 +22,7 @@ export function ScenarioCardCount({ count, locale }: { count: number; locale: Lo
           {label}
         </span>
       </TooltipTrigger>
-      <TooltipContent size="compact">{t.scenarioCardCountHint}</TooltipContent>
+      <TooltipContent size="compact">{kind === "card" ? t.scenarioCardCountHint : t.connectionScenarioCountHint}</TooltipContent>
     </Tooltip>
   );
 }

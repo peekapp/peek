@@ -90,6 +90,14 @@ export async function POST(request: Request) {
     else if (body.action === "cancel") store.cancel(body.id);
     else if (body.action === "save")
       return Response.json({ id: store.save(body.instance) });
+    else if (body.action === "disconnect") {
+      const undo = store.disconnect(body.id, body.connectionId, body.disable);
+      return Response.json({ undo, instance: store.status().instances.find((instance) => instance.id === body.id) });
+    }
+    else if (body.action === "undo-disconnect") {
+      const id = store.undoDisconnect(body.undo);
+      return Response.json({ instance: store.status().instances.find((instance) => instance.id === id) });
+    }
     else if (body.action === "set-enabled") store.setEnabled(body.id, body.enabled);
     else if (body.action === "run") store.requestRun(body.id);
     else if (body.action === "delete-instance") store.removeInstance(body.id);
