@@ -130,6 +130,7 @@ export function SettingsList({ children }: { children: ReactNode }) {
   );
 }
 export function SettingsRow({
+  href,
   title,
   description,
   children,
@@ -137,6 +138,7 @@ export function SettingsRow({
   status,
   media,
 }: {
+  href?: string;
   title: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
@@ -145,13 +147,13 @@ export function SettingsRow({
   media?: ReactNode;
 }) {
   return (
-    <Item role="listitem" variant="resource" className="flex-col sm:flex-row">
+    <Item role="listitem" variant="resource" className={cn("flex-col sm:flex-row", href && "relative")}>
       <div className="flex w-full min-w-0 flex-1 items-start gap-3 sm:w-auto">
         {media ? <ItemMedia>{media}</ItemMedia> : null}
         <ItemContent className="w-full gap-2 sm:w-auto">
           <div className="flex flex-wrap items-center gap-2">
             <ItemTitle>
-              <h3>{title}</h3>
+              <h3>{href ? <Link href={href} className="rounded-sm after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring">{title}</Link> : title}</h3>
             </ItemTitle>
             {status}
           </div>
@@ -325,7 +327,7 @@ export function EditorPanel({
               {description ? <CardDescription>{description}</CardDescription> : null}
             </div>
           </div>
-          {headerAction ? <div className="flex min-h-8 shrink-0 items-center">{headerAction}</div> : null}
+          {headerAction ? <div className="ml-auto flex min-h-8 shrink-0 items-center">{headerAction}</div> : null}
         </div>
       </CardHeader>
       {sections ?? <EditorPanelSection hint={hint} actions={actions}>{children}</EditorPanelSection>}

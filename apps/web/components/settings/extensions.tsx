@@ -952,7 +952,7 @@ export function InstanceEditor({
                     <SettingsSelect value={profile} onValueChange={setProfile}>
                       {profiles.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          <ProfileLabel profile={p} locale={locale} />
+                          <ProfileLabel linked={false} profile={p} locale={locale} />
                         </SelectItem>
                       ))}
                     </SettingsSelect>

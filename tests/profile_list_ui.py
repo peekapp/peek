@@ -29,18 +29,19 @@ with sync_playwright() as p:
             expect(avatar).to_have_css("width", "64px")
             identity = row.get_by_role("link", name=name)
             expect(identity).to_be_visible()
-            expect(row.get_by_label("Connections" if locale == "en" else "Подключения", exact=True)).to_be_visible()
-            expect(row.get_by_label("Scenarios" if locale == "en" else "Сценарии", exact=True)).to_be_visible()
+            expect(row.get_by_label(("Connections" if locale == "en" else "Подключения") + ": 0", exact=True)).to_be_visible()
+            expect(row.get_by_label(("Scenarios" if locale == "en" else "Сценарии") + ": 0", exact=True)).to_be_visible()
             if width >= 1024:
                 assert row.locator("..").evaluate("el => getComputedStyle(el).gridTemplateColumns.split(' ').length") >= 4
             for label in ["Connections" if locale == "en" else "Подключения", "Scenarios" if locale == "en" else "Сценарии"]:
-                trigger = row.get_by_role("link", name=label, exact=True)
+                trigger = row.get_by_role("button", name=label + ": 0", exact=True)
                 trigger.hover()
-                expect(page.get_by_role("tooltip")).to_have_text(label + ": 0")
+                expect(page.get_by_role("tooltip")).to_have_text(label)
                 page.mouse.move(0, 0)
                 trigger.focus()
-                expect(page.get_by_role("tooltip")).to_have_text(label + ": 0")
+                expect(page.get_by_role("tooltip")).to_have_text(label)
                 page.keyboard.press("Escape")
+                expect(page.get_by_role("tooltip")).not_to_be_visible()
             assert row.bounding_box()["width"] < 260
             assert row.bounding_box()["height"] < 260
             href = identity.get_attribute("href")
@@ -76,13 +77,13 @@ with sync_playwright() as p:
         response = route.fetch()
         data = response.json()
         data["connections"] = [{"id": "calendar", "profileId": profile_id, "name": "Family calendar for school and weekend activities", "iconDataUrl": None}]
-        data["scenarios"] = [{"id": str(i), "profileId": profile_id} for i in range(3)] + [{"id": "other", "profileId": "shared"}]
+        data["scenarios"] = [{"id": str(i), "name": "Scenario " + str(i), "profileId": profile_id} for i in range(3)] + [{"id": "other", "name": "Other scenario", "profileId": "shared"}]
         route.fulfill(response=response, json=data)
     page.route("**/api/settings", connection_fixture)
     page.set_viewport_size({"width": 390, "height": 844})
     page.reload()
-    expect(row.get_by_label("Connections", exact=True)).to_have_text("1")
-    expect(row.get_by_label("Scenarios", exact=True)).to_have_text("3")
+    expect(row.get_by_label("Connections: 1", exact=True)).to_have_text("1")
+    expect(row.get_by_label("Scenarios: 3", exact=True)).to_have_text("3")
     expect(row.get_by_text("Family calendar for school and weekend activities", exact=True)).to_have_count(0)
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     row.get_by_role("link", name=name).focus()
@@ -101,9 +102,9 @@ with sync_playwright() as p:
     row.get_by_role("button", name="Actions").click()
     page.get_by_role("menuitem", name="Delete", exact=True).click()
     page.get_by_role("alertdialog").get_by_role("button", name="Delete", exact=True).click()
+    expect(page.get_by_role("alertdialog").get_by_role("alert")).to_contain_text("This profile is used")
+    page.get_by_role("alertdialog").get_by_role("button", name="Cancel", exact=True).click()
     expect(page.get_by_role("alertdialog")).not_to_be_visible()
-    page.keyboard.press("Escape")
-    expect(page.get_by_role("status")).to_be_visible()
     expect(row).to_be_visible()
     page.keyboard.press("Escape")
     page.unroute("**/api/settings", fail_delete)

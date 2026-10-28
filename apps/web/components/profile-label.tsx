@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
@@ -23,13 +24,15 @@ export function ProfileIdentity({
   color,
   avatarOnly = false,
   layout = "inline",
+  profileId,
 }: {
+  profileId?: string;
   name: string;
   color: ProfileColor;
   avatarOnly?: boolean;
   layout?: "inline" | "card" | "header";
 }) {
-  return (
+  const identity = (
     <span className={cn(identityVariants({ layout }))}>
       <Avatar
         size={layout === "card" ? "xl" : layout === "header" ? "header" : "sm"}
@@ -43,13 +46,16 @@ export function ProfileIdentity({
       <span className={cn(nameVariants({ avatarOnly }))}>{name}</span>
     </span>
   );
+  return profileId ? <Link href={`/profiles/${encodeURIComponent(profileId)}`} className={cn("relative z-10 inline-flex min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", layout === "header" && "shrink-0")}>{identity}</Link> : identity;
 }
 export function ProfileLabel({
+  linked = true,
   profile,
   locale,
   avatarOnly = false,
   layout = "inline",
 }: {
+  linked?: boolean;
   profile: Profile;
   locale: Locale;
   avatarOnly?: boolean;
@@ -57,6 +63,7 @@ export function ProfileLabel({
 }) {
   const identity = (
     <ProfileIdentity
+      profileId={linked ? profile.id : undefined}
       name={profileName(profile, locale)}
       color={profile.color}
       avatarOnly={avatarOnly}
@@ -67,7 +74,7 @@ export function ProfileLabel({
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          tabIndex={0}
+          tabIndex={linked ? undefined : 0}
           className="relative z-10 inline-flex rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {identity}

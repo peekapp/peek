@@ -24,6 +24,7 @@ import { ScreenEditor, ScreenList } from "./settings/screen-editor";
 import { profileName, type Profile } from "@peek/core/profiles";
 import { ProfileEditor } from "./settings/profile-editor";
 import { SettingsGrid } from "./settings/layout";
+import { ProfileUsage, type ProfileUsageData } from "./settings/profile-usage";
 import { ProfileCard } from "./settings/profile-card";
 import { SettingsRowMenu } from "./settings/row-menu";
 import { PreferenceRow } from "./settings/layout";
@@ -32,12 +33,9 @@ import { useEffect, useRef, useState } from "react";
 import { messages, type Locale } from "@peek/core/i18n";
 import { Extensions, type Status } from "./settings/extensions";
 import { mutate, errorText } from "./settings/api";
-type Data = {
+type Data = ProfileUsageData & {
   theme: Theme;
-  screens: Screen[];
   profiles: Profile[];
-  scenarios: { id: string; profileId: string }[];
-  connections: { id: string; profileId: string }[];
   locale: Locale;
 };
 export function Settings({
@@ -244,6 +242,7 @@ export function Settings({
                 <ProfileEditor
                   key={item}
                   profile={profile}
+                  usage={data ?? undefined}
                   locale={locale}
                   onSaved={(next) => setData((current) => current ? { ...current, profiles: current.profiles.map((p) => p.id === next.id ? next : p) } : current)}
                 />
@@ -285,11 +284,11 @@ export function Settings({
                         key={p.id}
                         profile={p}
                         locale={locale}
-                        connectionCount={data.connections.filter((c) => c.profileId === p.id).length}
-                        scenarioCount={data.scenarios.filter((s) => s.profileId === p.id).length}
+                        usage={data}
                         actions={
                           <SettingsRowMenu
                           kind="profile"
+                          relatedItems={<ProfileUsage profileId={p.id} data={data} locale={locale} variant="menu" />}
                           href={`/profiles/${p.id}`}
                           locale={locale}
                           disabled={profileDeleting}

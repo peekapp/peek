@@ -32,7 +32,7 @@ export function ProfileSelect({
         ) : null}
         {profiles.map((p) => (
           <SelectItem value={p.id} key={p.id}>
-            <ProfileLabel profile={p} locale={locale} />
+            <ProfileLabel linked={false} profile={p} locale={locale} />
           </SelectItem>
         ))}
       </SettingsSelect>

@@ -49,6 +49,7 @@ function Owner({
 }) {
   return (
     <ProfileIdentity
+      profileId={owner.profileId}
       name={owner.system ? sharedLabel : owner.name}
       color={owner.color}
     />

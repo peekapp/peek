@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Ellipsis, Pencil, Trash2, Pause, Play, RefreshCw } from "lucide-react";
 import { messages, type Locale } from "@peek/core/i18n";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -25,9 +26,11 @@ export function SettingsRowMenu({
   onRefresh,
   refreshDisabled,
   kind,
+  relatedItems,
   deleteContent,
   deleteDisabled,
 }: {
+  relatedItems?: ReactNode;
   deleteContent?: ReactNode;
   deleteDisabled?: boolean;
   href?: string;
@@ -43,11 +46,16 @@ export function SettingsRowMenu({
   const t = messages(locale);
   return (
     <DropdownMenu>
+      <Tooltip>
+      <TooltipTrigger asChild>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" size="icon" aria-label={t.actions} disabled={disabled}>
           <Ellipsis />
         </Button>
       </DropdownMenuTrigger>
+      </TooltipTrigger>
+      <TooltipContent>{t.actions}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
           {href ? <DropdownMenuItem asChild>
@@ -56,6 +64,7 @@ export function SettingsRowMenu({
               {t.edit}
             </Link>
           </DropdownMenuItem> : null}
+          {relatedItems}
           {kind === "scenario" && onToggle ? <DropdownMenuItem
             disabled={disabled}
             onSelect={() => void onToggle()}
@@ -72,7 +81,7 @@ export function SettingsRowMenu({
             {kind === "scenario" ? t.updateCards : t.refreshData}
           </DropdownMenuItem> : null}
           {onDelete ? <>
-          {href || onToggle || onRefresh ? <DropdownMenuSeparator /> : null}
+          {href || relatedItems || onToggle || onRefresh ? <DropdownMenuSeparator /> : null}
           <ConfirmAction
             locale={locale}
             disabled={disabled}

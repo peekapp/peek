@@ -22,3 +22,7 @@ text conditionals, component-local dictionaries, or local translation helpers.
 Third-party SDK settings metadata is the explicit exception to the shared-dictionary
 rule: packages may supply validated `{en, ru?}` text through the shared SDK resolver.
 Official extension metadata and all host UI text still use `messages(locale)`.
+
+Every icon-only button must have a shared Tooltip with localized text on hover and
+keyboard focus, as well as an accessible label. A native title attribute is not a
+substitute for the tooltip.

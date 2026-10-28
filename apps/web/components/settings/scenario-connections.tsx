@@ -66,7 +66,7 @@ export function ScenarioConnections({ inputs, bindings, onChange, savedBindings,
           const controlProps = { id: controlId, "aria-label": label, disabled: !choice.enabled, "aria-describedby": !choice.enabled ? `${id}-${index}-paused` : undefined };
           return <div key={choiceKey(choice)} data-connection-choice className={cn(row({ selected: checked, disabled: !choice.enabled }))}
             onClick={(event) => {
-              if (!choice.enabled || (event.target as Element).closest("[role=checkbox], [role=radio], input, label, [data-connection-open]")) return;
+              if (!choice.enabled || (event.target as Element).closest("[role=checkbox], [role=radio], input, label, a, [data-connection-open]")) return;
               event.currentTarget.querySelector<HTMLButtonElement>("[role=checkbox], [role=radio]")?.click();
             }}>
             {requirement.multiple ? <Checkbox {...controlProps} checked={checked}

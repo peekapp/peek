@@ -333,7 +333,7 @@ export function ScreenEditor({
                   {profiles.map((profile) => (
                     <FieldLabel key={profile.id} htmlFor={`screen-${profile.id}`}>
                     <Field orientation="horizontal" data-disabled={config.allProfiles}>
-                      <FieldContent><ProfileLabel profile={profile} locale={locale} /></FieldContent>
+                      <FieldContent><ProfileLabel linked={false} profile={profile} locale={locale} /></FieldContent>
                       <Checkbox
                         id={`screen-${profile.id}`}
                         disabled={config.allProfiles}

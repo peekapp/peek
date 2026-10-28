@@ -1,4 +1,5 @@
 "use client";
+import { ProfileUsage, type ProfileUsageData } from "./profile-usage";
 import { toast } from "sonner";
 import { EditorForm, FormFeedback } from "./layout";
 import { EditorPanel } from "./layout";
@@ -20,8 +21,10 @@ export function ProfileEditor({
   profile,
   locale,
   onSaved,
+  usage,
 }: {
   profile?: Profile;
+  usage?: ProfileUsageData;
   locale: Locale;
   onSaved: (profile: Profile) => void;
 }) {
@@ -35,12 +38,13 @@ export function ProfileEditor({
   const [activePanel, setActivePanel] = useState("identity");
   const [status, setStatus] = useState("");
   const draft = { name, color };
+  const usageButton = profile && usage ? <ProfileUsage profileId={profile.id} data={usage} locale={locale} /> : null;
   function panel(setting: "identity" | "color", title: string, description: string, children: ReactNode, headerAction?: ReactNode) {
     const Container = profile ? "form" : "div";
     const changed = setting === "identity" ? name !== saved.name : color !== saved.color;
     return <Container data-setting={setting}>
-      <EditorPanel title={title} description={description} headerAction={headerAction}
-        media={setting === "identity" ? <ProfileIdentity name={name.trim() || t.profileName} color={color} avatarOnly layout="header" /> : undefined}
+      <EditorPanel title={title} description={description} headerAction={setting === "identity" && profile ? <div className="flex items-center gap-2">{usageButton}{headerAction}</div> : headerAction}
+        media={setting === "identity" ? <ProfileIdentity profileId={profile?.id} name={name.trim() || t.profileName} color={color} avatarOnly layout="header" /> : undefined}
         actions={profile ? <Button size="sm" type="submit" name="setting" value={setting} disabled={status === "saving" || !changed}>
           {status === "saving" && activePanel === setting ? t.saving : t.save}
         </Button> : undefined}>
@@ -52,7 +56,7 @@ export function ProfileEditor({
   return (
     <>
       {profile?.system ? (
-        <EditorPanel title={profileName(profile, locale)} media={<ProfileLabel profile={profile} locale={locale} avatarOnly layout="header" />} description={t.systemProfile} />
+        <EditorPanel title={profileName(profile, locale)} media={<ProfileLabel profile={profile} locale={locale} avatarOnly layout="header" />} headerAction={usageButton} description={t.systemProfile} />
       ) : (
         <EditorForm
           layout="settings"
@@ -102,6 +106,7 @@ export function ProfileEditor({
               </SettingsField>
             </FieldGroup>
           </>, profile ? <SettingsRowMenu kind="profile" locale={locale} disabled={status === "saving"}
+              relatedItems={usage ? <ProfileUsage profileId={profile.id} data={usage} locale={locale} variant="menu" /> : undefined}
               onDelete={async () => {
                 setStatus("saving");
                 try {
