@@ -121,7 +121,7 @@ with sync_playwright() as p:
             if path in ["/scenarios/new", "/connections/new"]:
                 expect(page.get_by_text("Scenario or connection not found", exact=True)).to_be_visible()
             else:
-                expect(page.get_by_role("link", name=re.compile("Back to|All screens|All profiles"))).to_be_visible()
+                expect(page.locator("header nav")).to_be_visible()
             if path == "/profiles/new":
                 expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
                 draft = page.get_by_role("textbox", name="Profile name", exact=True)
@@ -135,7 +135,7 @@ with sync_playwright() as p:
                 page.locator("#screen-id").fill("my-custom-id")
                 page.locator("#screen-all").uncheck()
                 page.get_by_role("radio", name="120%", exact=True).click()
-                expect(page.get_by_role("button", name="Save", exact=True)).to_be_enabled()
+                expect(page.get_by_role("button", name="Create", exact=True)).to_be_enabled()
             no_overflow(page)
             while held_loads:
                 held_loads.pop(0).continue_()
@@ -152,7 +152,8 @@ with sync_playwright() as p:
                 expect(page.get_by_role("radio", name="120%", exact=True)).to_be_checked()
                 expect(page.locator('[data-slot="skeleton"]')).to_have_count(0)
             if path in ["/screens/new", "/profiles/new"]:
-                page.get_by_role("link", name="Cancel", exact=True).click()
+                page.locator("header").get_by_role("link", name="Screens" if path == "/screens/new" else "Profiles", exact=True).click()
+                page.get_by_role("button", name="Leave", exact=True).click()
                 page.wait_for_url(base + path.removesuffix("/new"))
     page.set_viewport_size({"width": 1280, "height": 900})
 
@@ -171,7 +172,7 @@ with sync_playwright() as p:
             route.continue_()
 
     page.route("**/api/settings", hold_save)
-    page.get_by_role("button", name="Save", exact=True).click()
+    page.get_by_role("button", name="Create", exact=True).click()
     expect(page.locator("form")).to_have_attribute("aria-busy", "true")
     expect(field).to_be_disabled()
     expect(page.locator("form > fieldset")).to_have_attribute("inert", "")
@@ -201,12 +202,12 @@ with sync_playwright() as p:
             else route.continue_()
         ),
     )
-    page.get_by_role("button", name="Save", exact=True).click()
-    expect(page.locator("form")).to_have_attribute("aria-busy", "false")
+    page.locator("[data-setting=identity]").get_by_role("button", name="Save", exact=True).click()
+    expect(page.locator("[aria-busy]")).to_have_attribute("aria-busy", "false")
     expect(field).to_be_enabled()
     page.unroute("**/api/settings")
 
-    # Sidebar, browser Back, reload, and deliberate Cancel have distinct behavior.
+    # Sidebar, browser Back, reload, and breadcrumb navigation guard pending changes.
     page.get_by_role("link", name="Screens", exact=True).click()
     expect(page.get_by_role("alertdialog")).to_be_visible()
     page.get_by_role("button", name="Keep editing").click()
@@ -228,16 +229,21 @@ with sync_playwright() as p:
     assert dialogs == ["beforeunload"], dialogs
     expect(field).to_have_value("UI changed " + suffix)
     page.remove_listener("dialog", dismiss_reload)
-    page.get_by_role("link", name="Cancel", exact=True).click()
+    page.locator("header").get_by_role("link", name="Profiles", exact=True).click()
+    page.get_by_role("button", name="Leave", exact=True).click()
     page.wait_for_url(base + "/profiles")
     assert page.get_by_role("alertdialog").count() == 0
 
     # Real deletion: cancellation preserves the record; confirmation removes it.
     visit(page, profile_url.removeprefix(base))
-    page.get_by_role("button", name="Delete", exact=True).click()
+    page.get_by_role("button", name="Actions", exact=True).click()
+    page.get_by_role("menuitem", name="Delete", exact=True).click()
     page.get_by_role("alertdialog").get_by_role("button", name="Cancel").click()
+    expect(page.get_by_role("alertdialog")).to_have_count(0)
+    page.keyboard.press("Escape")
     expect(field).to_be_visible()
-    page.get_by_role("button", name="Delete", exact=True).click()
+    page.get_by_role("button", name="Actions", exact=True).click()
+    page.get_by_role("menuitem", name="Delete", exact=True).click()
     page.get_by_role("alertdialog").get_by_role("button", name="Delete").click()
     page.wait_for_url(base + "/profiles")
 
@@ -246,7 +252,7 @@ with sync_playwright() as p:
     screen_id = "ui-" + suffix
     page.locator("#screen-id").fill(screen_id)
     page.route("**/api/settings", hold_save)
-    page.get_by_role("button", name="Save", exact=True).click()
+    page.get_by_role("button", name="Create", exact=True).click()
     expect(page.locator("#screen-name")).to_be_disabled()
     page.locator("form").dispatch_event("submit")
     assert len(held) == 1
@@ -255,8 +261,9 @@ with sync_playwright() as p:
     expect(page.locator('[data-sonner-toast]').filter(has_text="Screen created")).to_be_visible()
     page.unroute("**/api/settings", hold_save)
     visit(page, f"/screens/{screen_id}/edit")
-    expect(page.locator("form")).to_have_attribute("aria-busy", "false")
-    page.get_by_role("button", name="Delete", exact=True).click()
+    expect(page.locator("[aria-busy]")).to_have_attribute("aria-busy", "false")
+    page.get_by_role("button", name="Actions", exact=True).click()
+    page.get_by_role("menuitem", name="Delete", exact=True).click()
     page.get_by_role("alertdialog").get_by_role("button", name="Delete").click()
     page.wait_for_url(base + "/screens")
 

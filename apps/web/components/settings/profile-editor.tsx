@@ -1,30 +1,29 @@
 "use client";
 import { toast } from "sonner";
 import { EditorForm, FormFeedback } from "./layout";
-import { EditorHeader, EditorSection, EditorActions } from "./layout";
+import { EditorPanel } from "./layout";
 import { ProfileLabel, ProfileIdentity } from "../profile-label";
 import { Label } from "../ui/label";
-import { DeleteButton } from "./delete-button";
+import { SettingsRowMenu } from "./row-menu";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { SettingsField } from "./form-field";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { FieldGroup, FieldSet, FieldLegend } from "../ui/field";
 import { profileColors, type ProfileColor } from "@peek/core/colors";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { type Profile } from "@peek/core/profiles";
+import { useState, type ReactNode } from "react";
+import { profileName, type Profile } from "@peek/core/profiles";
 import { messages, type Locale } from "@peek/core/i18n";
 import { mutate, errorText } from "./api";
 export function ProfileEditor({
   profile,
   locale,
-  refresh,
+  onSaved,
 }: {
   profile?: Profile;
   locale: Locale;
-  refresh: () => Promise<void>;
+  onSaved: (profile: Profile) => void;
 }) {
   const t = messages(locale),
     router = useRouter();
@@ -32,39 +31,54 @@ export function ProfileEditor({
   const [color, setColor] = useState<Profile["color"]>(
     profile?.color ?? "blue",
   );
+  const [saved, setSaved] = useState({ name: profile?.name ?? "", color: profile?.color ?? "blue" });
+  const [activePanel, setActivePanel] = useState("identity");
   const [status, setStatus] = useState("");
+  const draft = { name, color };
+  function panel(setting: "identity" | "color", title: string, description: string, children: ReactNode, headerAction?: ReactNode) {
+    const Container = profile ? "form" : "div";
+    const changed = setting === "identity" ? name !== saved.name : color !== saved.color;
+    return <Container data-setting={setting}>
+      <EditorPanel title={title} description={description} headerAction={headerAction}
+        media={setting === "identity" ? <ProfileIdentity name={name.trim() || t.profileName} color={color} avatarOnly layout="header" /> : undefined}
+        actions={profile ? <Button size="sm" type="submit" name="setting" value={setting} disabled={status === "saving" || !changed}>
+          {status === "saving" && activePanel === setting ? t.saving : t.save}
+        </Button> : undefined}>
+        {children}
+        {activePanel === setting && status && status !== "saving" ? <FormFeedback role="alert">{errorText(status, locale)}</FormFeedback> : null}
+      </EditorPanel>
+    </Container>;
+  }
   return (
     <>
-      <EditorHeader
-        title={
-          profile ? (
-            <ProfileLabel profile={profile} locale={locale} />
-          ) : (
-            t.addProfile
-          )
-        }
-        backHref="/profiles"
-        backLabel={t.backToProfiles}
-      />
       {profile?.system ? (
-        <p>{t.systemProfile}</p>
+        <EditorPanel title={profileName(profile, locale)} media={<ProfileLabel profile={profile} locale={locale} avatarOnly layout="header" />} description={t.systemProfile} />
       ) : (
         <EditorForm
-          draft={{ name, color }}
+          layout="settings"
+          as={profile ? "div" : "form"}
+          draft={draft}
+          savedDraft={saved}
           locale={locale}
           onSubmit={async (e) => {
             e.preventDefault();
+            const setting = ((e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value;
+            if (profile && setting !== "identity" && setting !== "color") return false;
+            const next = profile ? { ...saved, ...(setting === "identity" ? { name: name.trim() } : { color }) } : { name: name.trim(), color };
+            setActivePanel(setting || "identity");
             setStatus("saving");
             try {
               await mutate({
                 action: "profile-save",
                 id: profile?.id,
-                config: { name, color },
+                config: next,
               });
+              setSaved(next);
+              if (!profile || setting === "identity") setName(next.name);
+              if (profile) onSaved({ ...profile, ...next });
               setStatus("");
               toast.success(profile ? t.saved : t.profileCreated);
               if (!profile) router.replace("/profiles");
-              else await refresh();
               return true;
             } catch (e) {
               setStatus(e instanceof Error ? e.message : "error");
@@ -72,7 +86,8 @@ export function ProfileEditor({
             }
           }}
         >
-          <EditorSection>
+          <div className="flex flex-col gap-6">
+          {panel("identity", t.profileName, t.profileIdentityDescription, <>
             <FieldGroup>
               <SettingsField label={t.profileName}>
                 <Input
@@ -85,8 +100,21 @@ export function ProfileEditor({
                   }}
                 />
               </SettingsField>
+            </FieldGroup>
+          </>, profile ? <SettingsRowMenu kind="profile" locale={locale} disabled={status === "saving"}
+              onDelete={async () => {
+                setStatus("saving");
+                try {
+                  await mutate({ action: "profile-delete", id: profile.id });
+                  toast.success(t.profileDeleted);
+                  router.push("/profiles");
+                } catch (error) {
+                  throw new Error(errorText(error instanceof Error ? error.message : "error", locale));
+                } finally { setStatus(""); }
+              }} /> : undefined)}
+          {panel("color", t.ownerColor, t.profileColorDescription, <>
               <FieldSet className="min-w-0">
-                <FieldLegend variant="label">{t.ownerColor}</FieldLegend>
+                <FieldLegend className="sr-only">{t.ownerColor}</FieldLegend>
                 <RadioGroup
                   className="flex flex-wrap gap-2"
                   name="profile-color"
@@ -121,52 +149,9 @@ export function ProfileEditor({
                   ))}
                 </RadioGroup>
               </FieldSet>
-              <div
-                className="flex flex-wrap items-center gap-5 rounded-md border border-border bg-background p-6 sm:col-span-2"
-                aria-label={t.preview}
-              >
-                <span className="text-sm text-muted-foreground">
-                  {t.preview}
-                </span>
-                <ProfileIdentity
-                  name={name.trim() || t.profileName}
-                  color={color}
-                />
-                <span className="ml-auto text-sm text-muted-foreground">
-                  {t[color]}
-                </span>
-              </div>
-            </FieldGroup>
-          </EditorSection>
-          <EditorActions>
-            <Button disabled={status === "saving"}>
-              {status === "saving" ? t.saving : t.save}
-            </Button>
-            <Button variant="ghost" asChild>
-              <Link href="/profiles" data-discard-changes>
-                {t.cancel}
-              </Link>
-            </Button>
-            {profile ? (
-              <DeleteButton
-                locale={locale}
-                description={t.confirmProfileDelete}
-                disabled={status === "saving"}
-                onConfirm={async () => {
-                  try {
-                    await mutate({ action: "profile-delete", id: profile.id });
-                    toast.success(t.profileDeleted);
-                    router.push("/profiles");
-                  } catch (e) {
-                    throw new Error(errorText(e instanceof Error ? e.message : "error", locale));
-                  }
-                }}
-              />
-            ) : null}
-          </EditorActions>
-          <FormFeedback role="status">
-            {status && status !== "saving" ? errorText(status, locale) : ""}
-          </FormFeedback>
+          </>)}
+          </div>
+          {!profile ? <div className="mt-6"><Button disabled={status === "saving"}>{status === "saving" ? t.saving : t.settingsCreate}</Button></div> : null}
         </EditorForm>
       )}
     </>

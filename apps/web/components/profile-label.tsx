@@ -13,7 +13,7 @@ const nameVariants = cva("min-w-0 wrap-anywhere", {
 });
 
 const identityVariants = cva("inline-flex min-w-0 items-center text-foreground", {
-  variants: { layout: { inline: "gap-2", card: "w-full flex-col gap-2 text-center text-sm font-medium" } },
+  variants: { layout: { inline: "gap-2", header: "shrink-0 gap-2", card: "w-full flex-col gap-2 text-center text-sm font-medium" } },
   defaultVariants: { layout: "inline" },
 });
 
@@ -27,12 +27,12 @@ export function ProfileIdentity({
   name: string;
   color: ProfileColor;
   avatarOnly?: boolean;
-  layout?: "inline" | "card";
+  layout?: "inline" | "card" | "header";
 }) {
   return (
     <span className={cn(identityVariants({ layout }))}>
       <Avatar
-        size={layout === "card" ? "xl" : "sm"}
+        size={layout === "card" ? "xl" : layout === "header" ? "header" : "sm"}
         aria-hidden="true"
         style={{ "--profile-color": profileColors[color] } as CSSProperties}
       >
@@ -53,7 +53,7 @@ export function ProfileLabel({
   profile: Profile;
   locale: Locale;
   avatarOnly?: boolean;
-  layout?: "inline" | "card";
+  layout?: "inline" | "card" | "header";
 }) {
   const identity = (
     <ProfileIdentity

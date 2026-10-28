@@ -1,0 +1,142 @@
+"""Run against an isolated PEEK_DATABASE_PATH: uv run --with playwright python tests/resource_editors_ui.py URL."""
+import sys, uuid
+from playwright.sync_api import sync_playwright, expect
+base = sys.argv[1].rstrip('/')
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    context = browser.new_context(viewport={'width':1280,'height':1000}, permissions=['clipboard-read','clipboard-write'])
+    page = context.new_page()
+    errors = []
+    page.on('pageerror', lambda e: errors.append(str(e)))
+    def post(data):
+        r = context.request.post(base+'/api/settings', headers={'Origin':base}, data=data)
+        assert r.ok, r.text()
+        return r.json()
+    def visit(path):
+        page.goto(base+path)
+        page.wait_for_load_state('networkidle')
+    def state(): return context.request.get(base+'/api/settings').json()
+    def save(panel): page.locator(f'[data-setting="{panel}"]').get_by_role('button',name='Save',exact=True).click()
+    def menu():
+        page.get_by_role('button',name='Actions',exact=True).click()
+        page.get_by_role('menuitem',name='Delete',exact=True).click()
+    post({'action':'locale','locale':'en'})
+    post({'action':'theme','theme':'day'})
+    sid = 'editor-'+uuid.uuid4().hex[:8]
+    visit('/screens/new')
+    page.get_by_label('Screen name',exact=True).fill('Screen draft')
+    page.locator('#screen-id').fill(sid)
+    expect(page.get_by_role('button',name='Actions',exact=True)).to_have_count(0)
+    page.get_by_role('button',name='Create',exact=True).click()
+    expect(page).to_have_url(base+'/screens')
+    visit('/screens/'+sid+'/edit')
+    page.get_by_role('radio',name='140%',exact=True).click()
+    expect(page.locator('#screen-all')).to_have_attribute('role','switch')
+    page.locator('#screen-all').uncheck()
+    page.locator('label[for=screen-shared]').click()
+    expect(page.locator('#screen-shared')).to_be_checked()
+    page.locator('#screen-shared').focus()
+    page.keyboard.press('Space')
+    expect(page.locator('#screen-shared')).not_to_be_checked()
+    page.get_by_label('Screen name',exact=True).fill('Renamed screen')
+    page.locator('#screen-id').fill(sid+'-renamed')
+    # Failure leaves all panels dirty and saved breadcrumbs unchanged.
+    page.route('**/api/settings', lambda r: r.fulfill(status=400,json={'error':'screen-id-taken'}) if r.request.method=='POST' else r.continue_())
+    save('identity')
+    expect(page.locator('[data-setting=identity]').get_by_role('alert')).to_be_visible()
+    expect(page.locator('header a[aria-current=page]')).to_have_text('Screen draft')
+    page.unroute('**/api/settings')
+    save('identity')
+    expect(page).to_have_url(base+'/screens/'+sid+'-renamed/edit')
+    expect(page.locator('header a[aria-current=page]')).to_have_text('Renamed screen')
+    expect(page.get_by_role('radio',name='140%',exact=True)).to_be_checked()
+    expect(page.locator('#screen-all')).not_to_be_checked()
+    stored = next(s for s in state()['screens'] if s['id']==sid+'-renamed')
+    assert stored['scale']==1 and stored['allProfiles']
+    page.locator('header').get_by_role('link',name='Screens',exact=True).click()
+    expect(page.get_by_role('alertdialog')).to_be_visible()
+    page.get_by_role('button',name='Keep editing',exact=True).click()
+    page.get_by_label('Screen name',exact=True).fill('')
+    save('appearance')
+    expect(page.get_by_label('Screen name',exact=True)).to_have_value('')
+    page.get_by_label('Screen name',exact=True).fill('Renamed screen')
+    expect(page.locator('[data-setting=appearance]').get_by_role('button',name='Save',exact=True)).to_be_disabled()
+    assert next(s for s in state()['screens'] if s['id']==sid+'-renamed')['allProfiles']
+    save('profiles')
+    expect(page.locator('[data-setting=profiles]').get_by_role('button',name='Save',exact=True)).to_be_disabled()
+    preview = page.locator('[data-slot=card]').filter(has=page.locator('#screen-link'))
+    expect(preview.get_by_role('heading',name='Preview',exact=True)).to_have_css('font-size','16px')
+    expect(preview.locator('[data-slot=avatar]')).to_have_count(0)
+    expect(preview.get_by_text('All profiles',exact=True)).to_have_count(0)
+    expect(page.get_by_label('Screen link',exact=True)).to_have_value(base+'/screens/'+sid+'-renamed')
+    expect(page.locator('[data-slot=input-group]').filter(has=page.locator('#screen-link')).get_by_role('button',name='Copy link',exact=True)).to_be_visible()
+    expect(page.locator('#screen-url-prefix')).to_have_text(base+'/screens/')
+    assert page.locator('#screen-url-prefix').evaluate('(e) => getComputedStyle(e.parentElement).backgroundColor === getComputedStyle(document.body).backgroundColor')
+    expect(page.locator('[data-setting=identity]').get_by_role('button',name='Actions',exact=True)).to_have_count(0)
+    expect(page.locator('aside').get_by_role('button',name='Actions',exact=True)).to_be_visible()
+    expect(page.locator('aside').get_by_role('link',name='Open screen',exact=True)).to_have_attribute('href','/screens/'+sid+'-renamed')
+    page.get_by_role('button',name='Copy link',exact=True).click()
+    assert page.evaluate('navigator.clipboard.readText()') == base+'/screens/'+sid+'-renamed'
+    page.locator('header').get_by_role('link',name='Screens',exact=True).click()
+    expect(page).to_have_url(base+'/screens')
+    # The URL prefix follows the host used to access Peek.
+    alternate = base.replace('127.0.0.1','localhost')
+    page.goto(alternate+'/screens/'+sid+'-renamed/edit')
+    expect(page.locator('#screen-url-prefix')).to_have_text(alternate+'/screens/')
+    # Profile create, rename and protected system profile.
+    visit('/profiles/new')
+    page.get_by_label('Profile name',exact=True).fill('Profile draft')
+    page.get_by_role('button',name='Create',exact=True).click()
+    expect(page).to_have_url(base+'/profiles')
+    profile = next(v for v in state()['profiles'] if v['name']=='Profile draft')
+    visit('/profiles/'+profile['id'])
+    expect(page.get_by_label('Preview',exact=True)).to_have_count(0)
+    expect(page.locator('[data-setting=identity] [data-slot=avatar]')).to_have_css('width','48px')
+    page.get_by_role('radio',name='Green',exact=True).check()
+    page.get_by_label('Profile name',exact=True).fill('Renamed profile')
+    save('identity')
+    expect(page.locator('header a[aria-current=page]')).to_have_text('Renamed profile')
+    expect(page.locator('[data-setting=identity]').get_by_role('button',name='Save',exact=True)).to_be_disabled()
+    assert next(v for v in state()['profiles'] if v['id']==profile['id'])['color']=='blue'
+    page.get_by_label('Profile name',exact=True).fill('')
+    save('color')
+    expect(page.get_by_label('Profile name',exact=True)).to_have_value('')
+    assert next(v for v in state()['profiles'] if v['id']==profile['id'])['color']=='green'
+    page.get_by_label('Profile name',exact=True).fill('Long profile name ' + 'Ж' * 82)
+    save('identity')
+    expect(page.locator('[data-setting=identity]').get_by_role('button',name='Save',exact=True)).to_be_disabled()
+    # Layout coverage includes confirmation dialogs, both locales, themes and sizes.
+    for locale in ['en','ru']:
+        post({'action':'locale','locale':locale})
+        for theme in ['day','night']:
+            post({'action':'theme','theme':theme})
+            for width in [1280,390]:
+                page.set_viewport_size({'width':width,'height':1000})
+                for path in ['/screens/'+sid+'-renamed/edit','/profiles/'+profile['id'],'/screens/new','/profiles/new']:
+                    visit(path)
+                    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), path
+                    if not path.endswith('/new'):
+                        page.get_by_role('button',name='Actions' if locale=='en' else 'Действия',exact=True).click()
+                        page.get_by_role('menuitem',name='Delete' if locale=='en' else 'Удалить',exact=True).click()
+                        expect(page.get_by_role('alertdialog')).to_be_visible()
+                        page.get_by_role('button',name='Cancel' if locale=='en' else 'Отмена',exact=True).click()
+                        expect(page.get_by_role('alertdialog')).to_have_count(0)
+                        page.keyboard.press('Escape')
+                        expect(page.get_by_role('menu')).to_have_count(0)
+                    if locale=='en' and theme=='day' and not path.endswith('/new'):
+                        page.screenshot(path=f'/tmp/peek-resource-{width}-'+('screen' if '/screens/' in path else 'profile')+'.png',full_page=True)
+    post({'action':'locale','locale':'en'})
+    visit('/profiles/shared')
+    expect(page.get_by_role('button',name='Save',exact=True)).to_have_count(0)
+    expect(page.get_by_role('button',name='Actions',exact=True)).to_have_count(0)
+    for path in ['/profiles/'+profile['id'],'/screens/'+sid+'-renamed/edit']:
+        visit(path); menu()
+        page.route('**/api/settings', lambda r: r.fulfill(status=500,json={'error':'unavailable'}) if r.request.method=='POST' else r.continue_())
+        page.get_by_role('alertdialog').get_by_role('button',name='Delete',exact=True).click()
+        expect(page.get_by_role('alertdialog').get_by_role('alert')).to_be_visible()
+        page.unroute('**/api/settings')
+        page.get_by_role('alertdialog').get_by_role('button',name='Delete',exact=True).click()
+        expect(page).to_have_url(base+('/profiles' if '/profiles/' in path else '/screens'))
+    assert not errors, errors
+    browser.close()
+print('Resource editor checks passed')

@@ -2,7 +2,6 @@
 import { toast } from "sonner";
 import { LoadingState, SettingsEmpty } from "./settings/layout";
 import {
-  EditorHeader,
   FormFeedback,
   SettingsNavigation,
   SettingsPage,
@@ -54,6 +53,8 @@ export function Settings({
 }) {
   const [query, setQuery] = useState("");
   const [editorTitle, setEditorTitle] = useState(initialExtensions?.instances.find((instance) => instance.id === path[1])?.name);
+  // Retain the original route key so a screen ID rename does not remount its drafts.
+  const [savedScreen, setSavedScreen] = useState<{ routeId: string; screen: Screen } | null>(null);
   const [profileDeleting, setProfileDeleting] = useState(false);
   const [locale, setLocale] = useState<Locale>(initialData?.locale ?? "en"),
     [data, setData] = useState<Data | null>(initialData),
@@ -96,13 +97,18 @@ export function Settings({
     document.documentElement.lang = locale;
   }, [locale]);
   const profile = data?.profiles.find((p) => p.id === item);
+  const screen = savedScreen && savedScreen.routeId === item ? savedScreen.screen : data?.screens.find((s) => s.id === item);
+  const resourceDetail = item && (tab === "screens" || tab === "profiles") ? {
+    label: item === "new" ? (tab === "screens" ? t.addScreen : t.addProfile) : tab === "screens" ? screen?.name ?? t.edit : profile ? profileName(profile, locale) : t.profiles,
+    href: tab === "screens" ? (item === "new" ? "/screens/new" : `/screens/${screen?.id ?? item}/edit`) : `/profiles/${item}`,
+  } : undefined;
   return (
     <AppShell
       locale={locale}
       detail={item && (tab === "scenarios" || tab === "connections") ? {
         label: editorTitle ?? (item === "new" ? t.configure : tab === "scenarios" ? t.scenarioSettings : t.connectionSettings),
         href: `/${tab}/${encodeURIComponent(item)}${packageId ? `?package=${encodeURIComponent(packageId)}` : ""}`,
-      } : undefined}
+      } : resourceDetail}
       section={
         tab === "general" || tab === "extensions"
           ? "settings"
@@ -206,22 +212,17 @@ export function Settings({
             </>
           ) : tab === "screens" ? (
             item ? (
-              item === "new" || data?.screens.some((s) => s.id === item) ? (
+              item === "new" || screen ? (
                 <ScreenEditor
                   key={item}
-                  screen={data?.screens.find((s) => s.id === item)}
+                  screen={screen}
                   profiles={data?.profiles ?? []}
                   profilesLoading={!data && !error}
                   locale={locale}
-                  refresh={refresh}
+                  onSaved={(next) => setSavedScreen({ routeId: item, screen: next })}
                 />
               ) : !data ? (
                 <>
-                  <EditorHeader
-                    backHref="/screens"
-                    backLabel={t.backToScreens}
-                    title={t.edit}
-                  />
                   {!error ? (
                     <LoadingState layout="editor">{t.loading}</LoadingState>
                   ) : null}
@@ -244,15 +245,10 @@ export function Settings({
                   key={item}
                   profile={profile}
                   locale={locale}
-                  refresh={refresh}
+                  onSaved={(next) => setData((current) => current ? { ...current, profiles: current.profiles.map((p) => p.id === next.id ? next : p) } : current)}
                 />
               ) : !data ? (
                 <>
-                  <EditorHeader
-                    backHref="/profiles"
-                    backLabel={t.backToProfiles}
-                    title={t.profiles}
-                  />
                   {!error ? (
                     <LoadingState layout="editor">{t.loading}</LoadingState>
                   ) : null}

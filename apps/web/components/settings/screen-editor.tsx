@@ -1,22 +1,18 @@
 "use client";
 import { toast } from "sonner";
 import { EditorForm, FormFeedback } from "./layout";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "../ui/card";
 import { resolveTheme } from "@peek/core/themes";
 import { useAppTheme } from "../theme";
 import { ThemeSelect } from "./theme-select";
-import { DeleteButton } from "./delete-button";
+import { SettingsRowMenu } from "./row-menu";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { CopyIcon, ExternalLinkIcon } from "lucide-react";
+import { InputGroup, InputGroupInput, InputGroupAddon, InputGroupButton, InputGroupText } from "../ui/input-group";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Switch } from "../ui/switch";
 import { Checkbox } from "../ui/checkbox";
 import {
   Field,
@@ -41,11 +37,11 @@ import {
   SettingsGrid,
   SettingsCard,
   SettingsEmpty,
-  EditorHeader,
-  EditorSection,
-  EditorActions,
+  EditorPanel,
 } from "./layout";
 import { messages, type Locale } from "@peek/core/i18n";
+import { applyScreenPanel, type ScreenPanel } from "./screen-draft";
+import { validateScreen, validateScreenId } from "@peek/core/screens";
 import { errorText, mutate } from "./api";
 
 function ScreenPreview({
@@ -180,19 +176,19 @@ export function ScreenEditor({
   profiles,
   profilesLoading = false,
   locale,
-  refresh,
+  onSaved,
 }: {
   screen?: Screen;
   profiles: Profile[];
   profilesLoading?: boolean;
   locale: Locale;
-  refresh: () => Promise<void>;
+  onSaved: (screen: Screen) => void;
 }) {
   const t = messages(locale),
     router = useRouter();
   const [config, setConfig] = useState<ScreenConfig>(
     () =>
-      screen ?? {
+      screen ? { name: screen.name, allProfiles: screen.allProfiles, profileIds: screen.profileIds, theme: screen.theme, scale: screen.scale } : {
         name: "",
         allProfiles: true,
         profileIds: [],
@@ -201,6 +197,8 @@ export function ScreenEditor({
       },
   );
   const [id, setId] = useState(screen?.id ?? "");
+  const [saved, setSaved] = useState({ id, config });
+  const [activePanel, setActivePanel] = useState("identity");
   const [idEdited, setIdEdited] = useState(!!screen);
   const [status, setStatus] = useState("");
   const [origin, setOrigin] = useState("");
@@ -209,51 +207,57 @@ export function ScreenEditor({
     setConfig((c) => ({ ...c, ...value }));
     setStatus("");
   };
-  const selectedProfiles = profiles.filter((profile) =>
-    config.profileIds.includes(profile.id),
-  );
   const busy = status === "saving";
   const invalidId = ["invalid-screen-id", "screen-id-taken"].includes(status);
-  const link = `${origin}/screens/${screen?.id ?? id}`;
+  const link = `${origin}/screens/${screen ? saved.id : id}`;
+  const draft = { id, config };
+  function panel(setting: "identity" | "profiles" | "appearance", title: string, description: string, children: ReactNode, headerAction?: ReactNode) {
+    const next = applyScreenPanel(saved, draft, setting);
+    const Container = screen ? "form" : "div";
+    return <Container data-setting={setting}>
+      <EditorPanel title={title} description={description} headerAction={headerAction}
+        actions={screen ? <Button size="sm" type="submit" name="setting" value={setting}
+          disabled={busy || JSON.stringify(next) === JSON.stringify(saved)}>
+          {busy && activePanel === setting ? t.saving : t.save}
+        </Button> : undefined}>
+        {children}
+        {activePanel === setting && status && !busy ? <FormFeedback role="alert">{errorText(status, locale)}</FormFeedback> : null}
+      </EditorPanel>
+    </Container>;
+  }
   return (
     <div className="min-w-0">
-      <EditorHeader
-        title={screen?.name ?? t.addScreen}
-        backHref="/screens"
-        backLabel={t.backToScreens}
-        action={
-          screen ? (
-            <Button variant="outline" asChild>
-              <Link
-                href={`/screens/${screen.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t.openScreen} ↗
-              </Link>
-            </Button>
-          ) : null
-        }
-      />
       <EditorForm
-        draft={{ id, config }}
+        as={screen ? "div" : "form"}
+        draft={draft}
+        savedDraft={saved}
         locale={locale}
-        layout="preview"
+        layout="settings"
         onSubmit={async (e) => {
           e.preventDefault();
+          const setting = ((e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value as ScreenPanel | undefined;
+          if (screen && !setting) return false;
+          setActivePanel(setting ?? "identity");
           setStatus("saving");
           try {
-            const result = await mutate({
-              action: "screen-save",
-              id,
-              previousId: screen?.id,
-              config,
-            });
+            const next = screen ? applyScreenPanel(saved, draft, setting!) : draft;
+            const committed = { id: validateScreenId(next.id), config: validateScreen(next.config) };
+            await mutate({ action: "screen-save", id: committed.id, previousId: screen ? saved.id : undefined, config: committed.config });
+            setSaved(committed);
+            if (!screen || setting === "identity") {
+              setId(committed.id);
+              setConfig((current) => ({ ...current, name: committed.config.name }));
+            }
+            if (!screen || setting === "profiles") {
+              setConfig((current) => ({ ...current, allProfiles: committed.config.allProfiles, profileIds: committed.config.profileIds }));
+            }
             setStatus("");
             toast.success(screen ? t.saved : t.screenCreated);
             if (!screen) router.replace("/screens");
-            else if (screen.id !== result.id) router.replace(`/screens/${result.id}/edit`);
-            else await refresh();
+            else {
+              if (saved.id !== committed.id) window.history.replaceState(null, "", `/screens/${committed.id}/edit`);
+              onSaved({ id: committed.id, ...committed.config });
+            }
             return true;
           } catch (error) {
             setStatus(error instanceof Error ? error.message : "error");
@@ -261,9 +265,9 @@ export function ScreenEditor({
           }
         }}
       >
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-16">
-          <div className="flex min-w-0 flex-col gap-8">
-            <EditorSection title={t.screenIdentity}>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div className="flex min-w-0 flex-col gap-6">
+            {panel("identity", t.screenIdentity, t.screenIdentityDescription, <>
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="screen-name">{t.screenName}</FieldLabel>
@@ -280,13 +284,17 @@ export function ScreenEditor({
                 </Field>
                 <Field data-invalid={invalidId}>
                   <FieldLabel htmlFor="screen-id">{t.screenId}</FieldLabel>
-                  <Input
+                  <InputGroup>
+                  <InputGroupAddon variant="prefix" className="max-w-1/2 min-w-0" title={`${origin}/screens/`}>
+                    <InputGroupText id="screen-url-prefix" className="block truncate">{origin}/screens/</InputGroupText>
+                  </InputGroupAddon>
+                  <InputGroupInput
                     id="screen-id"
                     required
                     maxLength={64}
                     pattern="[a-z0-9]+(-[a-z0-9]+)*"
                     aria-invalid={invalidId}
-                    aria-describedby="screen-id-hint"
+                    aria-describedby="screen-url-prefix screen-id-hint"
                     autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
@@ -297,44 +305,35 @@ export function ScreenEditor({
                       setStatus("");
                     }}
                   />
+                  </InputGroup>
                   <FieldDescription id="screen-id-hint">
                     {t.screenIdHint}
                   </FieldDescription>
-                  {screen && id !== screen.id ? (
+                  {screen && id !== saved.id ? (
                     <FieldDescription>{t.screenIdChanged}</FieldDescription>
                   ) : null}
                 </Field>
               </FieldGroup>
-            </EditorSection>
-            <EditorSection>
+            </>)}
+            {panel("profiles", t.profiles, t.screenProfilesHint, <>
               <FieldSet>
-                <FieldLegend>{t.profiles}</FieldLegend>
-                <FieldDescription>{t.screenProfilesHint}</FieldDescription>
+                <FieldLegend className="sr-only">{t.profiles}</FieldLegend>
                 <Field orientation="horizontal">
-                  <Checkbox
-                    id="screen-all"
-                    checked={config.allProfiles}
-                    onCheckedChange={(checked) =>
-                      update({ allProfiles: checked === true })
-                    }
-                  />
                   <FieldContent>
-                    <FieldLabel htmlFor="screen-all">
-                      {t.allProfiles}
-                    </FieldLabel>
+                    <FieldLabel htmlFor="screen-all">{t.allProfiles}</FieldLabel>
                     <FieldDescription>{t.allProfilesHint}</FieldDescription>
                   </FieldContent>
+                  <Switch id="screen-all" checked={config.allProfiles}
+                    onCheckedChange={(allProfiles) => update({ allProfiles })} />
                 </Field>
                 {profilesLoading ? (
                   <LoadingState layout="fields">{t.loading}</LoadingState>
                 ) : null}
-                <FieldGroup className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <FieldGroup data-slot="checkbox-group">
                   {profiles.map((profile) => (
-                    <Field
-                      key={profile.id}
-                      orientation="horizontal"
-                      data-disabled={config.allProfiles}
-                    >
+                    <FieldLabel key={profile.id} htmlFor={`screen-${profile.id}`}>
+                    <Field orientation="horizontal" data-disabled={config.allProfiles}>
+                      <FieldContent><ProfileLabel profile={profile} locale={locale} /></FieldContent>
                       <Checkbox
                         id={`screen-${profile.id}`}
                         disabled={config.allProfiles}
@@ -353,18 +352,16 @@ export function ScreenEditor({
                           })
                         }
                       />
-                      <FieldLabel htmlFor={`screen-${profile.id}`}>
-                        <ProfileLabel profile={profile} locale={locale} />
-                      </FieldLabel>
                     </Field>
+                    </FieldLabel>
                   ))}
                 </FieldGroup>
                 {!config.allProfiles && !config.profileIds.length ? (
                   <FieldDescription>{t.noScreenProfiles}</FieldDescription>
                 ) : null}
               </FieldSet>
-            </EditorSection>
-            <EditorSection title={t.appearance}>
+            </>)}
+            {panel("appearance", t.appearance, t.screenAppearanceDescription, <>
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="screen-theme">
@@ -402,48 +399,40 @@ export function ScreenEditor({
                   </ToggleGroup>
                 </Field>
               </FieldGroup>
-            </EditorSection>
+            </>)}
           </div>
           <aside className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-6">
-            <Card variant="preview">
-              <CardHeader>
-                <CardTitle asChild>
-                  <h3>{t.preview}</h3>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScreenPreview config={config} locale={locale} />
-              </CardContent>
-              <CardDescription asChild>
-                <p className="flex flex-wrap gap-3">
-                  {config.allProfiles
-                    ? t.allProfiles
-                    : selectedProfiles.length
-                      ? selectedProfiles.map((profile) => (
-                        <ProfileLabel
-                          key={profile.id}
-                          profile={profile}
-                          locale={locale}
-                        />
-                      ))
-                      : t.noScreenProfiles}
-                </p>
-              </CardDescription>
-            </Card>
-            <div className="flex flex-col gap-3 text-xs text-muted-foreground">
+            {screen ? <div className="flex items-center justify-end gap-2"><Button size="sm" asChild>
+              <Link href={`/screens/${saved.id}`} target="_blank" rel="noopener noreferrer">{t.openScreen}<ExternalLinkIcon aria-hidden="true" /></Link>
+            </Button>
+              <SettingsRowMenu kind="screen" locale={locale} disabled={busy} onDelete={async () => {
+                setStatus("saving");
+                try {
+                  await mutate({ action: "screen-delete", id: saved.id });
+                  toast.success(t.screenDeleted);
+                  router.push("/screens");
+                } catch (error) {
+                  throw new Error(errorText(error instanceof Error ? error.message : "error", locale));
+                } finally { setStatus(""); }
+              }} />
+            </div> : null}
+            <EditorPanel title={t.preview} description={t.screenPreviewDescription}>
+              <ScreenPreview config={config} locale={locale} />
               <Field>
                 <FieldLabel htmlFor="screen-link">{t.screenLink}</FieldLabel>
-                <Input
+                <InputGroup>
+                <InputGroupInput
                   id="screen-link"
                   readOnly
                   value={link}
                   onFocus={(e) => e.target.select()}
                 />
-              </Field>
               {screen ? (
-                <Button
-                  type="button"
-                  variant="ghost"
+                <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-sm"
+                  aria-label={t.copyLink}
+                  title={t.copyLink}
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(link);
@@ -453,42 +442,16 @@ export function ScreenEditor({
                     }
                   }}
                 >
-                  {t.copyLink}
-                </Button>
+                  <CopyIcon aria-hidden="true" />
+                </InputGroupButton>
+                </InputGroupAddon>
               ) : null}
-            </div>
+                </InputGroup>
+              </Field>
+            </EditorPanel>
           </aside>
         </div>
-        <EditorActions>
-          <Button disabled={busy}>{busy ? t.saving : t.save}</Button>
-          <Button variant="ghost" asChild>
-            <Link href="/screens" data-discard-changes>
-              {t.cancel}
-            </Link>
-          </Button>
-          {screen ? (
-            <DeleteButton
-              locale={locale}
-              description={t.confirmScreenDelete}
-              disabled={busy}
-              onConfirm={async () => {
-                setStatus("saving");
-                try {
-                  await mutate({ action: "screen-delete", id: screen.id });
-                  toast.success(t.screenDeleted);
-                  router.push("/screens");
-                } catch (error) {
-                  throw new Error(errorText(error instanceof Error ? error.message : "error", locale));
-                } finally {
-                  setStatus("");
-                }
-              }}
-            />
-          ) : null}
-        </EditorActions>
-        <FormFeedback role="status">
-          {status && !busy ? errorText(status, locale) : ""}
-        </FormFeedback>
+        {!screen ? <div className="mt-6"><Button disabled={busy}>{busy ? t.saving : t.settingsCreate}</Button></div> : null}
       </EditorForm>
     </div>
   );

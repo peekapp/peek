@@ -220,3 +220,30 @@ Confirmations that disable a scenario include the shared warning callout: warnin
 Disconnect success toasts offer Undo for the standard toast duration. Undo restores the saved bindings and prior enabled state, rejects newer scenario revisions, and reconciles open editors without discarding unrelated drafts. Toast actions reuse shared Button styling.
 
 Connection deletion confirmations embed the shared Used by list and disconnect controls across collection menus, full editors and sheets. Explain dependencies and disable Delete until the list is empty; disconnecting the last scenario never deletes the connection automatically. Bound long dialog lists with a scrolling body while retaining the confirmation actions.
+
+Screen and profile create/detail pages use the same AppShell breadcrumbs and
+EditorPanel cards as scenario/connection editors, without a duplicate heading or
+bottom Save/Cancel bar. Saved profiles have independent name and color panels without a preview; saved screens have
+independent identity (name/URL ID), profiles, and appearance panels. Each panel's
+small footer Save commits only its values and preserves other guarded drafts.
+Creation uses one Create action after all panels. Saved identity panels use the
+shared three-dot deletion menu; system profiles remain read-only. Screens retain
+the live preview and Open/Copy link actions. URL ID changes update the saved URL
+without remounting the editor or discarding other drafts. Collection layouts remain
+resource-specific.
+
+Every resource settings panel has a title and localized description through EditorPanel.
+Screen URL editing uses an InputGroup with a fixed origin/screens/ prefix and an editable
+ID. Open screen sits beside the preview, outside settings panels. The saved screen link
+uses an InputGroup with an inline, accessibly labeled Copy button.
+
+Resource editor profile avatars use the shared 48px header size beside the title
+and description. Screen actions sit together beside the preview: primary Open
+screen, then the actions menu. URL prefixes use the semantic page background and
+the current browser origin. Screen profile choices use shared selectable FieldLabel
+rows with avatars and trailing checkboxes, below an All profiles switch.
+
+The screen preview uses EditorPanel with the standard heading and a description
+identifying sample content. Keep profile membership text in the Profiles panel,
+not below the preview. Group the screen link and inline Copy control inside the
+preview panel; keep Open screen and its actions menu above it.

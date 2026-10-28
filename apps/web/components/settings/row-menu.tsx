@@ -34,7 +34,7 @@ export function SettingsRowMenu({
   locale: Locale;
   disabled?: boolean;
   onDelete?: () => Promise<void>;
-  kind: "scenario" | "connection" | "profile";
+  kind: "scenario" | "connection" | "profile" | "screen";
   enabled?: boolean;
   onToggle?: () => Promise<void>;
   onRefresh?: () => Promise<void>;
@@ -76,7 +76,7 @@ export function SettingsRowMenu({
           <ConfirmAction
             locale={locale}
             disabled={disabled}
-            description={deleteDisabled ? t.connectionDeleteInUse : kind === "profile" ? t.confirmProfileDelete : t.confirmInstanceDelete}
+            description={deleteDisabled ? t.connectionDeleteInUse : kind === "profile" ? t.confirmProfileDelete : kind === "screen" ? t.confirmScreenDelete : t.confirmInstanceDelete}
             onConfirm={onDelete}
             confirmDisabled={deleteDisabled}
             trigger={
